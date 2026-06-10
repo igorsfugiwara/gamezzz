@@ -1,0 +1,112 @@
+.page {
+  padding-top: 60px;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.breadcrumb {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 1.2rem;
+
+  a {
+    color: var(--text-muted);
+    transition: color 0.2s;
+
+    &:hover {
+      color: var(--text);
+    }
+  }
+
+  span {
+    color: var(--text-muted);
+  }
+}
+
+.title {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.6rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #000;
+  text-transform: capitalize;
+  margin-bottom: 1.5rem;
+}
+
+.cat_clássico { background: #f59e0b; }
+.cat_estratégia { background: #10b981; }
+.cat_cartas { background: #6366f1; color: #fff; }
+.cat_ação { background: #ef4444; }
+
+.frameWrapper {
+  margin-bottom: 2rem;
+}
+
+.section {
+  padding: 2rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.howToList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-left: 1.5rem;
+
+  li {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+}
+
+.longDesc {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.75;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.5rem 0;
+}
+
+.tag {
+  padding: 0.25rem 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+}

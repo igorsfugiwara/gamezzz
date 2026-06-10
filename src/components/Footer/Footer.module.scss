@@ -1,0 +1,90 @@
+.footer {
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  padding: 3rem 1.5rem;
+  margin-top: 4rem;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.logo {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+
+  &:hover {
+    color: var(--accent);
+  }
+}
+
+.tagline {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.nav {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+
+  a {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    transition: color 0.2s;
+
+    &:hover {
+      color: var(--text);
+    }
+  }
+}
+
+.credits {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  text-align: right;
+
+  p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+}
+
+.link {
+  color: var(--accent);
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.copy {
+  font-size: 0.8rem !important;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+@media (max-width: 640px) {
+  .inner {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .credits {
+    text-align: left;
+  }
+}
