@@ -18,7 +18,7 @@ export default function Navbar() {
     <nav className={`${styles.navbar} ${scrolled ? styles.scrolled : ''}`}>
       <div className={styles.inner}>
         <Link href="/" className={styles.logo}>
-          gamezzz
+          gamezzz one
         </Link>
 
         <button

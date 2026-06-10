@@ -5,7 +5,7 @@ import Footer from '@/components/Footer/Footer';
 import '@/styles/globals.scss';
 
 export const metadata: Metadata = {
-  title: 'gamezzz — Jogos Gratuitos no Navegador',
+  title: 'gamezzz one — Jogos Gratuitos no Navegador',
   description:
     'Jogue Pong, Catan, PokéTrunfo e outros clássicos direto no navegador. Gratuito, sem download, sem cadastro.',
   keywords:

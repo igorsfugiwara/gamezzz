@@ -7,7 +7,7 @@ export default function Footer() {
       <div className={styles.inner}>
         <div className={styles.brand}>
           <Link href="/" className={styles.logo}>
-            gamezzz
+            gamezzz one
           </Link>
           <p className={styles.tagline}>Jogos gratuitos no navegador</p>
         </div>
@@ -30,7 +30,7 @@ export default function Footer() {
               Igor Fugiwara
             </a>
           </p>
-          <p className={styles.copy}>© 2026 gamezzz</p>
+          <p className={styles.copy}>© 2026 gamezzz one</p>
         </div>
       </div>
     </footer>

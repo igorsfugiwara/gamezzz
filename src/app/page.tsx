@@ -74,7 +74,7 @@ export default function Home() {
 
         {/* POR QUE GAMEHUB BR */}
         <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Por que gamezzz?</h2>
+          <h2 className={styles.sectionTitle}>Por que gamezzz one?</h2>
           <div className={styles.featureGrid}>
             <div className={styles.featureItem}>
               <span className={styles.featureIcon}>🚀</span>
@@ -101,10 +101,10 @@ export default function Home() {
 
         {/* SOBRE — texto SEO */}
         <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Sobre o gamezzz</h2>
+          <h2 className={styles.sectionTitle}>Sobre o gamezzz one</h2>
           <div className={styles.aboutText}>
             <p>
-              gamezzz é uma plataforma de jogos gratuitos que roda direto
+              gamezzz one é uma plataforma de jogos gratuitos que roda direto
               no navegador, sem necessidade de download, instalação ou cadastro.
               O objetivo é entregar uma experiência de jogo acessível, rápida e
               divertida para qualquer pessoa com acesso à internet, em qualquer
