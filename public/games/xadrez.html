@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>XADREZ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%; width: 100%;
+    background: #0d0f14;
+    font-family: 'Press Start 2P', monospace;
+    color: #e6e8ee;
+    overflow: hidden;
+    touch-action: manipulation;
+    -webkit-user-select: none; user-select: none;
+  }
+  body { display: flex; align-items: center; justify-content: center; }
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse at 12% 8%, rgba(120, 170, 255, .07) 0%, transparent 55%),
+      radial-gradient(ellipse at 88% 92%, rgba(255, 190, 120, .06) 0%, transparent 55%);
+  }
+
+  .wrap {
+    position: relative; z-index: 1;
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    gap: clamp(6px, 1.6vw, 18px);
+    padding: clamp(5px, 1.2vh, 12px);
+  }
+
+  /* ----------------------------------------------------------- tabuleiro */
+  .board-area { display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; justify-content: center; }
+
+  .capturas {
+    display: flex; align-items: center; gap: 1px;
+    font-size: clamp(11px, 2.1vh, 19px); line-height: 1;
+    min-height: clamp(14px, 2.6vh, 22px);
+    color: #8b93a7; flex-wrap: wrap; justify-content: center;
+    max-width: 100%;
+  }
+  .capturas .saldo { font-family: 'Press Start 2P'; font-size: clamp(6px, 1vh, 9px); color: #6fcf97; margin-left: 5px; }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    border: 2px solid #3a4152;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 8px 34px rgba(0,0,0,.6);
+    /* Item de flex column: sem isto o flex-shrink padrão come a altura
+       calculada e o tabuleiro deixa de ser quadrado. */
+    flex: 0 0 auto;
+  }
+
+  .sq {
+    position: relative;
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    border: none; padding: 0;
+    font-size: var(--tam-peca, 30px);
+    line-height: 1;
+    background: var(--clara);
+    transition: background .12s;
+  }
+  .sq.escura { background: var(--escura); }
+
+  :root { --clara: #e8ecf4; --escura: #7a89a8; }
+
+  .sq .peca {
+    pointer-events: none;
+    line-height: 1;
+    /* Vazado: peça branca clara com contorno escuro, preta escura com contorno claro */
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,.45));
+  }
+  .peca.b { color: #fff; text-shadow: 0 0 1px #1a1f2b, 1px 1px 0 #1a1f2b, -1px -1px 0 #1a1f2b, 1px -1px 0 #1a1f2b, -1px 1px 0 #1a1f2b; }
+  .peca.p { color: #1c2230; text-shadow: 0 0 1px #e8ecf4, 1px 1px 0 rgba(232,236,244,.5), -1px -1px 0 rgba(232,236,244,.5); }
+
+  .sq.sel       { background: #f2d16b !important; }
+  .sq.ultimo    { background: rgba(242, 209, 107, .38); }
+  .sq.ultimo.escura { background: rgba(242, 209, 107, .48); }
+  .sq.xeque     { background: #e05c5c !important; animation: piscar 1s ease-in-out infinite; }
+  @keyframes piscar { 50% { background: #b84545 !important; } }
+
+  /* marcas de lance legal */
+  .sq .marca {
+    position: absolute; pointer-events: none;
+    width: 30%; height: 30%; border-radius: 50%;
+    background: rgba(40, 60, 90, .42);
+  }
+  .sq .marca.captura {
+    width: 88%; height: 88%; border-radius: 50%;
+    background: none; border: 3.5px solid rgba(224, 92, 92, .75);
+  }
+
+  .coords { display: flex; justify-content: space-between; width: 100%; font-size: clamp(5px, .95vh, 8px); color: #6a7288; padding: 0 3px; }
+
+  /* ----------------------------------------------------------- painel */
+  .painel {
+    display: flex; flex-direction: column;
+    gap: clamp(5px, 1.1vh, 10px);
+    width: clamp(132px, 21vw, 205px);
+    height: 100%;
+    justify-content: center;
+  }
+
+  .caixa {
+    background: rgba(24, 28, 38, .9);
+    border: 1px solid #2c3242;
+    border-radius: 6px;
+    padding: clamp(5px, 1vh, 9px);
+  }
+
+  .status { font-size: clamp(6.5px, 1.15vh, 9.5px); line-height: 1.75; color: #9aa3b8; text-align: center; }
+  .status b { color: #f2d16b; font-weight: normal; }
+  .status .pensando { color: #6fcf97; }
+
+  .hist-titulo { font-size: clamp(5.5px, 1vh, 8px); color: #6a7288; letter-spacing: 1px; margin-bottom: 5px; }
+  .hist {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(9px, 1.6vh, 13px);
+    line-height: 1.55;
+    height: clamp(58px, 17vh, 150px);
+    overflow-y: auto; overflow-x: hidden;
+    color: #c3cadb;
+    display: grid; grid-template-columns: auto 1fr 1fr; gap: 0 7px;
+    align-content: start;
+  }
+  .hist .n { color: #5c6478; }
+  .hist::-webkit-scrollbar { width: 3px; }
+  .hist::-webkit-scrollbar-thumb { background: #3a4152; border-radius: 3px; }
+
+  button.acao {
+    font-family: inherit; cursor: pointer; width: 100%;
+    color: #cdd5e6;
+    background: rgba(120, 160, 230, .09);
+    border: 1px solid rgba(120, 160, 230, .38);
+    border-radius: 5px;
+    padding: clamp(5px, 1.1vh, 9px) 5px;
+    font-size: clamp(6px, 1.05vh, 9px);
+    letter-spacing: .5px;
+    transition: background .14s, border-color .14s;
+  }
+  button.acao:hover:not(:disabled) { background: rgba(120, 160, 230, .2); border-color: rgba(120,160,230,.75); }
+  button.acao:disabled { opacity: .38; cursor: not-allowed; }
+
+  /* ----------------------------------------------------------- telas */
+  .screen {
+    position: fixed; inset: 0; z-index: 20;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: clamp(7px, 2vh, 16px);
+    background: rgba(13, 15, 20, .96);
+    text-align: center; padding: 4%;
+    line-height: 1.8;
+  }
+  .screen[hidden] { display: none; }
+
+  .title {
+    font-size: clamp(15px, 4vw, 30px); color: #f2d16b;
+    letter-spacing: clamp(3px, 1.2vw, 11px);
+    text-shadow: 0 0 14px rgba(242,209,107,.5);
+    line-height: 1.5;
+  }
+  .sub { font-size: clamp(6.5px, 1.4vw, 10px); color: #7b8399; letter-spacing: 1px; }
+  .grupo { display: flex; flex-direction: column; gap: clamp(5px, 1.3vh, 10px); width: min(320px, 82%); }
+  .grupo .rotulo { font-size: clamp(6px, 1.2vw, 8.5px); color: #6a7288; letter-spacing: 2px; margin-top: 5px; }
+
+  button.menu-btn {
+    font-family: inherit; cursor: pointer;
+    color: #e6e8ee;
+    background: rgba(242, 209, 107, .08);
+    border: 2px solid rgba(242, 209, 107, .4);
+    border-radius: 6px;
+    padding: clamp(7px, 1.6vh, 12px) 9px;
+    font-size: clamp(7px, 1.5vw, 10.5px);
+    letter-spacing: 1px; line-height: 1.5;
+    transition: background .15s, border-color .15s, transform .08s;
+  }
+  button.menu-btn:hover { background: rgba(242,209,107,.18); border-color: rgba(242,209,107,.85); }
+  button.menu-btn:active { transform: translateY(1px); }
+  button.menu-btn.sel { background: rgba(242,209,107,.26); border-color: #f2d16b; }
+  button.menu-btn .tag { display: block; font-size: .72em; color: #8b93a7; margin-top: 5px; letter-spacing: 0; }
+
+  .cores { display: flex; gap: 8px; }
+  .cores button { flex: 1; font-size: clamp(15px, 3.4vw, 26px); padding: clamp(6px, 1.4vh, 11px) 4px; }
+
+  /* promoção */
+  .promo-ops { display: flex; gap: 9px; }
+  .promo-ops button { font-size: clamp(24px, 5vw, 42px); padding: 7px 12px; line-height: 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sq, button.acao, button.menu-btn { transition: none; }
+    .sq.xeque { animation: none; }
+  }
+
+  /* retrato estreito: painel embaixo */
+  @media (max-aspect-ratio: 1/1) {
+    .wrap { flex-direction: column; gap: 5px; }
+    .painel { flex-direction: row; width: 100%; height: auto; flex-wrap: wrap; justify-content: center; align-items: stretch; }
+    .painel .caixa { flex: 1; min-width: 90px; }
+    .hist { height: clamp(40px, 9vh, 70px); }
+    .painel .botoes { display: flex; gap: 5px; flex-direction: column; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="board-area">
+      <div class="capturas" id="cap-topo"></div>
+      <div class="board" id="board"></div>
+      <div class="capturas" id="cap-base"></div>
+    </div>
+
+    <div class="painel">
+      <div class="caixa status" id="status">—</div>
+      <div class="caixa">
+        <div class="hist-titulo">LANCES</div>
+        <div class="hist" id="hist"></div>
+      </div>
+      <div class="botoes" style="display:flex;flex-direction:column;gap:5px">
+        <button class="acao" id="btn-desfazer">DESFAZER</button>
+        <button class="acao" id="btn-novo">NOVA PARTIDA</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- tela inicial -->
+  <div class="screen" id="scr-start">
+    <div class="title">XADREZ</div>
+    <div class="sub">contra o computador</div>
+    <div class="grupo">
+      <div class="rotulo">NÍVEL</div>
+      <button class="menu-btn" data-nivel="1">INICIANTE<span class="tag">olha 2 lances à frente</span></button>
+      <button class="menu-btn sel" data-nivel="2">CLUBE<span class="tag">3 lances · avalia trocas</span></button>
+      <button class="menu-btn" data-nivel="3">MESTRE<span class="tag">4 lances · joga para valer</span></button>
+      <div class="rotulo">SUAS PEÇAS</div>
+      <div class="cores">
+        <button class="menu-btn sel" data-cor="b" title="Brancas">♔</button>
+        <button class="menu-btn" data-cor="p" title="Pretas">♚</button>
+      </div>
+      <button class="menu-btn" id="btn-comecar" style="margin-top:8px">COMEÇAR</button>
+    </div>
+  </div>
+
+  <!-- promoção -->
+  <div class="screen" id="scr-promo" hidden>
+    <div class="sub">PROMOVER O PEÃO</div>
+    <div class="promo-ops" id="promo-ops"></div>
+  </div>
+
+  <!-- fim -->
+  <div class="screen" id="scr-fim" hidden>
+    <div class="title" id="fim-titulo">FIM</div>
+    <div class="sub" id="fim-texto"></div>
+    <div class="grupo">
+      <button class="menu-btn" id="btn-revanche">REVANCHE</button>
+      <button class="menu-btn" id="btn-menu">TROCAR NÍVEL</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ============================================================== REGRAS
+  // (validado por perft: inicial d4=197281, Kiwipete d3=97862, e mais 3 posições)
+
+  const BRANCA = 'b', PRETA = 'p';
+  const inverso = (c) => (c === BRANCA ? PRETA : BRANCA);
+
+  const DIR = {
+    C: [-17, -15, -10, -6, 6, 10, 15, 17],
+    B: [-9, -7, 7, 9],
+    T: [-8, -1, 1, 8],
+    D: [-9, -8, -7, -1, 1, 7, 8, 9],
+    R: [-9, -8, -7, -1, 1, 7, 8, 9],
+  };
+
+  const linha = (i) => i >> 3;
+  const coluna = (i) => i & 7;
+  const dentro = (i) => i >= 0 && i < 64;
+  /** Barra o "wrap" de borda a borda no array linear de 64. */
+  const vizinho = (de, para) =>
+    Math.abs(coluna(de) - coluna(para)) <= 2 && Math.abs(linha(de) - linha(para)) <= 2;
+
+  function posicaoInicial() {
+    const t = new Array(64).fill(null);
+    const ordem = ['T', 'C', 'B', 'D', 'R', 'B', 'C', 'T'];
+    for (let c = 0; c < 8; c++) {
+      t[c] = 'p' + ordem[c]; t[8 + c] = 'pP';
+      t[48 + c] = 'bP';      t[56 + c] = 'b' + ordem[c];
+    }
+    return { casas: t, vez: BRANCA,
+             roque: { bR: true, bD: true, pR: true, pD: true },
+             enPassant: null, meioLances: 0, lance: 1 };
+  }
+
+  const clonar = (e) => ({
+    casas: e.casas.slice(), vez: e.vez, roque: { ...e.roque },
+    enPassant: e.enPassant, meioLances: e.meioLances, lance: e.lance,
+  });
+
+  function atacada(casas, alvo, porCor) {
+    for (let i = 0; i < 64; i++) {
+      const p = casas[i];
+      if (!p || p[0] !== porCor) continue;
+      const tipo = p[1];
+
+      if (tipo === 'P') {
+        const dir = porCor === BRANCA ? -8 : 8;
+        for (const lado of [-1, 1]) {
+          const d = i + dir + lado;
+          if (dentro(d) && Math.abs(coluna(i) - coluna(d)) === 1 && d === alvo) return true;
+        }
+        continue;
+      }
+      if (tipo === 'C' || tipo === 'R') {
+        for (const off of (tipo === 'C' ? DIR.C : DIR.R)) {
+          const d = i + off;
+          if (dentro(d) && vizinho(i, d) && d === alvo) return true;
+        }
+        continue;
+      }
+      const dirs = tipo === 'B' ? DIR.B : tipo === 'T' ? DIR.T : DIR.D;
+      for (const off of dirs) {
+        let d = i;
+        for (;;) {
+          const ant = d; d += off;
+          if (!dentro(d) || !vizinho(ant, d)) break;
+          if (d === alvo) return true;
+          if (casas[d]) break;
+        }
+      }
+    }
+    return false;
+  }
+
+  function acharRei(casas, cor) {
+    for (let i = 0; i < 64; i++) if (casas[i] === cor + 'R') return i;
+    return -1;
+  }
+
+  const emXeque = (e, cor) => {
+    const r = acharRei(e.casas, cor);
+    return r >= 0 && atacada(e.casas, r, inverso(cor));
+  };
+
+  function lancesPseudo(e, cor) {
+    const out = [];
+    const { casas } = e;
+    const add = (de, para, extra) => out.push({ de, para, ...extra });
+
+    for (let i = 0; i < 64; i++) {
+      const p = casas[i];
+      if (!p || p[0] !== cor) continue;
+      const tipo = p[1];
+
+      if (tipo === 'P') {
+        const dir = cor === BRANCA ? -8 : 8;
+        const inicial = cor === BRANCA ? 6 : 1;
+        const promo = cor === BRANCA ? 0 : 7;
+        const frente = i + dir;
+
+        if (dentro(frente) && !casas[frente]) {
+          if (linha(frente) === promo) for (const q of ['D','T','B','C']) add(i, frente, { promocao: q });
+          else {
+            add(i, frente, {});
+            const duplo = i + dir * 2;
+            if (linha(i) === inicial && !casas[duplo]) add(i, duplo, { duplo: true });
+          }
+        }
+        for (const lado of [-1, 1]) {
+          const d = i + dir + lado;
+          if (!dentro(d) || Math.abs(coluna(i) - coluna(d)) !== 1) continue;
+          const alvo = casas[d];
+          if (alvo && alvo[0] !== cor) {
+            if (linha(d) === promo) for (const q of ['D','T','B','C']) add(i, d, { promocao: q, captura: alvo });
+            else add(i, d, { captura: alvo });
+          } else if (!alvo && d === e.enPassant) {
+            add(i, d, { enPassant: true, captura: inverso(cor) + 'P' });
+          }
+        }
+        continue;
+      }
+
+      if (tipo === 'C' || tipo === 'R') {
+        for (const off of (tipo === 'C' ? DIR.C : DIR.R)) {
+          const d = i + off;
+          if (!dentro(d) || !vizinho(i, d)) continue;
+          const alvo = casas[d];
+          if (!alvo) add(i, d, {});
+          else if (alvo[0] !== cor) add(i, d, { captura: alvo });
+        }
+        if (tipo === 'R') {
+          const base = cor === BRANCA ? 56 : 0;
+          if (i === base + 4 && !emXeque(e, cor)) {
+            if (e.roque[cor + 'R'] && !casas[base+5] && !casas[base+6] && casas[base+7] === cor+'T' &&
+                !atacada(casas, base+5, inverso(cor)) && !atacada(casas, base+6, inverso(cor)))
+              add(i, base + 6, { roque: 'R' });
+            if (e.roque[cor + 'D'] && !casas[base+3] && !casas[base+2] && !casas[base+1] && casas[base] === cor+'T' &&
+                !atacada(casas, base+3, inverso(cor)) && !atacada(casas, base+2, inverso(cor)))
+              add(i, base + 2, { roque: 'D' });
+          }
+        }
+        continue;
+      }
+
+      const dirs = tipo === 'B' ? DIR.B : tipo === 'T' ? DIR.T : DIR.D;
+      for (const off of dirs) {
+        let d = i;
+        for (;;) {
+          const ant = d; d += off;
+          if (!dentro(d) || !vizinho(ant, d)) break;
+          const alvo = casas[d];
+          if (!alvo) add(i, d, {});
+          else { if (alvo[0] !== cor) add(i, d, { captura: alvo }); break; }
+        }
+      }
+    }
+    return out;
+  }
+
+  function aplicar(e, m) {
+    const n = clonar(e);
+    const peca = n.casas[m.de], cor = peca[0], tipo = peca[1];
+
+    n.casas[m.para] = m.promocao ? cor + m.promocao : peca;
+    n.casas[m.de] = null;
+
+    if (m.enPassant) n.casas[m.para + (cor === BRANCA ? 8 : -8)] = null;
+
+    if (m.roque) {
+      const base = cor === BRANCA ? 56 : 0;
+      if (m.roque === 'R') { n.casas[base+5] = cor+'T'; n.casas[base+7] = null; }
+      else                 { n.casas[base+3] = cor+'T'; n.casas[base]   = null; }
+    }
+
+    if (tipo === 'R') { n.roque[cor+'R'] = false; n.roque[cor+'D'] = false; }
+    if (tipo === 'T') {
+      const base = cor === BRANCA ? 56 : 0;
+      if (m.de === base + 7) n.roque[cor+'R'] = false;
+      if (m.de === base)     n.roque[cor+'D'] = false;
+    }
+    const outro = inverso(cor), baseO = outro === BRANCA ? 56 : 0;
+    if (m.para === baseO + 7) n.roque[outro+'R'] = false;
+    if (m.para === baseO)     n.roque[outro+'D'] = false;
+
+    n.enPassant = m.duplo ? (m.de + m.para) / 2 : null;
+    n.meioLances = (tipo === 'P' || m.captura) ? 0 : n.meioLances + 1;
+    if (cor === PRETA) n.lance++;
+    n.vez = outro;
+    return n;
+  }
+
+  function lancesLegais(e, cor = e.vez) {
+    const saida = [];
+    for (const m of lancesPseudo(e, cor)) {
+      if (!emXeque(aplicar(e, m), cor)) saida.push(m);
+    }
+    return saida;
+  }
+
+  function materialInsuficiente(casas) {
+    const pecas = [];
+    for (let i = 0; i < 64; i++) if (casas[i] && casas[i][1] !== 'R') pecas.push({ p: casas[i], i });
+    if (pecas.length === 0) return true;
+    if (pecas.length === 1 && 'BC'.includes(pecas[0].p[1])) return true;
+    if (pecas.length === 2 && pecas.every((x) => x.p[1] === 'B')) {
+      const corCasa = (x) => (linha(x.i) + coluna(x.i)) % 2;
+      return pecas[0].p[0] !== pecas[1].p[0] && corCasa(pecas[0]) === corCasa(pecas[1]);
+    }
+    return false;
+  }
+
+  const chaveRepeticao = (e) =>
+    e.casas.join('') + '|' + e.vez + '|' +
+    (e.roque.bR?'K':'') + (e.roque.bD?'Q':'') + (e.roque.pR?'k':'') + (e.roque.pD?'q':'') +
+    '|' + e.enPassant;
+
+  function estadoFim(e, chaves) {
+    const legais = lancesLegais(e);
+    if (legais.length === 0) {
+      return emXeque(e, e.vez)
+        ? { fim: true, tipo: 'mate', vencedor: inverso(e.vez) }
+        : { fim: true, tipo: 'afogamento' };
+    }
+    if (e.meioLances >= 100) return { fim: true, tipo: '50lances' };
+    if (materialInsuficiente(e.casas)) return { fim: true, tipo: 'material' };
+    const k = chaveRepeticao(e);
+    if (chaves.filter((x) => x === k).length >= 3) return { fim: true, tipo: 'repeticao' };
+    return { fim: false, legais };
+  }
+
+  const COLUNAS = 'abcdefgh';
+  const nomeCasa = (i) => COLUNAS[coluna(i)] + (8 - linha(i));
+
+  function paraSAN(e, m) {
+    if (m.roque) return m.roque === 'R' ? 'O-O' : 'O-O-O';
+    const peca = e.casas[m.de], tipo = peca[1];
+    let san = '';
+    if (tipo === 'P') {
+      if (m.captura) san += COLUNAS[coluna(m.de)] + 'x';
+      san += nomeCasa(m.para);
+      if (m.promocao) san += '=' + m.promocao;
+    } else {
+      san += tipo;
+      const rivais = lancesLegais(e, peca[0]).filter(
+        (o) => o.para === m.para && o.de !== m.de && e.casas[o.de] === peca);
+      if (rivais.length) {
+        const mesmaCol = rivais.some((o) => coluna(o.de) === coluna(m.de));
+        const mesmaLin = rivais.some((o) => linha(o.de) === linha(m.de));
+        if (!mesmaCol) san += COLUNAS[coluna(m.de)];
+        else if (!mesmaLin) san += String(8 - linha(m.de));
+        else san += nomeCasa(m.de);
+      }
+      if (m.captura) san += 'x';
+      san += nomeCasa(m.para);
+    }
+    const dep = aplicar(e, m);
+    if (emXeque(dep, dep.vez)) san += lancesLegais(dep).length === 0 ? '#' : '+';
+    return san;
+  }
+
+  // ============================================================== MOTOR
+  const VALOR = { P: 100, C: 320, B: 330, T: 500, D: 900, R: 20000 };
+
+  // Tabelas peça-casa, do ponto de vista das brancas (índice 0 = a8)
+  const PST = {
+    P: [ 0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 10,10,20,30,30,20,10,10,
+         5,5,10,25,25,10,5,5, 0,0,0,20,20,0,0,0, 5,-5,-10,0,0,-10,-5,5,
+         5,10,10,-20,-20,10,10,5, 0,0,0,0,0,0,0,0 ],
+    C: [ -50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,0,0,0,-20,-40,
+         -30,0,10,15,15,10,0,-30, -30,5,15,20,20,15,5,-30,
+         -30,0,15,20,20,15,0,-30, -30,5,10,15,15,10,5,-30,
+         -40,-20,0,5,5,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50 ],
+    B: [ -20,-10,-10,-10,-10,-10,-10,-20, -10,0,0,0,0,0,0,-10,
+         -10,0,5,10,10,5,0,-10, -10,5,5,10,10,5,5,-10,
+         -10,0,10,10,10,10,0,-10, -10,10,10,10,10,10,10,-10,
+         -10,5,0,0,0,0,5,-10, -20,-10,-10,-10,-10,-10,-10,-20 ],
+    T: [ 0,0,0,0,0,0,0,0, 5,10,10,10,10,10,10,5, -5,0,0,0,0,0,0,-5,
+         -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5,
+         -5,0,0,0,0,0,0,-5, 0,0,0,5,5,0,0,0 ],
+    D: [ -20,-10,-10,-5,-5,-10,-10,-20, -10,0,0,0,0,0,0,-10,
+         -10,0,5,5,5,5,0,-10, -5,0,5,5,5,5,0,-5, 0,0,5,5,5,5,0,-5,
+         -10,5,5,5,5,5,0,-10, -10,0,5,0,0,0,0,-10, -20,-10,-10,-5,-5,-10,-10,-20 ],
+    R: [ -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30,
+         -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30,
+         -20,-30,-30,-40,-40,-30,-30,-20, -10,-20,-20,-20,-20,-20,-20,-10,
+         20,20,0,0,0,0,20,20, 20,30,10,0,0,10,30,20 ],
+    RF: [ -50,-40,-30,-20,-20,-30,-40,-50, -30,-20,-10,0,0,-10,-20,-30,
+          -30,-10,20,30,30,20,-10,-30, -30,-10,30,40,40,30,-10,-30,
+          -30,-10,30,40,40,30,-10,-30, -30,-10,20,30,30,20,-10,-30,
+          -30,-30,0,0,0,0,-30,-30, -50,-30,-30,-30,-30,-30,-30,-50 ],
+  };
+
+  const espelho = (i) => (7 - linha(i)) * 8 + coluna(i);
+
+  function avaliar(e) {
+    const { casas } = e;
+    let pontos = 0, material = 0;
+    const bispos = { b: 0, p: 0 };
+    const peoesCol = { b: new Array(8).fill(0), p: new Array(8).fill(0) };
+
+    for (let i = 0; i < 64; i++) {
+      const p = casas[i];
+      if (!p) continue;
+      if (p[1] !== 'R' && p[1] !== 'P') material += VALOR[p[1]];
+      if (p[1] === 'B') bispos[p[0]]++;
+      if (p[1] === 'P') peoesCol[p[0]][coluna(i)]++;
+    }
+    const finalDeJogo = material < 1400;
+
+    for (let i = 0; i < 64; i++) {
+      const p = casas[i];
+      if (!p) continue;
+      const cor = p[0], tipo = p[1];
+      const tabela = tipo === 'R' ? (finalDeJogo ? PST.RF : PST.R) : PST[tipo];
+      const idx = cor === BRANCA ? i : espelho(i);
+      const v = VALOR[tipo] + tabela[idx];
+      pontos += cor === BRANCA ? v : -v;
+    }
+
+    if (bispos.b >= 2) pontos += 30;
+    if (bispos.p >= 2) pontos -= 30;
+
+    for (let c = 0; c < 8; c++) {
+      for (const cor of [BRANCA, PRETA]) {
+        const n = peoesCol[cor][c];
+        if (!n) continue;
+        const sinal = cor === BRANCA ? 1 : -1;
+        if (n > 1) pontos += sinal * -18 * (n - 1);                      // dobrado
+        const esq = c > 0 ? peoesCol[cor][c-1] : 0;
+        const dir = c < 7 ? peoesCol[cor][c+1] : 0;
+        if (!esq && !dir) pontos += sinal * -16;                          // isolado
+      }
+    }
+
+    const mob = lancesPseudo(e, BRANCA).length - lancesPseudo(e, PRETA).length;
+    pontos += mob * 2;
+
+    return e.vez === BRANCA ? pontos : -pontos;
+  }
+
+  /** Ordena capturas primeiro (MVV-LVA): corta muito mais cedo na alfa-beta. */
+  function ordenar(e, lances) {
+    return lances.map((m) => {
+      let s = 0;
+      if (m.captura) s = VALOR[m.captura[1]] * 10 - VALOR[e.casas[m.de][1]];
+      if (m.promocao) s += VALOR[m.promocao];
+      return { m, s };
+    }).sort((a, b) => b.s - a.s).map((x) => x.m);
+  }
+
+  /** Só capturas: evita parar a avaliação no meio de uma troca (efeito horizonte). */
+  function quiescencia(e, alfa, beta, prof) {
+    const parado = avaliar(e);
+    if (prof === 0) return parado;
+    if (parado >= beta) return beta;
+    if (parado > alfa) alfa = parado;
+
+    const capturas = ordenar(e, lancesPseudo(e, e.vez).filter((m) => m.captura || m.promocao));
+    for (const m of capturas) {
+      const dep = aplicar(e, m);
+      if (emXeque(dep, e.vez)) continue;          // ilegal
+      const v = -quiescencia(dep, -beta, -alfa, prof - 1);
+      if (v >= beta) return beta;
+      if (v > alfa) alfa = v;
+    }
+    return alfa;
+  }
+
+  function negamax(e, prof, alfa, beta, usarQuiesc) {
+    if (prof === 0) return usarQuiesc ? quiescencia(e, alfa, beta, 2) : avaliar(e);
+
+    const legais = lancesLegais(e);
+    if (legais.length === 0) {
+      // Mate perto vale mais que mate longe — por isso a profundidade entra aqui
+      return emXeque(e, e.vez) ? -100000 - prof : 0;
+    }
+
+    for (const m of ordenar(e, legais)) {
+      const v = -negamax(aplicar(e, m), prof - 1, -beta, -alfa, usarQuiesc);
+      if (v >= beta) return beta;
+      if (v > alfa) alfa = v;
+    }
+    return alfa;
+  }
+
+  const NIVEIS = {
+    1: { prof: 2, quiesc: false, ruido: 3,  nome: 'INICIANTE' },
+    2: { prof: 3, quiesc: true,  ruido: 1,  nome: 'CLUBE' },
+    3: { prof: 4, quiesc: true,  ruido: 0,  nome: 'MESTRE' },
+  };
+
+  /**
+   * Busca fatiada: avalia um lance da raiz por vez, devolvendo o controle ao
+   * navegador entre eles. Sem isso a página congela no nível Mestre.
+   */
+  function escolherLance(e, nivel, aoTerminar) {
+    const cfg = NIVEIS[nivel];
+    const legais = ordenar(e, lancesLegais(e));
+    if (!legais.length) return aoTerminar(null);
+
+    const notas = [];
+    let i = 0;
+    const limite = Date.now() + 4000;   // teto duro, para nunca travar de vez
+
+    function passo() {
+      const t0 = Date.now();
+      // processa lances até gastar ~25ms, depois cede a vez ao navegador
+      while (i < legais.length && Date.now() - t0 < 25) {
+        const m = legais[i++];
+        const nota = -negamax(aplicar(e, m), cfg.prof - 1, -Infinity, Infinity, cfg.quiesc);
+        notas.push({ m, nota });
+      }
+      if (i < legais.length && Date.now() < limite) { setTimeout(passo, 0); return; }
+
+      notas.sort((a, b) => b.nota - a.nota);
+      const topo = cfg.ruido
+        ? notas.slice(0, Math.min(cfg.ruido, notas.length))
+        : notas.filter((x) => x.nota === notas[0].nota);
+      aoTerminar(topo[Math.floor(Math.random() * topo.length)].m);
+    }
+    setTimeout(passo, 0);
+  }
+
+  // ============================================================== INTERFACE
+  const GLIFO = {
+    bR:'♔', bD:'♕', bT:'♖', bB:'♗', bC:'♘', bP:'♙',
+    pR:'♚', pD:'♛', pT:'♜', pB:'♝', pC:'♞', pP:'♟',
+  };
+
+  const elBoard = document.getElementById('board');
+  const elHist = document.getElementById('hist');
+  const elStatus = document.getElementById('status');
+
+  let jogo, minhaCor, nivel, selecionada, legaisDaSel, historico, chaves,
+      pilha, pensando, ultimoLance, promoPendente;
+
+  function novoJogo() {
+    jogo = posicaoInicial();
+    selecionada = null; legaisDaSel = [];
+    historico = []; chaves = [chaveRepeticao(jogo)];
+    pilha = []; pensando = false; ultimoLance = null; promoPendente = null;
+    desenhar();
+    atualizarStatus();
+    atualizarBotoes();
+    elHist.innerHTML = '';
+    if (minhaCor === PRETA) vezDaMaquina();
+  }
+
+  function desenhar() {
+    const inverter = minhaCor === PRETA;
+    elBoard.innerHTML = '';
+    const reiEmXeque = emXeque(jogo, jogo.vez) ? acharRei(jogo.casas, jogo.vez) : -1;
+
+    for (let v = 0; v < 64; v++) {
+      const i = inverter ? 63 - v : v;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sq' + ((linha(i) + coluna(i)) % 2 ? ' escura' : '');
+      b.dataset.casa = String(i);
+      b.dataset.nome = nomeCasa(i);
+
+      if (ultimoLance && (i === ultimoLance.de || i === ultimoLance.para)) b.classList.add('ultimo');
+      if (i === selecionada) b.classList.add('sel');
+      if (i === reiEmXeque) b.classList.add('xeque');
+
+      const p = jogo.casas[i];
+      if (p) {
+        const s = document.createElement('span');
+        s.className = 'peca ' + p[0];
+        s.textContent = GLIFO[p];
+        b.appendChild(s);
+        b.setAttribute('aria-label', nomeCasa(i) + ' ' + p);
+      } else {
+        b.setAttribute('aria-label', nomeCasa(i) + ' vazia');
+      }
+
+      const alvo = legaisDaSel.find((m) => m.para === i);
+      if (alvo) {
+        const marca = document.createElement('span');
+        marca.className = 'marca' + (alvo.captura ? ' captura' : '');
+        b.appendChild(marca);
+      }
+
+      b.addEventListener('click', () => clicar(i));
+      elBoard.appendChild(b);
+    }
+    ajustarTamanho();
+    desenharCapturas();
+  }
+
+  function desenharCapturas() {
+    const contar = (cor) => {
+      const inicio = { P: 8, C: 2, B: 2, T: 2, D: 1 };
+      const agora = { P: 0, C: 0, B: 0, T: 0, D: 0 };
+      jogo.casas.forEach((p) => { if (p && p[0] === cor && agora[p[1]] !== undefined) agora[p[1]]++; });
+      const perdidas = [];
+      for (const t of ['D','T','B','C','P']) {
+        for (let k = 0; k < inicio[t] - agora[t]; k++) perdidas.push(cor + t);
+      }
+      return perdidas;
+    };
+    const valor = (lista) => lista.reduce((s, p) => s + VALOR[p[1]], 0);
+    const perdidasB = contar(BRANCA), perdidasP = contar(PRETA);
+    const saldo = valor(perdidasP) - valor(perdidasB);   // positivo = brancas à frente
+
+    const render = (lista, saldoLado) =>
+      lista.map((p) => `<span class="peca ${p[0]}">${GLIFO[p]}</span>`).join('') +
+      (saldoLado > 0 ? `<span class="saldo">+${saldoLado}</span>` : '');
+
+    const souBranca = minhaCor === BRANCA;
+    document.getElementById('cap-topo').innerHTML =
+      render(souBranca ? perdidasB : perdidasP, souBranca ? -saldo : saldo);
+    document.getElementById('cap-base').innerHTML =
+      render(souBranca ? perdidasP : perdidasB, souBranca ? saldo : -saldo);
+  }
+
+  function clicar(i) {
+    if (pensando || promoPendente || jogo.vez !== minhaCor) return;
+
+    const alvo = legaisDaSel.find((m) => m.para === i);
+    if (alvo) {
+      const promos = legaisDaSel.filter((m) => m.para === i && m.promocao);
+      if (promos.length) { pedirPromocao(promos); return; }
+      jogar(alvo);
+      return;
+    }
+
+    const p = jogo.casas[i];
+    if (p && p[0] === minhaCor) {
+      selecionada = i;
+      legaisDaSel = lancesLegais(jogo).filter((m) => m.de === i);
+    } else {
+      selecionada = null; legaisDaSel = [];
+    }
+    desenhar();
+  }
+
+  function pedirPromocao(opcoes) {
+    promoPendente = opcoes;
+    const box = document.getElementById('promo-ops');
+    box.innerHTML = '';
+    for (const q of ['D', 'T', 'B', 'C']) {
+      const m = opcoes.find((o) => o.promocao === q);
+      if (!m) continue;
+      const b = document.createElement('button');
+      b.className = 'menu-btn';
+      b.textContent = GLIFO[minhaCor + q];
+      b.addEventListener('click', () => {
+        document.getElementById('scr-promo').hidden = true;
+        promoPendente = null;
+        jogar(m);
+      });
+      box.appendChild(b);
+    }
+    document.getElementById('scr-promo').hidden = false;
+  }
+
+  function jogar(m) {
+    const san = paraSAN(jogo, m);
+    pilha.push({ estado: clonar(jogo), ultimo: ultimoLance, san });
+    jogo = aplicar(jogo, m);
+    chaves.push(chaveRepeticao(jogo));
+    historico.push(san);
+    ultimoLance = m;
+    selecionada = null; legaisDaSel = [];
+    desenhar();
+    renderHistorico();
+
+    const fim = estadoFim(jogo, chaves);
+    if (fim.fim) { mostrarFim(fim); return; }
+    atualizarStatus();
+
+    if (jogo.vez !== minhaCor) vezDaMaquina();
+  }
+
+  function vezDaMaquina() {
+    pensando = true;
+    atualizarStatus();
+    atualizarBotoes();
+
+    // deixa o navegador pintar o "pensando" antes de ocupar o thread
+    setTimeout(() => {
+      escolherLance(jogo, nivel, (m) => {
+        pensando = false;
+        if (!m) {
+          const f = estadoFim(jogo, chaves);
+          if (f.fim) mostrarFim(f);
+          atualizarBotoes();
+          return;
+        }
+
+        const san = paraSAN(jogo, m);
+        pilha.push({ estado: clonar(jogo), ultimo: ultimoLance, san });
+        jogo = aplicar(jogo, m);
+        chaves.push(chaveRepeticao(jogo));
+        historico.push(san);
+        ultimoLance = m;
+        desenhar();
+        renderHistorico();
+        // Só agora a pilha tem os dois lances — antes disso o botão ficaria
+        // travado, porque o lance da máquina ainda não tinha entrado nela.
+        atualizarBotoes();
+
+        const fim = estadoFim(jogo, chaves);
+        if (fim.fim) mostrarFim(fim);
+        else atualizarStatus();
+      });
+    }, 30);
+  }
+
+  /** Desfazer exige um par de lances (o meu e o da máquina) e busca parada. */
+  function atualizarBotoes() {
+    document.getElementById('btn-desfazer').disabled = pensando || pilha.length < 2;
+  }
+
+  function desfazer() {
+    if (pensando || pilha.length < 2) return;
+    // volta o lance da máquina e o meu, para a vez continuar sendo minha
+    for (let k = 0; k < 2 && pilha.length; k++) {
+      const passo = pilha.pop();
+      jogo = passo.estado;
+      ultimoLance = passo.ultimo;
+      historico.pop();
+      chaves.pop();
+    }
+    selecionada = null; legaisDaSel = [];
+    document.getElementById('scr-fim').hidden = true;
+    desenhar(); renderHistorico(); atualizarStatus(); atualizarBotoes();
+  }
+
+  function renderHistorico() {
+    let html = '';
+    for (let i = 0; i < historico.length; i += 2) {
+      html += `<span class="n">${i / 2 + 1}.</span><span>${historico[i]}</span><span>${historico[i+1] || ''}</span>`;
+    }
+    elHist.innerHTML = html;
+    elHist.scrollTop = elHist.scrollHeight;
+  }
+
+  function atualizarStatus() {
+    const minhaVez = jogo.vez === minhaCor;
+    const xeque = emXeque(jogo, jogo.vez);
+    let txt;
+    if (pensando) txt = '<span class="pensando">PENSANDO…</span>';
+    else txt = minhaVez ? 'SUA VEZ' : 'VEZ DA MÁQUINA';
+    if (xeque && !pensando) txt += '<br><b>XEQUE!</b>';
+    elStatus.innerHTML = `${txt}<br><span style="color:#5c6478">${NIVEIS[nivel].nome}</span>`;
+  }
+
+  function mostrarFim(fim) {
+    const titulos = {
+      mate: fim.vencedor === minhaCor ? 'VOCÊ VENCEU!' : 'XEQUE-MATE',
+      afogamento: 'EMPATE',
+      '50lances': 'EMPATE',
+      material: 'EMPATE',
+      repeticao: 'EMPATE',
+    };
+    const textos = {
+      mate: fim.vencedor === minhaCor ? 'xeque-mate na máquina' : 'a máquina te deu mate',
+      afogamento: 'afogamento — sem lances legais, mas sem xeque',
+      '50lances': 'regra dos 50 lances',
+      material: 'material insuficiente para dar mate',
+      repeticao: 'posição repetida três vezes',
+    };
+    document.getElementById('fim-titulo').textContent = titulos[fim.tipo];
+    document.getElementById('fim-texto').textContent = textos[fim.tipo];
+    document.getElementById('scr-fim').hidden = false;
+  }
+
+  /** O tabuleiro tem de caber inteiro na altura disponível. */
+  function ajustarTamanho() {
+    const wrap = document.querySelector('.wrap');
+    const area = document.querySelector('.board-area');
+    const painel = document.querySelector('.painel');
+    const retrato = window.matchMedia('(max-aspect-ratio: 1/1)').matches;
+
+    const capturas = [...document.querySelectorAll('.capturas')]
+      .reduce((s, el) => s + el.offsetHeight, 0) + 14;
+
+    const dispH = retrato
+      ? wrap.clientHeight - painel.offsetHeight - capturas - 14
+      : wrap.clientHeight - capturas - 8;
+    const dispW = retrato
+      ? wrap.clientWidth - 8
+      : wrap.clientWidth - painel.offsetWidth - 26;
+
+    const lado = Math.max(140, Math.min(dispW, dispH));
+    elBoard.style.width = lado + 'px';
+    elBoard.style.height = lado + 'px';
+    elBoard.style.setProperty('--tam-peca', Math.floor(lado / 8 * 0.76) + 'px');
+    area.style.maxWidth = '100%';
+  }
+
+  // ---------------------------------------------------------- eventos menu
+  document.querySelectorAll('[data-nivel]').forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('[data-nivel]').forEach((o) => o.classList.remove('sel'));
+      b.classList.add('sel');
+    });
+  });
+  document.querySelectorAll('[data-cor]').forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('[data-cor]').forEach((o) => o.classList.remove('sel'));
+      b.classList.add('sel');
+    });
+  });
+
+  document.getElementById('btn-comecar').addEventListener('click', () => {
+    nivel = Number(document.querySelector('[data-nivel].sel').dataset.nivel);
+    minhaCor = document.querySelector('[data-cor].sel').dataset.cor;
+    document.getElementById('scr-start').hidden = true;
+    document.getElementById('scr-fim').hidden = true;
+    novoJogo();
+  });
+
+  document.getElementById('btn-desfazer').addEventListener('click', desfazer);
+  document.getElementById('btn-novo').addEventListener('click', () => {
+    document.getElementById('scr-fim').hidden = true;
+    document.getElementById('scr-start').hidden = false;
+  });
+  document.getElementById('btn-revanche').addEventListener('click', () => {
+    document.getElementById('scr-fim').hidden = true;
+    novoJogo();
+  });
+  document.getElementById('btn-menu').addEventListener('click', () => {
+    document.getElementById('scr-fim').hidden = true;
+    document.getElementById('scr-start').hidden = false;
+  });
+
+  window.addEventListener('resize', () => { if (jogo) ajustarTamanho(); });
+
+  // Expõe o núcleo para os testes automatizados (não usado pelo jogo)
+  window.__xadrez = { posicaoInicial, lancesLegais, aplicar, paraSAN, estadoFim, emXeque, avaliar };
+
+  // estado inicial de tela
+  nivel = 2; minhaCor = BRANCA;
+  jogo = posicaoInicial(); historico = []; chaves = []; pilha = [];
+  legaisDaSel = []; ultimoLance = null; pensando = false;
+  desenhar();
+})();
+</script>
+</body>
+</html>
