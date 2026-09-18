@@ -29,7 +29,7 @@ export const games: Game[] = [
     tags: ['snake', 'cobrinha', 'arcade', 'clássico', 'reflexos'],
     embedType: 'iframe-internal',
     src: '/games/snake.html',
-    thumbnail: '/thumbnails/snake.png',
+    thumbnail: '/thumbnails/snake-v2.png',
     featured: true,
   },
   {
@@ -48,7 +48,7 @@ export const games: Game[] = [
     tags: ['memória', 'rock', 'bandas', 'cartas', 'raciocínio'],
     embedType: 'iframe-internal',
     src: '/games/memoria-rock.html',
-    thumbnail: '/thumbnails/memoria-rock.png',
+    thumbnail: '/thumbnails/memoria-rock-v2.png',
     featured: true,
   },
   {
@@ -67,7 +67,7 @@ export const games: Game[] = [
     tags: ['xadrez', 'estratégia', 'tabuleiro', 'ia', 'clássico'],
     embedType: 'iframe-internal',
     src: '/games/xadrez.html',
-    thumbnail: '/thumbnails/xadrez.png',
+    thumbnail: '/thumbnails/xadrez-v2.png',
     featured: true,
   },
   {
@@ -85,7 +85,7 @@ export const games: Game[] = [
     tags: ['pong', 'arcade', 'clássico', 'reflexos'],
     embedType: 'iframe-internal',
     src: '/games/pong.html',
-    thumbnail: '/thumbnails/pong.png',
+    thumbnail: '/thumbnails/pong-v2.png',
     featured: true,
   },
   {
@@ -103,7 +103,7 @@ export const games: Game[] = [
     tags: ['catan', 'estratégia', 'tabuleiro', 'recursos'],
     embedType: 'iframe-external',
     src: 'https://mery-catan.netlify.app',
-    thumbnail: '/thumbnails/catan.png',
+    thumbnail: '/thumbnails/catan-v2.png',
     featured: true,
   },
   {
@@ -122,7 +122,7 @@ export const games: Game[] = [
     tags: ['pokemon', 'super trunfo', 'cartas', 'estratégia'],
     embedType: 'iframe-external',
     src: 'https://poke-trunfo.netlify.app',
-    thumbnail: '/thumbnails/poke-trunfo.png',
+    thumbnail: '/thumbnails/poke-trunfo-v2.png',
     featured: true,
   },
 ];
