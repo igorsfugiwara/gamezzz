@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SNAKE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: #0a0a0f;
+    font-family: 'Press Start 2P', monospace;
+    color: #e0ffe0;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(0, 255, 100, 0.05) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 50%, rgba(0, 180, 255, 0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+  }
+
+  .hud {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(12px, 4vw, 36px);
+    font-size: clamp(7px, 1.6vw, 11px);
+    letter-spacing: 1px;
+    color: #7ac97a;
+    flex-shrink: 0;
+  }
+  .hud b { color: #b9ffb9; font-weight: normal; }
+  .hud .lvl { color: #ffd166; }
+
+  .stage { position: relative; line-height: 0; }
+
+  canvas {
+    display: block;
+    border: 2px solid rgba(0, 255, 100, 0.35);
+    border-radius: 6px;
+    box-shadow: 0 0 24px rgba(0, 255, 100, 0.12), inset 0 0 40px rgba(0, 0, 0, 0.6);
+    background: #07100b;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  /* Telas sobrepostas ao canvas */
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 2.2vh, 18px);
+    background: rgba(5, 10, 8, 0.93);
+    border-radius: 6px;
+    text-align: center;
+    padding: 4%;
+    line-height: 1.6;
+  }
+  .screen[hidden] { display: none; }
+
+  .title {
+    font-size: clamp(16px, 4.5vw, 34px);
+    letter-spacing: clamp(4px, 1.6vw, 14px);
+    color: #6bff9a;
+    text-shadow: 0 0 12px rgba(0,255,100,0.6), 0 0 34px rgba(0,255,100,0.28);
+  }
+
+  .sub { font-size: clamp(7px, 1.5vw, 10px); color: #6f9a7f; letter-spacing: 1px; }
+
+  .levels { display: flex; flex-direction: column; gap: clamp(6px, 1.6vh, 12px); width: min(320px, 78%); }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    color: #d8ffe4;
+    background: rgba(0, 255, 100, 0.07);
+    border: 2px solid rgba(0, 255, 100, 0.45);
+    border-radius: 6px;
+    padding: clamp(8px, 1.8vh, 13px) 10px;
+    font-size: clamp(8px, 1.7vw, 11px);
+    letter-spacing: 1px;
+    transition: background .15s, border-color .15s, transform .08s;
+    line-height: 1.5;
+  }
+  button:hover { background: rgba(0, 255, 100, 0.16); border-color: rgba(0,255,100,.8); }
+  button:active { transform: translateY(1px); }
+  button .tag { display: block; font-size: 0.72em; color: #7fae8d; margin-top: 6px; letter-spacing: 0; }
+
+  .btn-easy   { border-color: rgba(120, 255, 140, .5); }
+  .btn-medium { border-color: rgba(255, 209, 102, .5); color: #ffeab8; background: rgba(255,209,102,.07); }
+  .btn-medium:hover { background: rgba(255,209,102,.16); border-color: rgba(255,209,102,.85); }
+  .btn-hard   { border-color: rgba(255, 107, 107, .5); color: #ffd4d4; background: rgba(255,107,107,.07); }
+  .btn-hard:hover { background: rgba(255,107,107,.16); border-color: rgba(255,107,107,.85); }
+
+  .over-score { font-size: clamp(11px, 2.6vw, 18px); color: #b9ffb9; }
+  .over-best  { font-size: clamp(7px, 1.5vw, 10px); color: #ffd166; }
+  .paused     { font-size: clamp(10px, 2.4vw, 16px); color: #ffd166; letter-spacing: 3px; }
+
+  /* Controles de toque */
+  .dpad {
+    display: none;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+    width: min(190px, 52vw);
+    flex-shrink: 0;
+  }
+  .dpad button {
+    aspect-ratio: 1;
+    padding: 0;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dpad .sp { visibility: hidden; }
+  body.touch .dpad { display: grid; }
+
+  @media (prefers-reduced-motion: reduce) {
+    button { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hud">
+      <span>PONTOS <b id="hud-score">0</b></span>
+      <span class="lvl" id="hud-level">—</span>
+      <span>RECORDE <b id="hud-best">0</b></span>
+    </div>
+
+    <div class="stage">
+      <canvas id="cv" width="720" height="540"></canvas>
+
+      <div class="screen" id="scr-start">
+        <div class="title">SNAKE</div>
+        <div class="sub">escolha a dificuldade</div>
+        <div class="levels">
+          <button class="btn-easy"   data-level="easy">FÁCIL<span class="tag">atravessa as paredes</span></button>
+          <button class="btn-medium" data-level="medium">MÉDIO<span class="tag">paredes sólidas · acelera</span></button>
+          <button class="btn-hard"   data-level="hard">DIFÍCIL<span class="tag">obstáculos · muito rápido</span></button>
+        </div>
+        <div class="sub" id="hint-start">setas / wasd · espaço pausa</div>
+      </div>
+
+      <div class="screen" id="scr-pause" hidden>
+        <div class="paused">PAUSADO</div>
+        <div class="sub">espaço para continuar</div>
+        <button id="btn-resume">CONTINUAR</button>
+      </div>
+
+      <div class="screen" id="scr-over" hidden>
+        <div class="title" id="over-title">FIM DE JOGO</div>
+        <div class="over-score">PONTOS <span id="over-score">0</span></div>
+        <div class="over-best" id="over-best"></div>
+        <button id="btn-again">JOGAR DE NOVO</button>
+        <button id="btn-menu">TROCAR DIFICULDADE</button>
+      </div>
+    </div>
+
+    <div class="dpad">
+      <span class="sp"></span>
+      <button data-dir="up" aria-label="Cima">▲</button>
+      <span class="sp"></span>
+      <button data-dir="left" aria-label="Esquerda">◀</button>
+      <button data-dir="down" aria-label="Baixo">▼</button>
+      <button data-dir="right" aria-label="Direita">▶</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------------------------------------------------------------- config
+  const COLS = 24, ROWS = 18;
+
+  const NIVEIS = {
+    easy:   { nome: 'FÁCIL',   base: 8,  passo: 0,   aCada: 0, teto: 8,  mult: 1, atravessa: true,  obstaculos: 0 },
+    medium: { nome: 'MÉDIO',   base: 11, passo: 0.2, aCada: 5, teto: 16, mult: 2, atravessa: false, obstaculos: 0 },
+    hard:   { nome: 'DIFÍCIL', base: 14, passo: 0.3, aCada: 3, teto: 22, mult: 3, atravessa: false, obstaculos: 4 },
+  };
+
+  const CORES = {
+    grade:    'rgba(0,255,100,0.05)',
+    cabeca:   '#8dff9e',
+    corpo1:   '#39d96a',
+    corpo2:   '#2aa856',
+    fruta:    '#ff6b6b',
+    obstaculo:'#4a5568',
+  };
+
+  // ---------------------------------------------------------------- estado
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  let CEL = Math.floor(cv.width / COLS);
+
+  let cobra, direcao, fila, fruta, obstaculos, pontos, vivo, pausado,
+      nivel, velocidade, frutasComidas, acumulado, ultimoTempo, rafId = null;
+
+  const recordes = carregarRecordes();
+
+  // ---------------------------------------------------------------- storage
+  function carregarRecordes() {
+    try {
+      const bruto = localStorage.getItem('snake-recordes');
+      if (bruto) return JSON.parse(bruto);
+    } catch { /* storage bloqueado no iframe — segue sem recorde */ }
+    return { easy: 0, medium: 0, hard: 0 };
+  }
+
+  function salvarRecordes() {
+    try { localStorage.setItem('snake-recordes', JSON.stringify(recordes)); }
+    catch { /* idem */ }
+  }
+
+  // ---------------------------------------------------------------- helpers
+  const mesmo = (a, b) => a.x === b.x && a.y === b.y;
+  const ocupada = (p, lista) => lista.some((s) => mesmo(s, p));
+
+  function posicaoLivre() {
+    // Conjunto de casas ocupadas, para não sortear infinitamente no fim do jogo
+    const livres = [];
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const p = { x, y };
+        if (!ocupada(p, cobra) && !ocupada(p, obstaculos)) livres.push(p);
+      }
+    }
+    return livres.length ? livres[Math.floor(Math.random() * livres.length)] : null;
+  }
+
+  function montarObstaculos(quantos) {
+    const blocos = [];
+    // Fora do centro, para a cobra não nascer encurralada
+    const proibido = (p) => Math.abs(p.x - (COLS >> 1)) < 4 && Math.abs(p.y - (ROWS >> 1)) < 3;
+    let tentativas = 0;
+    while (blocos.length < quantos * 3 && tentativas < 500) {
+      tentativas++;
+      const horizontal = Math.random() < 0.5;
+      const x = 2 + Math.floor(Math.random() * (COLS - 6));
+      const y = 2 + Math.floor(Math.random() * (ROWS - 5));
+      const trio = [0, 1, 2].map((i) => horizontal ? { x: x + i, y } : { x, y: y + i });
+      if (trio.some(proibido) || trio.some((p) => ocupada(p, blocos))) continue;
+      blocos.push(...trio);
+    }
+    return blocos;
+  }
+
+  // ---------------------------------------------------------------- jogo
+  function iniciar(chaveNivel) {
+    // Cópia: escrever .chave direto em NIVEIS mutaria a configuração global
+    nivel = { ...NIVEIS[chaveNivel], chave: chaveNivel };
+
+    const meioY = ROWS >> 1, meioX = COLS >> 1;
+    cobra = [{ x: meioX, y: meioY }, { x: meioX - 1, y: meioY }, { x: meioX - 2, y: meioY }];
+    direcao = { x: 1, y: 0 };
+    fila = [];
+    obstaculos = nivel.obstaculos ? montarObstaculos(nivel.obstaculos) : [];
+    fruta = posicaoLivre();
+    pontos = 0;
+    frutasComidas = 0;
+    velocidade = nivel.base;
+    vivo = true;
+    pausado = false;
+    acumulado = 0;
+    ultimoTempo = 0;
+
+    document.getElementById('hud-level').textContent = nivel.nome;
+    document.getElementById('hud-best').textContent = recordes[chaveNivel] || 0;
+    atualizarPontos();
+
+    mostrar(null);
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(laco);
+  }
+
+  function atualizarPontos() {
+    document.getElementById('hud-score').textContent = pontos;
+  }
+
+  /** Enfileira uma direção; a virada só vale no tique seguinte, e nunca 180°. */
+  function virar(nx, ny) {
+    if (!vivo || pausado) return;
+    const ultima = fila.length ? fila[fila.length - 1] : direcao;
+    if (ultima.x === -nx && ultima.y === -ny) return;  // 180° mata a cobra
+    if (ultima.x === nx && ultima.y === ny) return;    // repetido, ignora
+    if (fila.length < 2) fila.push({ x: nx, y: ny });
+  }
+
+  function passo() {
+    if (fila.length) direcao = fila.shift();
+
+    const cabeca = { x: cobra[0].x + direcao.x, y: cobra[0].y + direcao.y };
+
+    if (nivel.atravessa) {
+      cabeca.x = (cabeca.x + COLS) % COLS;
+      cabeca.y = (cabeca.y + ROWS) % ROWS;
+    } else if (cabeca.x < 0 || cabeca.x >= COLS || cabeca.y < 0 || cabeca.y >= ROWS) {
+      return morrer('BATEU NA PAREDE');
+    }
+
+    if (ocupada(cabeca, obstaculos)) return morrer('BATEU NO BLOCO');
+
+    // A cauda sai no mesmo tique, então a última célula é livre — a não ser que
+    // a cobra vá crescer agora.
+    const vaiCrescer = fruta && mesmo(cabeca, fruta);
+    const corpo = vaiCrescer ? cobra : cobra.slice(0, -1);
+    if (ocupada(cabeca, corpo)) return morrer('COMEU O PRÓPRIO RABO');
+
+    cobra.unshift(cabeca);
+    if (!vaiCrescer) cobra.pop();
+    else {
+      pontos += 10 * nivel.mult;
+      frutasComidas++;
+      atualizarPontos();
+      if (nivel.aCada && frutasComidas % nivel.aCada === 0) {
+        velocidade = Math.min(nivel.teto, velocidade + nivel.passo);
+      }
+      fruta = posicaoLivre();
+      if (!fruta) return morrer('TABULEIRO CHEIO!');  // vitória de fato
+    }
+  }
+
+  function morrer(motivo) {
+    vivo = false;
+    const chave = nivel.chave;
+    const bateuRecorde = pontos > (recordes[chave] || 0);
+    if (bateuRecorde) { recordes[chave] = pontos; salvarRecordes(); }
+
+    document.getElementById('over-title').textContent = motivo;
+    document.getElementById('over-score').textContent = pontos;
+    document.getElementById('over-best').textContent =
+      bateuRecorde ? '★ NOVO RECORDE!' : 'RECORDE ' + (recordes[chave] || 0);
+    document.getElementById('hud-best').textContent = recordes[chave] || 0;
+    mostrar('scr-over');
+  }
+
+  // ---------------------------------------------------------------- render
+  function desenhar() {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+
+    ctx.strokeStyle = CORES.grade;
+    ctx.lineWidth = 1;
+    for (let x = 1; x < COLS; x++) {
+      ctx.beginPath(); ctx.moveTo(x * CEL, 0); ctx.lineTo(x * CEL, ROWS * CEL); ctx.stroke();
+    }
+    for (let y = 1; y < ROWS; y++) {
+      ctx.beginPath(); ctx.moveTo(0, y * CEL); ctx.lineTo(COLS * CEL, y * CEL); ctx.stroke();
+    }
+
+    for (const o of obstaculos) {
+      ctx.fillStyle = CORES.obstaculo;
+      ctx.fillRect(o.x * CEL + 1, o.y * CEL + 1, CEL - 2, CEL - 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.fillRect(o.x * CEL + 1, o.y * CEL + 1, CEL - 2, 3);
+    }
+
+    if (fruta) {
+      const cx = fruta.x * CEL + CEL / 2, cy = fruta.y * CEL + CEL / 2;
+      const pulso = 1 + Math.sin(Date.now() / 220) * 0.08;
+      ctx.fillStyle = CORES.fruta;
+      ctx.shadowColor = CORES.fruta;
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(cx, cy, (CEL / 2 - 2.5) * pulso, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    cobra.forEach((s, i) => {
+      if (i === 0) {
+        ctx.fillStyle = CORES.cabeca;
+        ctx.shadowColor = CORES.cabeca;
+        ctx.shadowBlur = 12;
+      } else {
+        ctx.fillStyle = i % 2 ? CORES.corpo1 : CORES.corpo2;
+        ctx.shadowBlur = 0;
+      }
+      const r = i === 0 ? 4 : 3;
+      arredondado(s.x * CEL + 1, s.y * CEL + 1, CEL - 2, CEL - 2, r);
+      ctx.fill();
+
+      if (i === 0) {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#07100b';
+        const o = CEL * 0.22, t = Math.max(2, CEL * 0.11);
+        const cx = s.x * CEL + CEL / 2, cy = s.y * CEL + CEL / 2;
+        const px = direcao.x * o, py = direcao.y * o;
+        const ex = direcao.x ? 0 : o * 0.55, ey = direcao.y ? 0 : o * 0.55;
+        ctx.beginPath(); ctx.arc(cx + px - ex, cy + py - ey, t, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + px + ex, cy + py + ey, t, 0, Math.PI * 2); ctx.fill();
+      }
+    });
+    ctx.shadowBlur = 0;
+  }
+
+  function arredondado(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ---------------------------------------------------------------- laço
+  function laco(agora) {
+    rafId = requestAnimationFrame(laco);
+    if (!ultimoTempo) ultimoTempo = agora;
+    const delta = Math.min(agora - ultimoTempo, 200);  // aba em segundo plano
+    ultimoTempo = agora;
+
+    if (vivo && !pausado) {
+      acumulado += delta;
+      const intervalo = 1000 / velocidade;
+      while (acumulado >= intervalo && vivo) {
+        acumulado -= intervalo;
+        passo();
+      }
+    }
+    desenhar();
+  }
+
+  // ---------------------------------------------------------------- telas
+  function mostrar(id) {
+    ['scr-start', 'scr-pause', 'scr-over'].forEach((s) => {
+      document.getElementById(s).hidden = (s !== id);
+    });
+  }
+
+  function alternarPausa() {
+    if (!vivo) return;
+    pausado = !pausado;
+    mostrar(pausado ? 'scr-pause' : null);
+  }
+
+  // ---------------------------------------------------------------- entrada
+  const TECLAS = {
+    ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
+    w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0],
+    W: [0, -1], S: [0, 1], A: [-1, 0], D: [1, 0],
+  };
+
+  window.addEventListener('keydown', (e) => {
+    if (TECLAS[e.key]) {
+      e.preventDefault();
+      virar(TECLAS[e.key][0], TECLAS[e.key][1]);
+      return;
+    }
+    if (e.key === ' ') { e.preventDefault(); alternarPausa(); }
+    if (e.key === 'Enter' && !vivo) { e.preventDefault(); iniciar(nivel.chave); }
+  });
+
+  document.querySelectorAll('[data-level]').forEach((b) => {
+    b.addEventListener('click', () => iniciar(b.dataset.level));
+  });
+  document.querySelectorAll('[data-dir]').forEach((b) => {
+    const dirs = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+    b.addEventListener('click', () => virar(...dirs[b.dataset.dir]));
+  });
+  document.getElementById('btn-resume').addEventListener('click', alternarPausa);
+  document.getElementById('btn-again').addEventListener('click', () => iniciar(nivel.chave));
+  document.getElementById('btn-menu').addEventListener('click', () => mostrar('scr-start'));
+
+  // Swipe — na área do canvas
+  let toqueX = 0, toqueY = 0;
+  cv.addEventListener('touchstart', (e) => {
+    toqueX = e.changedTouches[0].clientX;
+    toqueY = e.changedTouches[0].clientY;
+  }, { passive: true });
+
+  cv.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - toqueX;
+    const dy = e.changedTouches[0].clientY - toqueY;
+    if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return;
+    if (Math.abs(dx) > Math.abs(dy)) virar(dx > 0 ? 1 : -1, 0);
+    else virar(0, dy > 0 ? 1 : -1);
+  }, { passive: true });
+
+  if (matchMedia('(hover: none)').matches) {
+    document.body.classList.add('touch');
+    document.getElementById('hint-start').textContent = 'deslize ou use os botões';
+  }
+
+  // ---------------------------------------------------------------- tamanho
+  function ajustar() {
+    // O canvas é sempre múltiplo exato de COLS/ROWS, para a grade não borrar
+    const w = Math.max(240, window.innerWidth - 16);
+    const alturaHud = document.querySelector('.hud').offsetHeight;
+    const alturaDpad = document.body.classList.contains('touch')
+      ? document.querySelector('.dpad').offsetHeight + 8 : 0;
+    const h = Math.max(180, window.innerHeight - alturaHud - alturaDpad - 36);
+
+    CEL = Math.max(8, Math.floor(Math.min(w / COLS, h / ROWS)));
+    cv.width = COLS * CEL;
+    cv.height = ROWS * CEL;
+    desenhar();
+  }
+
+  // Estado inicial (menu, com a cobra parada ao fundo) — tem de existir ANTES
+  // do primeiro ajustar(), que já desenha.
+  nivel = { ...NIVEIS.easy, chave: 'easy' };
+  cobra = [{ x: 12, y: 9 }, { x: 11, y: 9 }, { x: 10, y: 9 }];
+  direcao = { x: 1, y: 0 };
+  obstaculos = [];
+  fruta = { x: 17, y: 9 };
+  vivo = false; pausado = false; pontos = 0;
+  document.getElementById('hud-best').textContent = recordes.easy || 0;
+
+  window.addEventListener('resize', ajustar);
+  ajustar();
+})();
+</script>
+</body>
+</html>

@@ -14,6 +14,25 @@ export interface Game {
 
 export const games: Game[] = [
   {
+    slug: 'snake',
+    title: 'Snake',
+    description: 'O jogo da cobrinha com três dificuldades de verdade: atravessar paredes, encarar paredes sólidas ou desviar de obstáculos.',
+    longDescription: 'Snake nasceu nos fliperamas em 1976 e virou febre mundial nos celulares Nokia. Nesta versão as três dificuldades mudam a forma de jogar, não só a velocidade: no Fácil a cobra atravessa as paredes, no Médio elas matam e o jogo acelera conforme você come, e no Difícil ainda há blocos espalhados pelo mapa. Cada dificuldade guarda o próprio recorde.',
+    howToPlay: [
+      'Use as setas ou WASD para mudar de direção — no celular, deslize ou use os botões',
+      'Coma as frutas vermelhas para crescer e pontuar',
+      'No Fácil você atravessa as paredes; no Médio e no Difícil elas matam',
+      'No Difícil desvie também dos blocos cinza',
+      'Espaço pausa a partida; Enter reinicia no fim',
+    ],
+    category: 'clássico',
+    tags: ['snake', 'cobrinha', 'arcade', 'clássico', 'reflexos'],
+    embedType: 'iframe-internal',
+    src: '/games/snake.html',
+    thumbnail: '/thumbnails/snake.png',
+    featured: true,
+  },
+  {
     slug: 'pong',
     title: 'Pong',
     description: 'O clássico jogo de pingue-pongue dos arcades dos anos 70. Desafie o computador e teste seus reflexos.',
