@@ -150,6 +150,31 @@
   .dpad .sp { visibility: hidden; }
   body.touch .dpad { display: grid; }
 
+  /* No toque nenhum botão fica abaixo do alvo confortável de dedo. */
+  body.touch button { min-height: 44px; }
+
+  /* Celular deitado: o d-pad sai de baixo do tabuleiro e vai para o lado.
+     Empilhado, ele comia ~160 px dos 390 de altura e sobrava um tabuleiro de
+     268x202 numa tela de 844 px de largura. Ao lado, a altura inteira é do
+     jogo — e a largura, que aí sobra, paga os botões. */
+  @media (orientation: landscape) and (max-height: 520px) {
+    body.touch .wrap {
+      flex-direction: row;
+      align-items: center;
+      /* Espalha em vez de centralizar o par: o d-pad encosta na borda direita,
+         onde o polegar está com o aparelho deitado nas duas mãos. */
+      justify-content: space-evenly;
+      gap: 12px;
+    }
+    body.touch .hud {
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    body.touch .dpad { width: min(150px, 22vw); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     button { transition: none; }
   }
@@ -207,7 +232,25 @@
   'use strict';
 
   // ---------------------------------------------------------------- config
-  const COLS = 24, ROWS = 18;
+  /**
+   * A grade acompanha a orientação da tela.
+   *
+   * Com 24x18 fixo, um celular em pé desenhava uma faixa larga e baixa no
+   * meio do aparelho e deixava metade da tela vazia: a célula fica limitada
+   * pela LARGURA, e as 18 linhas nunca chegam perto da altura disponível.
+   * Em pé a grade vira 18x26 — mesma área de jogo (468 contra 432 células,
+   * a dificuldade não muda) desenhada no formato do aparelho.
+   *
+   * Só muda entre partidas: trocar a grade com a cobra em campo jogaria ela
+   * para fora do tabuleiro.
+   */
+  let COLS = 24, ROWS = 18;
+
+  function escolherGrade() {
+    const emPe = window.innerHeight > window.innerWidth * 1.15;
+    COLS = emPe ? 18 : 24;
+    ROWS = emPe ? 26 : 18;
+  }
 
   const NIVEIS = {
     easy:   { nome: 'FÁCIL',   base: 8,  passo: 0,   aCada: 0, teto: 8,  mult: 1, atravessa: true,  obstaculos: 0 },
@@ -286,6 +329,11 @@
     // Cópia: escrever .chave direto em NIVEIS mutaria a configuração global
     nivel = { ...NIVEIS[chaveNivel], chave: chaveNivel };
 
+    // Único momento seguro para trocar a grade: nada em campo ainda. O canvas
+    // é redimensionado depois que o estado novo existe — `ajustar()` desenha,
+    // e desenhar a cobra velha numa grade nova seria lixo de um quadro.
+    escolherGrade();
+
     const meioY = ROWS >> 1, meioX = COLS >> 1;
     cobra = [{ x: meioX, y: meioY }, { x: meioX - 1, y: meioY }, { x: meioX - 2, y: meioY }];
     direcao = { x: 1, y: 0 };
@@ -299,6 +347,8 @@
     pausado = false;
     acumulado = 0;
     ultimoTempo = 0;
+
+    ajustar();
 
     document.getElementById('hud-level').textContent = nivel.nome;
     document.getElementById('hud-best').textContent = recordes[chaveNivel] || 0;
@@ -520,11 +570,19 @@
 
   // ---------------------------------------------------------------- tamanho
   function ajustar() {
+    // Girar o aparelho no menu ou na tela de fim já pega a grade nova; com a
+    // partida em andamento a grade fica como está.
+    if (!vivo) escolherGrade();
     // O canvas é sempre múltiplo exato de COLS/ROWS, para a grade não borrar
-    const w = Math.max(240, window.innerWidth - 16);
-    const alturaHud = document.querySelector('.hud').offsetHeight;
-    const alturaDpad = document.body.classList.contains('touch')
-      ? document.querySelector('.dpad').offsetHeight + 8 : 0;
+    const dpad = document.querySelector('.dpad');
+    const comToque = document.body.classList.contains('touch');
+    // Deitado, o d-pad fica AO LADO (ver o @media de paisagem): quem desconta
+    // é a largura, e a altura inteira sobra para o tabuleiro.
+    const aoLado = comToque && window.matchMedia('(orientation: landscape) and (max-height: 520px)').matches;
+
+    const w = Math.max(240, window.innerWidth - 16 - (aoLado ? dpad.offsetWidth + 20 : 0));
+    const alturaHud = aoLado ? 24 : document.querySelector('.hud').offsetHeight;
+    const alturaDpad = comToque && !aoLado ? dpad.offsetHeight + 8 : 0;
     const h = Math.max(180, window.innerHeight - alturaHud - alturaDpad - 36);
 
     CEL = Math.max(8, Math.floor(Math.min(w / COLS, h / ROWS)));
@@ -535,11 +593,13 @@
 
   // Estado inicial (menu, com a cobra parada ao fundo) — tem de existir ANTES
   // do primeiro ajustar(), que já desenha.
+  escolherGrade();
   nivel = { ...NIVEIS.easy, chave: 'easy' };
-  cobra = [{ x: 12, y: 9 }, { x: 11, y: 9 }, { x: 10, y: 9 }];
+  const mX = COLS >> 1, mY = ROWS >> 1;
+  cobra = [{ x: mX, y: mY }, { x: mX - 1, y: mY }, { x: mX - 2, y: mY }];
   direcao = { x: 1, y: 0 };
   obstaculos = [];
-  fruta = { x: 17, y: 9 };
+  fruta = { x: Math.min(COLS - 2, mX + 5), y: mY };
   vivo = false; pausado = false; pontos = 0;
   document.getElementById('hud-best').textContent = recordes.easy || 0;
 

@@ -208,6 +208,20 @@
     .painel .caixa { flex: 1; min-width: 90px; }
     .hist { height: clamp(40px, 9vh, 70px); }
     .painel .botoes { display: flex; gap: 5px; flex-direction: column; justify-content: center; }
+
+    /* O tabuleiro é quadrado: numa tela em pé ele trava na LARGURA e sobra
+       altura. Em vez de deixar a sobra virar faixa preta em cima e embaixo,
+       o painel cresce — histórico e status ficam legíveis de verdade. */
+    .painel .botoes { flex: 0 0 auto; }
+    .board-area { height: auto; flex: 0 0 auto; }
+  }
+
+  /* No toque, botão de ação com altura de dedo. Os 29 px de antes eram alvo de
+     mouse: "DESFAZER" num celular exigia mira. */
+  @media (pointer: coarse) {
+    button.acao { min-height: 44px; font-size: clamp(7px, 1.3vh, 10px); }
+    .cores button, button.menu-btn { min-height: 46px; }
+    .promo-ops button { min-height: 56px; min-width: 56px; }
   }
 </style>
 </head>

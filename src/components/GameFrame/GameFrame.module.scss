@@ -8,6 +8,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
   padding: 0.6rem 0.9rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -20,6 +21,9 @@
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .container {
@@ -50,6 +54,7 @@
   cursor: pointer;
   transition: background 0.2s, transform 0.1s;
   font-family: inherit;
+  flex-shrink: 0;
 
   svg {
     flex-shrink: 0;
@@ -61,5 +66,77 @@
 
   &:active {
     transform: scale(0.97);
+  }
+}
+
+/* ------------------------------------------------------------------ mobile
+   16/9 num celular em pé dá 219 px de altura: o jogo fica numa tarja. Aqui o
+   quadro passa a ser dimensionado pela ALTURA da tela, não pela largura, e o
+   jogo ganha a folga vertical que ele precisa para desenhar os controles.
+   `svh` (small viewport height) é a altura com a barra do navegador visível —
+   com `vh` o rodapé do jogo fica escondido atrás dela até o usuário rolar. */
+@media (max-width: 760px) and (orientation: portrait) {
+  .container {
+    aspect-ratio: auto;
+    height: 78svh;
+    /* Navegador sem `svh` (Safari < 15.4) cai aqui e ainda fica utilizável. */
+    height: max(78svh, 420px);
+  }
+}
+
+/* Celular deitado: a tela inteira é pouca altura. Vale usar quase toda ela,
+   descontando só a barra de ferramentas do quadro. */
+@media (max-width: 960px) and (orientation: landscape) and (max-height: 520px) {
+  .container {
+    aspect-ratio: auto;
+    height: calc(100svh - 3.2rem);
+  }
+
+  .toolbar {
+    padding: 0.35rem 0.6rem;
+  }
+}
+
+/* -------------------------------------------------------------- imersivo
+   Tela cheia por CSS. Existe porque o Safari do iPhone não deixa um iframe
+   entrar em fullscreen nativo — sem isto o botão seria um botão morto no
+   aparelho onde a tela é mais curta. */
+.wrapper.imersivo {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  border-radius: 0;
+
+  .toolbar {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    /* Notch / barra de status. */
+    padding-top: max(0.6rem, env(safe-area-inset-top));
+    padding-left: max(0.9rem, env(safe-area-inset-left));
+    padding-right: max(0.9rem, env(safe-area-inset-right));
+  }
+
+  .container {
+    flex: 1;
+    height: auto;
+    aspect-ratio: auto;
+    border-radius: 0;
+    border: none;
+  }
+}
+
+/* Fullscreen nativo (desktop): o wrapper vira a tela toda e o container
+   precisa esticar, senão fica um 16/9 centralizado num fundo preto. */
+.wrapper:fullscreen {
+  background: #000;
+
+  .container {
+    flex: 1;
+    height: auto;
+    aspect-ratio: auto;
+    border-radius: 0;
+    border: none;
   }
 }

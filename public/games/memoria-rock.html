@@ -445,22 +445,45 @@
     });
   }
 
+  /**
+   * Quantas colunas fazem a carta maior nesta tela.
+   *
+   * O número fixo por modo foi pensado para monitor. Num celular deitado, as
+   * mesmas 4 colunas viram 4 linhas numa tela de 390 px de altura: a carta
+   * encolhe para caber na vertical e sobra metade da LARGURA vazia. Medir
+   * cada divisão e ficar com a maior carta resolve retrato e paisagem com a
+   * mesma conta.
+   *
+   * Só divisores do total: sobra de última linha faz o tabuleiro parecer
+   * quebrado, e a diferença de tamanho não paga isso.
+   */
+  function melhorColunas(dispW, dispH, gap, total) {
+    let melhor = { cols: modo.cols, largura: 0 };
+    for (let cols = 2; cols <= total; cols++) {
+      if (total % cols !== 0) continue;
+      const linhas = total / cols;
+      const porLargura = (dispW - gap * (cols - 1)) / cols;
+      const porAltura = ((dispH - gap * (linhas - 1)) / linhas) * (3 / 4);
+      const largura = Math.min(porLargura, porAltura);
+      if (largura > melhor.largura) melhor = { cols, largura };
+    }
+    return melhor;
+  }
+
   /** O tabuleiro tem de caber inteiro: sem rolagem dentro do iframe. */
   function ajustarTabuleiro() {
-    if (!modo) return;
+    if (!modo || !cartas.length) return;
     const area = document.querySelector('.board-area');
-    const linhas = Math.ceil(cartas.length / modo.cols);
     const gap = parseFloat(getComputedStyle(board).gap) || 6;
 
     const dispW = area.clientWidth - 4;
     const dispH = area.clientHeight - 4;
 
-    // carta é 3:4 — calcula a largura que faz o conjunto caber nos dois eixos
-    const porLargura = (dispW - gap * (modo.cols - 1)) / modo.cols;
-    const porAltura = ((dispH - gap * (linhas - 1)) / linhas) * (3 / 4);
-    const largura = Math.max(34, Math.min(porLargura, porAltura));
+    const { cols, largura } = melhorColunas(dispW, dispH, gap, cartas.length);
+    const larguraFinal = Math.max(34, largura);
 
-    board.style.width = (largura * modo.cols + gap * (modo.cols - 1)) + 'px';
+    board.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    board.style.width = (larguraFinal * cols + gap * (cols - 1)) + 'px';
   }
 
   // ------------------------------------------------------------- eventos
