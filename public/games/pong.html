@@ -67,9 +67,11 @@
 
   .canvas-container {
     position: relative;
-    width: 100%;
     aspect-ratio: 16 / 10;
-    max-height: 50vh;
+    /* Limite pela LARGURA, escolhido para que a altura derivada do 16/10 não
+       passe de 50vh. Com `max-height` o navegador honra a altura e descarta o
+       aspect-ratio: a quadra sai achatada e a bola, elipse. */
+    width: min(100%, calc(50vh * 1.6));
   }
 
   /* Celular em pé: a quadra GIRA. Deitada num retrato ela virava uma tarja de
@@ -164,7 +166,7 @@
   @media (max-width: 768px), (pointer: coarse) {
     .mobile-controls { display: flex; }
     .desktop-hint { display: none; }
-    .canvas-container { max-height: 46svh; }
+    .canvas-container { width: min(100%, calc(46svh * 1.6)); }
     .game-wrapper { gap: 4px; justify-content: flex-start; padding-top: 6px; }
   }
 
@@ -181,6 +183,45 @@
   /* O título e o placar roubam altura da quadra num aparelho baixo. */
   @media (max-height: 700px) {
     body.vertical .title { display: none; }
+  }
+
+  /* Celular deitado (ou o quadro do hub, que é ainda mais baixo): título,
+     placar, quadra e dois botões de 58 px somavam mais do que os ~340 px de
+     altura — o topo e o rodapé saíam cortados. Aqui tudo encolhe para caber,
+     e a quadra volta a ser dimensionada pela ALTURA: com `width: 100%` mais
+     `max-height` o 16/10 era ignorado e o campo saía achatado. */
+  @media (orientation: landscape) and (max-height: 520px) {
+    .title { display: none; }
+
+    /* Tudo numa linha: placar, quadra e controles. Empilhado, os ~340 px de
+       altura não davam conta e o topo e o rodapé saíam cortados — e a largura,
+       que é o que sobra deitado, ficava vazia dos dois lados. */
+    .game-wrapper {
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      max-width: none;
+      padding: 4px 8px;
+    }
+    .scoreboard { flex-direction: column; gap: 12px; }
+
+    /* Pela ALTURA, com largura automática: `width: 100%` mais `max-height`
+       faz o navegador ignorar o 16/10 e o campo sai achatado. */
+    .canvas-container {
+      width: auto;
+      height: min(90svh, 340px);
+      max-height: none;
+      max-width: 66vw;
+    }
+
+    .mobile-controls {
+      flex-direction: column;
+      width: auto;
+      min-width: 128px;
+      padding: 0;
+    }
+    .ctrl-btn { min-height: 46px; }
   }
 
   .scanlines {

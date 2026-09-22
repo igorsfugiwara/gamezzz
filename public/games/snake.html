@@ -84,6 +84,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    /* `safe center`: quando o conteudo nao cabe (celular deitado), centralizar
+       corta as duas pontas e o botao de baixo fica inalcancavel. */
+    justify-content: safe center;
+    overflow-y: auto;
     gap: clamp(8px, 2.2vh, 18px);
     background: rgba(5, 10, 8, 0.93);
     border-radius: 6px;
@@ -173,6 +177,18 @@
       transform: translateX(-50%);
     }
     body.touch .dpad { width: min(150px, 22vw); }
+  }
+
+
+  /* Celular deitado: o menu inteiro não cabe em ~340 px de altura. As linhas
+     de explicação saem — a tela rola, mas rolar para achar o botão na
+     primeira tela do jogo é atrito. Encolhe texto, nunca o alvo do dedo. */
+  @media (orientation: landscape) and (max-height: 430px) {
+    .screen { gap: 5px; line-height: 1.3; }
+    .title { font-size: 16px; letter-spacing: 4px; }
+    .sub { font-size: 7px; }
+    button .tag { display: none; }
+    .levels { gap: 5px; }
   }
 
   @media (prefers-reduced-motion: reduce) {

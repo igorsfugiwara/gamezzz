@@ -150,6 +150,10 @@
     position: absolute; inset: 0; z-index: 5;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
+    /* `safe center`: quando o conteudo nao cabe (celular deitado), centralizar
+       corta as duas pontas e o botao de baixo fica inalcancavel. */
+    justify-content: safe center;
+    overflow-y: auto;
     gap: clamp(8px, 2.2vh, 18px);
     background: rgba(11, 7, 16, .955);
     text-align: center; padding: 4%;
@@ -197,6 +201,18 @@
     opacity: 0; transition: opacity .3s;
   }
   .faixa.on { opacity: 1; }
+
+
+  /* Celular deitado: o menu inteiro não cabe em ~340 px de altura. As linhas
+     de explicação saem — a tela rola, mas rolar para achar o botão na
+     primeira tela do jogo é atrito. Encolhe texto, nunca o alvo do dedo. */
+  @media (orientation: landscape) and (max-height: 430px) {
+    .screen { gap: 5px; line-height: 1.3; }
+    .title { font-size: 16px; letter-spacing: 4px; }
+    .sub { font-size: 7px; }
+    button .tag { display: none; }
+    .modos { gap: 5px; }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     .card { transition: none; animation: none; }
@@ -458,16 +474,26 @@
    * quebrado, e a diferença de tamanho não paga isso.
    */
   function melhorColunas(dispW, dispH, gap, total) {
-    let melhor = { cols: modo.cols, largura: 0 };
-    for (let cols = 2; cols <= total; cols++) {
-      if (total % cols !== 0) continue;
+    const cabe = (cols) => {
       const linhas = total / cols;
       const porLargura = (dispW - gap * (cols - 1)) / cols;
       const porAltura = ((dispH - gap * (linhas - 1)) / linhas) * (3 / 4);
-      const largura = Math.min(porLargura, porAltura);
+      return Math.min(porLargura, porAltura);
+    };
+
+    const padrao = { cols: modo.cols, largura: cabe(modo.cols) };
+    let melhor = padrao;
+    for (let cols = 2; cols <= total; cols++) {
+      if (total % cols !== 0) continue;
+      const largura = cabe(cols);
       if (largura > melhor.largura) melhor = { cols, largura };
     }
-    return melhor;
+
+    // O formato de cada modo foi desenhado para ser lido como jogo da memória —
+    // 8x2 numa tela larga dá carta um pouco maior e um tabuleiro pior. Só vale
+    // trocar quando o ganho é grande, que é o caso do celular deitado: lá as 4
+    // colunas do modo dão metade do tamanho que 8 dariam.
+    return melhor.largura > padrao.largura * 1.25 ? melhor : padrao;
   }
 
   /** O tabuleiro tem de caber inteiro: sem rolagem dentro do iframe. */

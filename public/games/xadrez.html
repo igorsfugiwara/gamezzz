@@ -156,6 +156,12 @@
     position: fixed; inset: 0; z-index: 20;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
+    /* Celular deitado tem ~340 px de altura e o menu inteiro não cabe. Com
+       `center` puro o excedente é cortado nas DUAS pontas e o "Começar" fica
+       inalcançável mesmo com rolagem. `safe center` centraliza quando cabe e
+       vira `flex-start` quando não — aí a rolagem alcança tudo. */
+    justify-content: safe center;
+    overflow-y: auto;
     gap: clamp(7px, 2vh, 16px);
     background: rgba(13, 15, 20, .96);
     text-align: center; padding: 4%;
@@ -222,6 +228,19 @@
     button.acao { min-height: 44px; font-size: clamp(7px, 1.3vh, 10px); }
     .cores button, button.menu-btn { min-height: 46px; }
     .promo-ops button { min-height: 56px; min-width: 56px; }
+  }
+
+  /* Celular deitado: o menu com título, três níveis, cor e "Começar" não cabe
+     em ~340 px. As linhas de explicação saem — o `.screen` rola, mas rolar
+     para achar o botão de começar é atrito na primeira tela do jogo. Os
+     botões mantêm os 46 px: o que encolhe é texto, não alvo. */
+  @media (orientation: landscape) and (max-height: 430px) {
+    .screen { gap: 5px; padding: 8px 4%; line-height: 1.4; }
+    .title { font-size: 15px; letter-spacing: 3px; line-height: 1.3; }
+    .sub { font-size: 7px; }
+    .grupo { gap: 5px; width: min(430px, 92%); }
+    .grupo .rotulo { margin-top: 0; }
+    button.menu-btn .tag { display: none; }
   }
 </style>
 </head>
