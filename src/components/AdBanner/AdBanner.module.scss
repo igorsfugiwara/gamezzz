@@ -1,9 +1,22 @@
 .wrapper {
   width: 100%;
-  min-height: 90px;
+  margin: 2rem 0;
   overflow: hidden;
 }
 
+.label {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.7;
+  margin-bottom: 0.4rem;
+}
+
+/* Reserva a altura antes do anúncio chegar, para o texto de baixo não pular
+   quando ele carrega (CLS, que conta para o Google). */
 .ins {
   width: 100%;
+  min-height: 90px;
 }

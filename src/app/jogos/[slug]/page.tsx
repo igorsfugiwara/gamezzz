@@ -4,7 +4,9 @@ import Link from 'next/link';
 import GameFrame from '@/components/GameFrame/GameFrame';
 import GameCard from '@/components/GameCard/GameCard';
 import AdBanner from '@/components/AdBanner/AdBanner';
-import { games } from '@/data/games';
+import JsonLd from '@/components/JsonLd/JsonLd';
+import { games, type Game } from '@/data/games';
+import { AD_SLOTS, SITE_NAME, absoluteUrl } from '@/lib/site';
 import styles from './page.module.scss';
 
 export async function generateStaticParams() {
@@ -18,10 +20,72 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const game = games.find((g) => g.slug === params.slug);
   if (!game) return {};
+
+  // "Xadrez Online Grátis" é como as pessoas procuram; o nome do site entra
+  // pelo template do layout.
+  const title = `${game.title} Online Grátis — Jogar no Navegador`;
+  const path = `/jogos/${game.slug}`;
+  const image = { url: game.thumbnail, width: 800, height: 450, alt: game.title };
+
   return {
-    title: `${game.title} — Jogar Online Grátis | gamezzz`,
+    title,
     description: game.description,
+    keywords: game.tags,
+    alternates: { canonical: path },
+    openGraph: {
+      type: 'website',
+      url: path,
+      title: `${title} | ${SITE_NAME}`,
+      description: game.description,
+      images: [image],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${title} | ${SITE_NAME}`,
+      description: game.description,
+      images: [game.thumbnail],
+    },
   };
+}
+
+const genero: Record<Game['category'], string> = {
+  clássico: 'Arcade',
+  estratégia: 'Estratégia',
+  cartas: 'Cartas',
+  ação: 'Ação',
+};
+
+function dadosEstruturados(game: Game) {
+  const url = absoluteUrl(`/jogos/${game.slug}`);
+  return [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'VideoGame',
+      name: game.title,
+      url,
+      description: game.longDescription,
+      image: absoluteUrl(game.thumbnail),
+      genre: genero[game.category],
+      keywords: game.tags.join(', '),
+      inLanguage: 'pt-BR',
+      gamePlatform: 'Navegador web',
+      applicationCategory: 'Game',
+      operatingSystem: 'Qualquer (navegador)',
+      playMode: 'SinglePlayer',
+      isAccessibleForFree: true,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL' },
+      publisher: { '@type': 'Organization', name: SITE_NAME, url: absoluteUrl('/') },
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: absoluteUrl('/') },
+        { '@type': 'ListItem', position: 2, name: 'Jogos', item: absoluteUrl('/#jogos') },
+        { '@type': 'ListItem', position: 3, name: game.title, item: url },
+      ],
+    },
+  ];
 }
 
 export default function GamePage({ params }: { params: { slug: string } }) {
@@ -34,6 +98,8 @@ export default function GamePage({ params }: { params: { slug: string } }) {
 
   return (
     <div className={styles.page}>
+      <JsonLd data={dadosEstruturados(game)} />
+
       <div className={styles.stage}>
         {/* BREADCRUMB */}
         <nav className={styles.breadcrumb} aria-label="Breadcrumb">
@@ -52,10 +118,6 @@ export default function GamePage({ params }: { params: { slug: string } }) {
         </header>
 
         <GameFrame src={game.src} title={game.title} />
-
-        <div className={styles.adSlot}>
-          <AdBanner />
-        </div>
       </div>
 
       <div className={styles.info}>
@@ -84,6 +146,11 @@ export default function GamePage({ params }: { params: { slug: string } }) {
             </div>
           </section>
         </div>
+
+        {/* Longe do quadro de propósito: os controles de toque ficam no pé do
+            jogo, e anúncio colado neles é clique acidental — o tipo de
+            posicionamento que o AdSense pune. */}
+        <AdBanner slot={AD_SLOTS.jogo} />
 
         {/* OUTROS JOGOS */}
         {others.length > 0 && (

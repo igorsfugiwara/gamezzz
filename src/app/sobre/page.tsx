@@ -1,22 +1,25 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
+import { games } from '@/data/games';
 import styles from './page.module.scss';
 
 export const metadata: Metadata = {
-  title: 'Sobre | gamezzz',
+  title: 'Sobre',
   description:
-    'Conheça o gamezzz — plataforma de jogos gratuitos no navegador, sem download e sem cadastro.',
+    'Conheça o gamezzz one — plataforma de jogos gratuitos no navegador, sem download e sem cadastro. Quem faz, como os jogos são feitos e o que vem por aí.',
+  alternates: { canonical: '/sobre' },
 };
 
 export default function SobrePage() {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <h1 className={styles.title}>Sobre o gamezzz</h1>
+        <h1 className={styles.title}>Sobre o gamezzz one</h1>
 
         <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>O que é o gamezzz?</h2>
+          <h2 className={styles.sectionTitle}>O que é o gamezzz one?</h2>
           <p>
-            gamezzz é uma plataforma de entretenimento digital que oferece jogos
+            gamezzz one é uma plataforma de entretenimento digital que oferece jogos
             gratuitos diretamente no navegador. Sem downloads, sem instalações, sem
             cadastros — basta acessar e jogar. A plataforma foi criada com o objetivo
             de tornar jogos de qualidade acessíveis para todos, independentemente do
@@ -28,10 +31,9 @@ export default function SobrePage() {
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Tecnologia por trás dos jogos</h2>
           <p>
-            Todos os jogos desenvolvidos internamente são criados com tecnologias
-            nativas da web: HTML5 Canvas para renderização gráfica em tempo real,
-            JavaScript puro para a lógica e física dos jogos, e CSS3 para estilização
-            e animações. Essa abordagem garante compatibilidade máxima com qualquer
+            Os jogos feitos aqui são arquivos únicos de HTML, CSS e JavaScript puro,
+            com HTML5 Canvas para os gráficos em tempo real — o motor de xadrez, por
+            exemplo, é escrito do zero, com busca minimax e poda alfa-beta. Essa abordagem garante compatibilidade máxima com qualquer
             navegador moderno — Chrome, Firefox, Safari e Edge — sem dependências
             externas ou plugins.
           </p>
@@ -43,8 +45,8 @@ export default function SobrePage() {
           </p>
           <p>
             Alguns títulos integram APIs públicas para enriquecer a experiência —
-            como a PokéAPI, que fornece dados reais de mais de 900 Pokémon para o
-            PokéTrunfo. Outros são hospedados externamente e incorporados via iframe,
+            como a PokéAPI, que fornece os atributos reais dos 151 Pokémon da
+            primeira geração para o PokéTrunfo. Outros são hospedados externamente e incorporados via iframe,
             permitindo uma coleção diversificada de experiências de jogo.
           </p>
         </section>
@@ -52,12 +54,17 @@ export default function SobrePage() {
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Catálogo atual</h2>
           <p>
-            A plataforma conta atualmente com três títulos:
+            A plataforma conta hoje com {games.length} jogos:
           </p>
           <ul className={styles.list}>
-            <li><strong>Pong</strong> — o clássico arcade da Atari de 1972, recriado em HTML5 Canvas com efeitos visuais modernos e suporte a touch</li>
-            <li><strong>Catan</strong> — o renomado jogo de tabuleiro de estratégia com NPCs e sistema completo de negociação de recursos</li>
-            <li><strong>PokéTrunfo</strong> — versão digital do Super Trunfo com mais de 900 Pokémon usando dados reais da PokéAPI</li>
+            {games.map((g) => (
+              <li key={g.slug}>
+                <Link href={`/jogos/${g.slug}`} className={styles.link}>
+                  <strong>{g.title}</strong>
+                </Link>{' '}
+                — {g.description}
+              </li>
+            ))}
           </ul>
         </section>
 
@@ -68,10 +75,7 @@ export default function SobrePage() {
           </p>
           <ul className={styles.list}>
             <li>Tetris — o clássico puzzle de blocos em HTML5 Canvas</li>
-            <li>Snake — o famoso jogo da cobrinha com modos de dificuldade</li>
             <li>Breakout — o arcade de destruição de blocos da Atari</li>
-            <li>Jogo da Memória — cards temáticos com animações fluidas</li>
-            <li>Xadrez — com motor de IA para partidas solo</li>
           </ul>
         </section>
 

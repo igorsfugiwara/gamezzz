@@ -18,9 +18,12 @@ Cada jogo é construído com tecnologias web modernas — HTML5 Canvas, TypeScri
 
 | Jogo | Categoria | Descrição |
 |------|-----------|-----------|
+| **Xadrez** | Estratégia | Regras oficiais completas contra um motor de IA em três níveis. |
+| **Snake** | Clássico | A cobrinha com três dificuldades que mudam as regras. |
+| **Memória Rock** | Cartas | Jogo da memória com 18 bandas de rock e uma curiosidade por par. |
 | **Pong** | Clássico | O arcade original da Atari (1972). Raquete, bola, reflexos. |
-| **Catan** | Estratégia | Construa cidades, colete recursos, domine a ilha. |
-| **PokéTrunfo** | Cartas | Super Trunfo com 900+ Pokémon reais via PokéAPI. |
+| **Catan** | Estratégia | Catan em 3D contra três adversários do computador. |
+| **PokéTrunfo** | Cartas | Super Trunfo com os 151 Pokémon originais via PokéAPI. |
 
 ---
 
@@ -102,6 +105,36 @@ Edite [src/data/games.ts](src/data/games.ts) e adicione um objeto seguindo a int
   featured: false,
 }
 ```
+
+---
+
+## SEO e AdSense
+
+O que o código já entrega:
+
+- **Metadados por página** — título no formato "Xadrez Online Grátis — Jogar no Navegador", descrição, canonical, Open Graph e Twitter card (a miniatura do jogo é a imagem de compartilhamento; a home usa `src/app/opengraph-image.tsx`).
+- **`/sitemap.xml` e `/robots.txt`** gerados a partir de `src/data/games.ts` — jogo novo entra sozinho.
+- **Dados estruturados** (JSON-LD): `WebSite` e `ItemList` na home, `VideoGame` e `BreadcrumbList` em cada jogo.
+- **Fonte servida pelo próprio site** (`next/font`), sem o `@import` que bloqueava a pintura.
+- **Verificação do AdSense** pela meta `google-adsense-account` e `public/ads.txt`.
+- **Blocos de anúncio** (`AdBanner`) só aparecem quando há ID de bloco configurado; na página de jogo ficam longe do quadro, onde estão os controles de toque.
+
+### Variáveis de ambiente (Vercel → Settings → Environment Variables)
+
+| Variável | Para quê |
+|---|---|
+| `NEXT_PUBLIC_SITE_URL` | URL canônica. Padrão `https://gamezzz-one.vercel.app`; troque quando tiver domínio próprio. |
+| `GOOGLE_SITE_VERIFICATION` | Código da verificação por "Tag HTML" do Search Console. |
+| `NEXT_PUBLIC_ADSENSE_SLOT_HOME` | ID do bloco de anúncio da home (depois da aprovação). |
+| `NEXT_PUBLIC_ADSENSE_SLOT_JOGO` | ID do bloco de anúncio das páginas de jogo. |
+
+### O que só dá para fazer nos painéis do Google
+
+1. **Search Console** — adicionar a propriedade por prefixo de URL, verificar pela tag HTML (variável acima) e enviar `/sitemap.xml`.
+2. **AdSense → Sites** — adicionar o site e pedir a revisão. `ads.txt` e a meta de verificação já estão no ar.
+3. **AdSense → Privacidade e mensagens** — ligar a mensagem de consentimento do Google (obrigatória para visitantes da Europa; a política de privacidade já a descreve).
+4. **Depois de aprovado** — ligar os anúncios automáticos e criar dois blocos de display responsivos (home e jogo); os IDs vão nas variáveis acima.
+5. **Domínio próprio** — recomendado. Um `.com.br` pesa a favor na revisão do AdSense e na marca nos resultados de busca; com ele, basta trocar `NEXT_PUBLIC_SITE_URL`.
 
 ---
 
