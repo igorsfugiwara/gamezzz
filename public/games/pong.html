@@ -44,7 +44,7 @@
     flex-direction: column;
     align-items: center;
     width: 100%;
-    max-width: 800px;
+    max-width: 960px;
     padding: 8px;
     gap: 6px;
   }
@@ -53,6 +53,9 @@
     font-size: clamp(16px, 4vw, 28px);
     letter-spacing: clamp(6px, 2vw, 16px);
     text-shadow: 0 0 10px rgba(0,255,100,0.6), 0 0 30px rgba(0,255,100,0.3);
+    /* A Press Start 2P desce além da linha de base: sem isto o "PONG" encosta
+       em "PLAYER" e "CPU" logo abaixo. */
+    margin-bottom: 6px;
   }
 
   .scoreboard { display: flex; align-items: center; gap: clamp(16px, 5vw, 40px); }
@@ -68,10 +71,11 @@
   .canvas-container {
     position: relative;
     aspect-ratio: 16 / 10;
-    /* Limite pela LARGURA, escolhido para que a altura derivada do 16/10 não
-       passe de 50vh. Com `max-height` o navegador honra a altura e descarta o
-       aspect-ratio: a quadra sai achatada e a bola, elipse. */
-    width: min(100%, calc(50vh * 1.6));
+    /* Limite pela LARGURA, escolhido para que a altura derivada do 16/10 seja
+       a altura da tela menos título, placar e dica (~150px). Com `max-height`
+       o navegador honra a altura e descarta o aspect-ratio: a quadra sai
+       achatada e a bola, elipse. */
+    width: min(100%, calc((100vh - 150px) * 1.6));
   }
 
   /* Celular em pé: a quadra GIRA. Deitada num retrato ela virava uma tarja de

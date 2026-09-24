@@ -1,17 +1,39 @@
+/* O quadro do jogo é o que importa na página. Ele sai da coluna de leitura
+   e ocupa a largura do site (a mesma da navbar e do rodapé), e a altura é
+   limitada pela janela: quem chega vê o jogo inteiro sem rolar.
+
+   --frame-max-h desconta o que fica acima do quadro: navbar (60px),
+   respiro do topo, breadcrumb, título e a barra de ferramentas do quadro.
+   Se o cabeçalho mudar de altura, este número muda junto. */
 .page {
   padding-top: 60px;
+  --frame-max-h: calc(100svh - 14.5rem);
+  --frame-min-h: 420px;
 }
 
-.container {
-  max-width: 900px;
+.stage,
+.info {
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem 1.5rem 4rem;
+  padding: 0 1.5rem;
+}
+
+/* Monitor grande: o quadro pode crescer além da largura da navbar. A altura
+   da janela continua mandando, então ele só cresce se couber. */
+@media (min-width: 1680px) {
+  .stage {
+    max-width: 1440px;
+  }
+}
+
+.stage {
+  padding-top: 1.25rem;
 }
 
 .breadcrumb {
   font-size: 0.82rem;
   color: var(--text-muted);
-  margin-bottom: 1.2rem;
+  margin-bottom: 0.5rem;
 
   a {
     color: var(--text-muted);
@@ -27,11 +49,19 @@
   }
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  margin-bottom: 1rem;
+}
+
 .title {
-  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 700;
   letter-spacing: -0.03em;
-  margin-bottom: 0.6rem;
+  line-height: 1.2;
 }
 
 .badge {
@@ -42,7 +72,6 @@
   font-weight: 600;
   color: #000;
   text-transform: capitalize;
-  margin-bottom: 1.5rem;
 }
 
 .cat_clássico { background: #f59e0b; }
@@ -50,11 +79,33 @@
 .cat_cartas { background: #6366f1; color: #fff; }
 .cat_ação { background: #ef4444; }
 
-.frameWrapper {
-  margin-bottom: 2rem;
+.adSlot {
+  margin-top: 1.5rem;
+}
+
+.info {
+  padding-top: 1rem;
+  padding-bottom: 4rem;
+}
+
+/* Como jogar e Sobre lado a lado: com o quadro largo, uma coluna só de
+   texto deixaria linhas compridas demais para ler. */
+.columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 3rem;
+  border-top: 1px solid var(--border);
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .section {
+  padding: 2rem 0;
+}
+
+.others {
   padding: 2rem 0;
   border-top: 1px solid var(--border);
 }
@@ -88,7 +139,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin: 1.5rem 0;
+  margin-top: 1.5rem;
 }
 
 .tag {
@@ -103,8 +154,12 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1.25rem;
+
+  @media (max-width: 1000px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
   @media (max-width: 560px) {
     grid-template-columns: 1fr;

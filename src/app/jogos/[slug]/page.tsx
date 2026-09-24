@@ -28,11 +28,13 @@ export default function GamePage({ params }: { params: { slug: string } }) {
   const game = games.find((g) => g.slug === params.slug);
   if (!game) notFound();
 
-  const others = games.filter((g) => g.slug !== params.slug).slice(0, 2);
+  // Todos os outros jogos: é o caminho mais curto para a próxima partida,
+  // e para o buscador são links internos entre as páginas de jogo.
+  const others = games.filter((g) => g.slug !== params.slug).slice(0, 4);
 
   return (
     <div className={styles.page}>
-      <div className={styles.container}>
+      <div className={styles.stage}>
         {/* BREADCRUMB */}
         <nav className={styles.breadcrumb} aria-label="Breadcrumb">
           <Link href="/">Home</Link>
@@ -42,45 +44,50 @@ export default function GamePage({ params }: { params: { slug: string } }) {
           <span>{game.title}</span>
         </nav>
 
-        <h1 className={styles.title}>{game.title}</h1>
-        <span className={`${styles.badge} ${styles[`cat_${game.category}`]}`}>
-          {game.category}
-        </span>
+        <header className={styles.header}>
+          <h1 className={styles.title}>{game.title}</h1>
+          <span className={`${styles.badge} ${styles[`cat_${game.category}`]}`}>
+            {game.category}
+          </span>
+        </header>
 
-        <div className={styles.frameWrapper}>
-          <GameFrame src={game.src} title={game.title} />
+        <GameFrame src={game.src} title={game.title} />
+
+        <div className={styles.adSlot}>
+          <AdBanner />
         </div>
+      </div>
 
-        <AdBanner />
+      <div className={styles.info}>
+        <div className={styles.columns}>
+          {/* COMO JOGAR */}
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Como Jogar</h2>
+            <ol className={styles.howToList}>
+              {game.howToPlay.map((step, i) => (
+                <li key={i}>{step}</li>
+              ))}
+            </ol>
+          </section>
 
-        {/* COMO JOGAR */}
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Como Jogar</h2>
-          <ol className={styles.howToList}>
-            {game.howToPlay.map((step, i) => (
-              <li key={i}>{step}</li>
-            ))}
-          </ol>
-        </section>
+          {/* SOBRE O JOGO */}
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Sobre o Jogo</h2>
+            <p className={styles.longDesc}>{game.longDescription}</p>
 
-        {/* SOBRE O JOGO */}
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Sobre o Jogo</h2>
-          <p className={styles.longDesc}>{game.longDescription}</p>
-        </section>
-
-        {/* TAGS */}
-        <div className={styles.tags}>
-          {game.tags.map((tag) => (
-            <span key={tag} className={styles.tag}>
-              {tag}
-            </span>
-          ))}
+            <div className={styles.tags}>
+              {game.tags.map((tag) => (
+                <span key={tag} className={styles.tag}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </section>
         </div>
 
         {/* OUTROS JOGOS */}
         {others.length > 0 && (
-          <section className={styles.section}>
+          <section className={styles.others}>
             <h2 className={styles.sectionTitle}>Outros Jogos</h2>
             <div className={styles.grid}>
               {others.map((g) => (

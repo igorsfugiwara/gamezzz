@@ -29,6 +29,11 @@
 .container {
   width: 100%;
   aspect-ratio: 16 / 9;
+  /* Quem usa o quadro diz quanto de altura sobra na janela. Com a largura
+     fixa, o max-height vence o aspect-ratio: numa tela baixa o quadro fica
+     mais largo que 16/9 em vez de passar da dobra. */
+  max-height: var(--frame-max-h, none);
+  min-height: var(--frame-min-h, 0);
   border-radius: 0 0 12px 12px;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -78,6 +83,8 @@
 @media (max-width: 760px) and (orientation: portrait) {
   .container {
     aspect-ratio: auto;
+    max-height: none;
+    min-height: 0;
     height: 78svh;
     /* Navegador sem `svh` (Safari < 15.4) cai aqui e ainda fica utilizável. */
     height: max(78svh, 420px);
@@ -89,6 +96,8 @@
 @media (max-width: 960px) and (orientation: landscape) and (max-height: 520px) {
   .container {
     aspect-ratio: auto;
+    max-height: none;
+    min-height: 0;
     height: calc(100svh - 3.2rem);
   }
 
@@ -122,6 +131,8 @@
     flex: 1;
     height: auto;
     aspect-ratio: auto;
+    max-height: none;
+    min-height: 0;
     border-radius: 0;
     border: none;
   }
@@ -136,6 +147,8 @@
     flex: 1;
     height: auto;
     aspect-ratio: auto;
+    max-height: none;
+    min-height: 0;
     border-radius: 0;
     border: none;
   }
