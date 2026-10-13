@@ -37,3 +37,4 @@ next-env.d.ts
 
 # jogos do portal: gerados pelo build (npm run build:jogos)
 /public/games/portal/
+/jogos/node_modules/
