@@ -11,6 +11,7 @@ const categorias: { id: Game['category']; icone: string; nome: string; texto: st
   { id: 'estratégia', icone: '♟️', nome: 'Estratégia', texto: 'Tabuleiro e gestão de recursos com profundidade real' },
   { id: 'cartas', icone: '🃏', nome: 'Cartas', texto: 'Memória e cartas colecionáveis para todos os níveis' },
   { id: 'ação', icone: '⚡', nome: 'Ação', texto: 'Reflexo e habilidade em partidas rápidas' },
+  { id: 'quebra-cabeça', icone: '🧩', nome: 'Quebra-cabeça', texto: 'Lógica com desafio do dia e fases que pedem um “aha!”' },
 ];
 
 // "Xadrez, Snake e Pong" — a lista do texto sai do catálogo e não envelhece

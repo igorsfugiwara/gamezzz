@@ -8,6 +8,7 @@ const categoryColors: Record<Game['category'], string> = {
   estratégia: '#10b981',
   cartas: '#6366f1',
   ação: '#ef4444',
+  'quebra-cabeça': '#ec4899',
 };
 
 interface GameCardProps {

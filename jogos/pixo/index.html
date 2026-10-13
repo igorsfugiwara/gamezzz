@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>PIXO — o desenho do dia</title>
+  <meta name="description" content="Um nonograma por dia que vira um desenho brasileiro em pixel art." />
+</head>
+<body>
+  <div id="app" class="pixo">
+    <header class="topo">
+      <div class="marca">
+        <span class="marca__nome">PIXO</span>
+        <span class="marca__num" id="numero">#1</span>
+      </div>
+      <span class="colecao" id="colecao">Boteco</span>
+      <span class="tempo" id="tempo" aria-label="Tempo">0:00</span>
+      <div class="acoes">
+        <button class="icone" id="btn-album" aria-label="Álbum de figurinhas" title="Álbum">📒</button>
+        <button class="icone" id="btn-som" aria-label="Som ligado" title="Som">🔊</button>
+      </div>
+    </header>
+
+    <main class="area" id="area">
+      <div class="tabuleiro" id="tabuleiro" role="grid" aria-label="Grade do desenho"></div>
+    </main>
+
+    <footer class="ferramentas" id="ferramentas">
+      <button class="ferramenta ferramenta--ativa" id="ft-pintar" aria-pressed="true" aria-label="Pintar">■</button>
+      <button class="ferramenta" id="ft-x" aria-pressed="false" aria-label="Marcar X">✕</button>
+      <button class="ferramenta" id="ft-desfazer" aria-label="Desfazer">↶</button>
+      <button class="ferramenta" id="ft-dica" aria-label="Dica">💡<span id="dicas-usadas"></span></button>
+    </footer>
+
+    <section class="fim" id="fim" hidden>
+      <div class="fim__cartao">
+        <canvas id="fim-desenho" class="pixel fim__desenho"></canvas>
+        <p class="fim__nome" id="fim-nome"></p>
+        <p class="fim__info" id="fim-info"></p>
+        <div class="fim__mascote" id="fim-mascote"></div>
+        <div class="fim__botoes">
+          <button class="botao botao--forte" id="btn-compartilhar">Compartilhar</button>
+          <button class="botao" id="btn-album-fim">Álbum</button>
+        </div>
+        <p class="fim__retorno" id="fim-retorno" aria-live="polite"></p>
+        <p class="fim__amanha" id="fim-amanha"></p>
+      </div>
+    </section>
+
+    <section class="album" id="album" hidden>
+      <div class="album__topo">
+        <h2>Álbum</h2>
+        <button class="icone" id="btn-fechar-album" aria-label="Fechar álbum">✕</button>
+      </div>
+      <div class="album__lista" id="album-lista"></div>
+    </section>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

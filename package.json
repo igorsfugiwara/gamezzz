@@ -4,9 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run build:jogos && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "build:jogos": "tsc -p jogos && vite build -c vite.jogos.config.ts",
+    "dev:jogos": "vite -c vite.jogos.config.ts --port 5190",
+    "test:jogos": "vitest run -c vite.jogos.config.ts"
   },
   "dependencies": {
     "next": "14.2.35",
@@ -20,6 +23,8 @@
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^6.4.4",
+    "vitest": "^3.2.7"
   }
 }

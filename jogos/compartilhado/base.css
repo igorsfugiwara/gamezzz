@@ -1,0 +1,84 @@
+/* Base dos jogos do portal: mesma família visual nos quatro. */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+:root {
+  --preto: #0d0b14;
+  --noite: #1b1726;
+  --asfalto: #2b2838;
+  --concreto: #4a4657;
+  --cimento: #6f6b7d;
+  --neblina: #9c98a8;
+  --papel: #d9d4c7;
+  --branco: #f4f1ea;
+  --caramelo: #d99a5b;
+  --amarelo: #f6c443;
+  --laranja: #f2762e;
+  --vermelho: #d6353f;
+  --folha: #4fa64a;
+  --ceu: #5aa9e6;
+  --neon-rosa: #ff4fa3;
+  --neon-ciano: #3df0e6;
+  --neon-verde: #b6ff3d;
+  --pixel-font: 'Press Start 2P', ui-monospace, 'Courier New', monospace;
+  --ui-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--noite);
+  color: var(--branco);
+  font-family: var(--ui-font);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+body { overflow: hidden; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+
+.pixel { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--neon-ciano); outline-offset: 2px; }
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  min-height: 44px;
+  padding: 0.6em 1.1em;
+  border-radius: 8px;
+  background: var(--asfalto);
+  border: 2px solid var(--concreto);
+  color: var(--branco);
+  font-weight: 700;
+  font-size: 15px;
+  transition: transform 80ms ease, background 120ms ease;
+}
+.botao:active { transform: translateY(2px); }
+.botao--forte { background: var(--amarelo); border-color: var(--amarelo); color: var(--preto); }
+.botao--forte:hover { background: #ffd35e; }
+
+.icone {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--asfalto);
+  font-size: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}

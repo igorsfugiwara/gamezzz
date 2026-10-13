@@ -53,6 +53,7 @@ const genero: Record<Game['category'], string> = {
   estratégia: 'Estratégia',
   cartas: 'Cartas',
   ação: 'Ação',
+  'quebra-cabeça': 'Puzzle',
 };
 
 function dadosEstruturados(game: Game) {

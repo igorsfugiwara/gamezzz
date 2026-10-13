@@ -4,7 +4,7 @@ export interface Game {
   description: string;
   longDescription: string;
   howToPlay: string[];
-  category: 'ação' | 'estratégia' | 'cartas' | 'clássico';
+  category: 'ação' | 'estratégia' | 'cartas' | 'clássico' | 'quebra-cabeça';
   tags: string[];
   embedType: 'iframe-internal' | 'iframe-external';
   src: string;
@@ -13,6 +13,25 @@ export interface Game {
 }
 
 export const games: Game[] = [
+  {
+    slug: 'pixo',
+    title: 'PIXO',
+    description: 'O desenho do dia: um nonograma por dia que termina num desenho brasileiro em pixel art. Resolva, revele e cole no álbum.',
+    longDescription: 'PIXO é um desafio diário de lógica. A grade começa vazia, com números nas bordas dizendo quantas casas seguidas são pintadas em cada linha e coluna. Você pinta, marca X e deduz — sem chute: todo desenho foi conferido por um solver para ter solução única só por dedução. Na última casa o desenho ganha cor e vai para o álbum de figurinhas, em coleções como Boteco, Feira, Bichos do Brasil, São Paulo e Noite de Show. O desenho vira à meia-noite de Brasília, é o mesmo para todo mundo, e o resultado sai como um card sem spoiler para mandar no grupo.',
+    howToPlay: [
+      'Os números de cada linha e coluna dizem os blocos de casas pintadas, na ordem',
+      'Toque para pintar; segure (ou use o ✕) para marcar uma casa que fica vazia',
+      'Arraste para pintar vários de uma vez — a pista se risca quando a linha fecha',
+      'Pinte todas as casas certas para revelar o desenho do dia',
+      'Volte amanhã: cada dia seguido aumenta sua sequência',
+    ],
+    category: 'quebra-cabeça',
+    tags: ['nonograma', 'picross', 'desafio diário', 'pixel art', 'lógica', 'quebra-cabeça'],
+    embedType: 'iframe-internal',
+    src: '/games/portal/pixo/index.html',
+    thumbnail: '/thumbnails/pixo-v1.png',
+    featured: true,
+  },
   {
     slug: 'snake',
     title: 'Snake',
