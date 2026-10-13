@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Dobra — leve o Shar Pei até o petisco</title>
+  <meta name="description" content="Puzzle de dobrar o mundo como papel para levar um Shar Pei até o petisco." />
+</head>
+<body>
+  <div id="app" class="dobra">
+    <!-- Menu: seleção de fases -->
+    <section class="menu" id="menu">
+      <div class="menu__topo">
+        <h1 class="menu__titulo">DOBRA</h1>
+        <canvas id="menu-cao" class="pixel menu__cao" width="96" height="96" aria-hidden="true"></canvas>
+      </div>
+      <p class="menu__mundo" id="menu-mundo">Mundo 1 · Quarto</p>
+      <div class="menu__fases" id="menu-fases" role="list"></div>
+      <p class="menu__estrelas" id="menu-estrelas"></p>
+    </section>
+
+    <!-- Jogo -->
+    <section class="jogo" id="jogo" hidden>
+      <header class="hud">
+        <button class="icone" id="btn-menu" aria-label="Voltar às fases">☰</button>
+        <div class="hud__fase"><b id="hud-fase">1-1</b> <span id="hud-nome"></span></div>
+        <div class="hud__dobras" aria-label="Dobras feitas"><span id="hud-dobras">0</span><small id="hud-meta">/1 ★★★</small></div>
+        <button class="icone" id="btn-som" aria-label="Som ligado">🔊</button>
+      </header>
+      <div class="palco" id="palco">
+        <canvas id="tela" class="pixel"></canvas>
+      </div>
+      <footer class="controles">
+        <button class="botao" id="btn-desfazer" aria-label="Desfazer">↶ Desfazer</button>
+        <button class="botao" id="btn-reiniciar" aria-label="Recomeçar fase">⟲</button>
+      </footer>
+    </section>
+
+    <!-- Fim de fase -->
+    <section class="fim" id="fim" hidden>
+      <div class="fim__cartao">
+        <p class="fim__estrelas" id="fim-estrelas">★★★</p>
+        <canvas id="fim-cao" class="pixel" width="96" height="96" aria-hidden="true"></canvas>
+        <p class="fim__texto" id="fim-texto"></p>
+        <div class="fim__botoes">
+          <button class="botao botao--forte" id="btn-proxima">Próxima</button>
+          <button class="botao" id="btn-compartilhar">Compartilhar</button>
+          <button class="botao" id="btn-repetir">Repetir</button>
+        </div>
+        <p class="fim__retorno" id="fim-retorno" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- Editor de fases (ferramenta de design): abre com #editor na URL -->
+    <section class="editor" id="editor" hidden>
+      <header class="editor__topo">
+        <b>Editor de fases</b>
+        <label>Largura <input type="number" id="ed-larg" min="3" max="8" value="6" /></label>
+        <label>Altura <input type="number" id="ed-alt" min="3" max="8" value="6" /></label>
+      </header>
+      <div class="editor__pecas" id="ed-pecas" role="radiogroup" aria-label="Peça"></div>
+      <canvas id="ed-tela" class="pixel editor__tela"></canvas>
+      <p class="editor__dica">Clique numa casa para pôr a peça. Clique numa linha da grade para ligar ou desligar um vinco. Clique no cachorro para girar.</p>
+      <div class="editor__acoes">
+        <button class="botao" id="ed-resolver">Resolver</button>
+        <button class="botao" id="ed-testar">Testar</button>
+        <button class="botao" id="ed-exportar">Exportar JSON</button>
+      </div>
+      <p class="editor__resultado" id="ed-resultado" aria-live="polite"></p>
+      <textarea id="ed-json" class="editor__json" rows="5" spellcheck="false" aria-label="JSON da fase"></textarea>
+    </section>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

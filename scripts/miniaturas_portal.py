@@ -132,7 +132,51 @@ def pixo():
     titulo(d, 'PIXO', 40, 30, 6, PAL['amarelo'], sombra=PAL['vermelho'])
     return img
 
-GERADORES = {'pixo': pixo}
+# ─── DOBRA ─────────────────────────────────────────────────────
+def peca_dobra(img, tipo, x, y, tam):
+    src = (J / 'dobra/desenho.ts').read_text()
+    m = re.search(tipo + r": \{\s+cores: \{([^}]*)\},\s+arte: \[([^\]]*)\]", src)
+    cores = {}
+    for k, v in re.findall(r"(\w): (PALETA\.\w+|'#[0-9a-f]{6}')", m.group(1)):
+        cores[k] = PAL[v.split('.')[1]] if v.startswith('PALETA') else v.strip("'")
+    arte = re.findall(r"'([^']*)'", m.group(2))
+    d = ImageDraw.Draw(img)
+    px = tam / 8
+    for r, l in enumerate(arte):
+        for c, ch in enumerate(l):
+            if ch in cores:
+                d.rectangle([x + c * px, y + r * px, x + (c + 1) * px - 1, y + (r + 1) * px - 1], fill=rgb(cores[ch]))
+
+def dobra():
+    img = fundo('#fff6dd', '#f2dfb3')
+    d = ImageDraw.Draw(img)
+    cel, ox, oy, n = 58, 250, 70, 6
+    # sombra e papel
+    d.rectangle([ox + 6, oy + 8, ox + n * cel + 6, oy + 5 * cel + 8], fill=rgb('#e4d0a2'))
+    for y in range(5):
+        for x in range(n):
+            d.rectangle([ox + x * cel, oy + y * cel, ox + (x + 1) * cel - 1, oy + (y + 1) * cel - 1], fill=rgb('#fbf3df' if (x + y) % 2 else '#f8eed6'))
+    # metade direita levantando (dobra em andamento)
+    d.polygon([(ox + 4 * cel, oy), (ox + 4 * cel + 40, oy - 30), (ox + 4 * cel + 40, oy + 5 * cel - 30), (ox + 4 * cel, oy + 5 * cel)], fill=rgb('#efe2c2'))
+    d.line([(ox + 4 * cel, oy - 6), (ox + 4 * cel, oy + 5 * cel + 6)], fill=rgb('#ff4fa3'), width=4)
+    for yy in range(oy - 6, oy + 5 * cel + 6, 14):
+        pass
+    for x0 in range(ox - 6, ox + n * cel + 6, 16):
+        d.line([(x0, oy + 2 * cel), (x0 + 9, oy + 2 * cel)], fill=rgb('#c9a26b'), width=3)
+    peca_dobra(img, 'almofada', ox + 2 * cel + 7, oy + 0 * cel + 7, cel - 14)
+    peca_dobra(img, 'parede', ox + 3 * cel + 7, oy + 4 * cel + 7, cel - 14)
+    peca_dobra(img, 'petisco', ox + 5 * cel + 7, oy + 1 * cel + 7, cel - 14)
+    sharpei(img, ox + 4, oy + 4 * cel - 6, 3, pose='feliz')
+    # papel picado
+    import random
+    random.seed(4)
+    for _ in range(40):
+        x, y = random.randint(40, 760), random.randint(10, 440)
+        d.rectangle([x, y, x + 6, y + 3], fill=rgb(random.choice(['#ff4fa3', '#f6c443', '#5aa9e6', '#4fa64a'])))
+    titulo(d, 'DOBRA', 40, 360, 8, '#ff4fa3', sombra=PAL['chocolate'])
+    return img
+
+GERADORES = {'pixo': pixo, 'dobra': dobra}
 
 if __name__ == '__main__':
     for nome in sys.argv[1:] or GERADORES:
