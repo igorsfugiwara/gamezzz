@@ -176,7 +176,64 @@ def dobra():
     titulo(d, 'DOBRA', 40, 360, 8, '#ff4fa3', sombra=PAL['chocolate'])
     return img
 
-GERADORES = {'pixo': pixo, 'dobra': dobra}
+# ─── RODA ──────────────────────────────────────────────────────
+def sprite_roda(nome):
+    src = (J / 'roda/sprites.ts').read_text()
+    m = re.search(r"export const " + nome + r" = arteParaSprite\(\[\n((?:\s+'[^']*',\n)+)\], \{([^}]*)\}", src)
+    arte = re.findall(r"'([^']*)'", m.group(1))
+    cores = {k: PAL[v] for k, v in re.findall(r"(\w): P\.(\w+)", m.group(2))}
+    return arte, cores
+
+def pessoa_roda(s, tipo='povo'):
+    src = (J / 'roda/sprites.ts').read_text()
+    lista = lambda n: [PAL[v] for v in re.findall(r"P\.(\w+)", re.search(n + r" = \[([^\]]*)\]", src).group(1))]
+    peles, cabelos, roupas, calcas = lista('PELES'), lista('CABELOS'), lista('ROUPAS'), lista('CALCAS')
+    arte = re.findall(r"'([^']*)'", re.search(r"const PESSOA = \[([^\]]*)\]", src).group(1))
+    cores = {'h': cabelos[s % len(cabelos)], 's': peles[(s * 3) % len(peles)], 'k': PAL['preto'],
+             'c': roupas[(s * 7) % len(roupas)], 'p': calcas[(s * 5) % len(calcas)]}
+    if tipo == 'motoboy':
+        arte = ['.hhhhhh.', 'hhhhhhhh', 'hvvvvvvh', '..ssss..', '..ssss..', 'bbcccccc', 'bbcccccc', 'bbcccc.s', '..pppp..', '..p..p..', '..k..k..']
+        cores.update(h=PAL['vermelho'] if s % 2 else PAL['asfalto'], v=PAL['neon_ciano'], b=PAL['folha'], c=PAL['asfalto'])
+    return arte, cores
+
+def pinta(img, arte, cores, x, y, px):
+    d = ImageDraw.Draw(img)
+    for r, l in enumerate(arte):
+        for c, ch in enumerate(l):
+            if ch in cores:
+                d.rectangle([x + c * px, y + r * px, x + (c + 1) * px - 1, y + (r + 1) * px - 1], fill=rgb(cores[ch]))
+
+def roda():
+    import math
+    img = fundo('#1a1426', '#2b2233')
+    d = ImageDraw.Draw(img)
+    # asfalto com faixa de pedestre
+    d.rectangle([0, 300, 800, 450], fill=rgb(PAL['asfalto']))
+    for x in range(20, 800, 60):
+        d.rectangle([x, 370, x + 34, 380], fill=rgb(PAL['neblina']))
+    pinta(img, *sprite_roda('PREDIO'), 470, 40, 9)
+    # o rastro da roda: elipse no chão em volta do Proprietário
+    cx, cy, rx, ry = 560, 300, 210, 92
+    d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], outline=rgb(PAL['neon_rosa']), width=4)
+    pessoas = []
+    for i in range(26):
+        a = i / 26 * 2 * math.pi + 0.4
+        pessoas.append((math.sin(a), cx + math.cos(a) * rx - 16, cy + math.sin(a) * ry - 44, i))
+    for z, x, y, i in sorted(pessoas):
+        if z < 0:
+            pinta(img, *pessoa_roda(i * 13 + 5, 'motoboy' if i % 7 == 3 else 'povo'), x, y, 4)
+    pinta(img, *sprite_roda('PROPRIETARIO'), cx - 36, cy - 76, 6)
+    for z, x, y, i in sorted(pessoas):
+        if z >= 0:
+            pinta(img, *pessoa_roda(i * 13 + 5, 'motoboy' if i % 7 == 3 else 'povo'), x, y, 4)
+    pinta(img, *sprite_roda('VOCAL'), cx + rx - 30, cy - 20, 5)
+    pinta(img, *sprite_roda('BOLETO'), cx - 120, cy - 150, 5)
+    pinta(img, *sprite_roda('PLACA'), 120, 250, 6)
+    sharpei(img, 40, 330, 6, pose='feliz', acessorios=('oculos',))
+    titulo(d, 'RODA', 40, 40, 12, PAL['neon_rosa'], sombra=PAL['neon_ciano'])
+    return img
+
+GERADORES = {'pixo': pixo, 'dobra': dobra, 'roda': roda}
 
 if __name__ == '__main__':
     for nome in sys.argv[1:] or GERADORES:

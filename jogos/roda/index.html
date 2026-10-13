@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>RODA — a revolução é um circle pit</title>
+  <meta name="description" content="Arcade de multidão: recrute a cidade e feche a roda em volta de quem manda." />
+</head>
+<body>
+  <div id="app" class="roda">
+    <canvas id="tela" class="pixel tela"></canvas>
+
+    <!-- HUD -->
+    <div class="hud" id="hud" hidden>
+      <div class="hud__topo">
+        <div class="contador" aria-label="Pessoas na roda"><span class="contador__icone">✊</span><b id="contador">0</b></div>
+        <div class="barra" id="barra-greve" aria-label="Greve"><span class="barra__nome">GREVE</span><i id="greve"></i></div>
+        <button class="icone" id="btn-pausa" aria-label="Pausar">⏸</button>
+      </div>
+      <div class="barra barra--chefe" id="barra-chefe" hidden><span class="barra__nome" id="nome-chefe"></span><i id="vida-chefe"></i></div>
+      <button class="latido" id="btn-latido" aria-label="Latido do Shar Pei (espaço)"><canvas id="latido-cao" class="pixel" width="32" height="32"></canvas><span id="latido-tempo"></span></button>
+    </div>
+
+    <div class="aviso" id="aviso" aria-live="polite"></div>
+
+    <!-- Título -->
+    <section class="painel painel--titulo" id="titulo">
+      <h1 class="logo">RODA</h1>
+      <p class="sub">a revolução é um circle pit</p>
+      <canvas id="titulo-arte" class="pixel titulo-arte" width="160" height="64" aria-hidden="true"></canvas>
+      <button class="botao botao--forte" id="btn-jogar">JOGAR</button>
+      <div class="fases-roda" id="fases-roda"></div>
+      <p class="recorde" id="recorde"></p>
+    </section>
+
+    <!-- Pausa -->
+    <section class="painel" id="pausa" hidden>
+      <h2>Pausa</h2>
+      <div class="painel__botoes">
+        <button class="botao botao--forte" id="btn-continuar">Continuar</button>
+        <button class="botao" id="btn-som">🔊 Som</button>
+        <button class="botao" id="btn-sair">Sair</button>
+      </div>
+    </section>
+
+    <!-- Fim de fase / derrota -->
+    <section class="painel" id="resultado" hidden>
+      <h2 id="res-titulo"></h2>
+      <p class="res-texto" id="res-texto"></p>
+      <div class="painel__botoes">
+        <button class="botao botao--forte" id="btn-seguir"></button>
+        <button class="botao" id="btn-compartilhar">Compartilhar</button>
+      </div>
+      <p class="res-retorno" id="res-retorno" aria-live="polite"></p>
+    </section>
+
+    <!-- Créditos -->
+    <section class="creditos" id="creditos" hidden>
+      <canvas id="creditos-tela" class="pixel creditos__tela"></canvas>
+      <div class="creditos__rolo"><div id="creditos-nomes"></div></div>
+      <p class="creditos__frase">Ninguém derruba isso sozinho.</p>
+      <button class="botao" id="btn-fim-creditos">Voltar</button>
+    </section>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

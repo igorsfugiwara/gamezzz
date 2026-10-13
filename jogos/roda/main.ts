@@ -1,0 +1,1016 @@
+import '../compartilhado/base.css';
+import './estilo.css';
+import { detectarRoda, pontoNoPoligono, dist2, type Ponto } from './geometria';
+import { FASES_RODA, VIDA_ALVO, type FaseRoda, type TipoAlvo } from './fases';
+import {
+  spritePessoa, SEGURANCA, SEGURANCA_TONTO, VOCAL, PREDIO, CATRACA, VIATURA, PLACA, BOLETO,
+  PROPRIETARIO, ALGORITMO, ALGORITMO_COPIA, OCUPACAO, arteParaSprite, type Sprite, type TipoPessoa,
+} from './sprites';
+import { nomeDoRecruta } from './nomes';
+import { iniciarMusica, pararMusica, cortarEVoltar, ajustarCamadas, volumeMusica } from './musica';
+import { desenharSharPei } from '../compartilhado/sharpei';
+import { PALETA as P } from '../compartilhado/paleta';
+import { ler, gravar } from '../compartilhado/salvar';
+import { compartilhar } from '../compartilhado/compartilhar';
+import { evento } from '../compartilhado/eventos';
+import { nota, arpejo, acorde, ruido, vibrar, destravarAudio, setMudo, estaMudo } from '../compartilhado/som';
+
+const JOGO = 'roda';
+const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+// ─── Constantes de jogo ───────────────────────────────────
+const VELOCIDADE = 62;       // unidades por segundo
+const GIRO = 5.2;            // rad/s
+const AMOSTRA = 2;           // distância entre pontos do rastro
+const ESPACO = 4;            // pontos de rastro entre um recruta e o próximo
+const AREA_MINIMA = 160;     // roda menor que isso é tremida
+const LATIDO_RECARGA = 20;   // s (PRD)
+const LATIDO_RAIO = 52;
+
+setMudo(ler<boolean>(JOGO, 'mudo', false));
+destravarAudio();
+
+// ─── Tipos ────────────────────────────────────────────────
+interface Pessoa { x: number; y: number; vx: number; vy: number; tipo: TipoPessoa; sprite: Sprite; troca: number; pombo?: boolean }
+interface Recruta { tipo: TipoPessoa | 'pombo'; sprite: Sprite; nome: string }
+interface Seguranca { x: number; y: number; tonto: number; ox: number; oy: number; grupo: number }
+interface Alvo { tipo: TipoAlvo; x: number; y: number; vida: number; max: number; caido: number; sprite: Sprite }
+interface Particula { x: number; y: number; vx: number; vy: number; cor: string; vida: number; tam: number }
+interface Texto { x: number; y: number; t: string; vida: number; cor: string }
+
+// ─── Estado ───────────────────────────────────────────────
+let fase: FaseRoda;
+let numeroFase = 0;
+let modo: 'titulo' | 'jogando' | 'pausa' | 'resultado' | 'creditos' = 'titulo';
+let jogador = { x: 0, y: 0, ang: 0 };
+let alvoAng: number | null = null;
+let rastro: Ponto[] = [];
+let rastroDesde = 0;
+let acumulado = 0;
+let fila: Recruta[] = [];
+let povo: Pessoa[] = [];
+let segurancas: Seguranca[] = [];
+let alvos: Alvo[] = [];
+let particulas: Particula[] = [];
+let textos: Texto[] = [];
+let greve = 0;
+let invulneravel = 0;
+let lento = 0;
+let invertido = 0;
+let pausaImpacto = 0;
+let camera = { x: 0, y: 0, zoom: 1 };
+let tremor = 0;
+let tempo = 0;
+let maiorRoda = 0;
+let rodasFechadas = 0;
+let primeiraRoda = true;
+let latidoPronto = 0;
+let latidoAnim = 0;
+let contadorGrupo = 0;
+let limites = { x0: 0, y0: 0, x1: 0, y1: 0 };
+let recrutados: string[] = [];
+let pomboPassadas = 0;
+let pomboEspera = 0;
+let ultimaNotaRecruta = 0;
+
+// Chefe
+let chefe: {
+  ativo: boolean; x: number; y: number; vida: number; max: number; fase: number; vx: number; vy: number;
+  timer: number; timer2: number; caindo: number; copias: { x: number; y: number; real: boolean }[];
+} | null = null;
+let placas: { x: number; y: number }[] = [];
+let boletos: { x: number; y: number; vx: number; vy: number }[] = [];
+let viaturaChefe: { x: number; y: number; vx: number; vy: number; aviso: number } | null = null;
+let zonasDemanda: { x: number; y: number; w: number; h: number }[] = [];
+
+// ─── Canvas em baixa resolução, escalado em inteiro ───────
+const tela = $('tela') as HTMLCanvasElement;
+const ctx = tela.getContext('2d')!;
+let W = 320, H = 180;
+
+function ajustarTela() {
+  const r = tela.getBoundingClientRect();
+  const retrato = r.height > r.width;
+  W = retrato ? 180 : 320;
+  H = retrato ? 320 : 180;
+  // Escala inteira que cabe; a sobra vira área extra de mapa (sem tarja).
+  const escala = Math.max(1, Math.floor(Math.min(r.width / W, r.height / H)));
+  W = Math.ceil(r.width / escala);
+  H = Math.ceil(r.height / escala);
+  tela.width = W;
+  tela.height = H;
+  ctx.imageSmoothingEnabled = false;
+}
+window.addEventListener('resize', ajustarTela);
+
+// ─── Chão pré-desenhado por fase ──────────────────────────
+let chao: HTMLCanvasElement | null = null;
+
+function desenharChao(f: FaseRoda) {
+  const c = document.createElement('canvas');
+  c.width = f.arena.w + 80; c.height = f.arena.h + 80;
+  const g = c.getContext('2d')!;
+  g.fillStyle = f.cores.calcada;
+  g.fillRect(0, 0, c.width, c.height);
+  // Prédios ao redor (só cenário), com janelas acesas.
+  for (let x = 0; x < c.width; x += 26) {
+    const h = 20 + ((x * 37) % 23);
+    for (const y of [0, c.height - h]) {
+      g.fillStyle = P.noite; g.fillRect(x, y, 24, h);
+      for (let j = 3; j < h - 3; j += 6) for (let i = 3; i < 21; i += 6) {
+        g.fillStyle = (x + i + j) % 5 === 0 ? P.amarelo : P.asfalto;
+        g.fillRect(x + i, y + j, 3, 3);
+      }
+    }
+  }
+  // Asfalto da arena com faixas.
+  g.fillStyle = f.cores.asfalto;
+  g.fillRect(40, 40, f.arena.w, f.arena.h);
+  g.fillStyle = f.cores.faixa;
+  for (let x = 50; x < f.arena.w + 30; x += 24) g.fillRect(x, 40 + f.arena.h / 2 - 1, 12, 2);
+  for (let y = 60; y < f.arena.h + 20; y += 60) for (let x = 0; x < 6; x++) g.fillRect(40 + f.arena.w / 3 + x * 5, y, 3, 18);
+  // Bueiros e manchas.
+  g.fillStyle = 'rgba(0,0,0,0.25)';
+  for (let i = 0; i < 40; i++) g.fillRect(40 + ((i * 97) % f.arena.w), 40 + ((i * 53) % f.arena.h), 4 + (i % 3), 2);
+  // Neon de bar nas bordas.
+  g.fillStyle = f.cores.neon;
+  g.fillRect(40, 40, f.arena.w, 1);
+  g.fillRect(40, 40 + f.arena.h - 1, f.arena.w, 1);
+  chao = c;
+}
+
+// ─── Início de fase ───────────────────────────────────────
+
+const aleatorio = (a: number, b: number) => a + Math.random() * (b - a);
+
+function novaPessoa(): Pessoa {
+  const r = Math.random();
+  const tipo: TipoPessoa = r < 0.18 ? 'motoboy' : r < 0.36 ? 'tia' : 'povo';
+  const semente = Math.floor(Math.random() * 1000);
+  return {
+    x: aleatorio(limites.x0 + 10, limites.x1 - 10), y: aleatorio(limites.y0 + 10, limites.y1 - 10),
+    vx: aleatorio(-10, 10), vy: aleatorio(-10, 10), tipo, sprite: spritePessoa(tipo, semente), troca: aleatorio(1, 4),
+  };
+}
+
+const POMBO = arteParaSprite(['.GG.....', 'GKGG....', 'GGGGGGG.', '.GVGGGGG', '..GGGG..', '..O..O..'], { G: P.cimento, K: P.preto, V: P.neon_roxo, O: P.laranja });
+
+function iniciarFase(i: number) {
+  numeroFase = i;
+  fase = FASES_RODA[i];
+  limites = { x0: 40, y0: 40, x1: 40 + fase.arena.w, y1: 40 + fase.arena.h };
+  desenharChao(fase);
+  jogador = { x: limites.x0 + 40, y: (limites.y0 + limites.y1) / 2, ang: 0 };
+  rastro = [{ x: jogador.x, y: jogador.y }];
+  rastroDesde = 0; acumulado = 0;
+  fila = []; recrutados = [];
+  povo = Array.from({ length: fase.povo }, novaPessoa);
+  // O pombo secreto: passe por ele três vezes e ele entra na roda valendo por dez.
+  povo.push({ x: (limites.x0 + limites.x1) / 2 + 60, y: limites.y0 + 30, vx: 0, vy: 0, tipo: 'povo', sprite: POMBO, troca: 99, pombo: true });
+  pomboPassadas = 0; pomboEspera = 0;
+  segurancas = [];
+  alvos = fase.alvos.map((a) => ({ ...a, vida: VIDA_ALVO[a.tipo], max: VIDA_ALVO[a.tipo], caido: 0, sprite: a.tipo === 'predio' ? PREDIO : a.tipo === 'catraca' ? CATRACA : VIATURA }));
+  particulas = []; textos = [];
+  greve = 0; invulneravel = 0; lento = 0; invertido = 0; pausaImpacto = 0;
+  tempo = 0; maiorRoda = 0; rodasFechadas = 0; latidoPronto = 0; contadorGrupo = 0;
+  chefe = null; placas = []; boletos = []; viaturaChefe = null; zonasDemanda = [];
+  camera = { x: jogador.x, y: jogador.y, zoom: 1 };
+  modo = 'jogando';
+  mostrar('hud');
+  esconder('titulo', 'pausa', 'resultado', 'creditos');
+  $('barra-chefe').hidden = true;
+  atualizarHud();
+  iniciarMusica();
+  aviso(`Fase ${fase.numero} · ${fase.bairro}`, 1800);
+  evento(JOGO, 'fase_inicio', { fase: fase.numero });
+}
+
+// ─── Entrada ──────────────────────────────────────────────
+const teclas = new Set<string>();
+window.addEventListener('keydown', (e) => {
+  teclas.add(e.key.toLowerCase());
+  if (e.key.startsWith('Arrow')) e.preventDefault();
+  if (e.key === ' ' || e.key.toLowerCase() === 'e') { e.preventDefault(); latir(); }
+  if (e.key === 'Escape' || e.key.toLowerCase() === 'p') alternarPausa();
+});
+window.addEventListener('keyup', (e) => teclas.delete(e.key.toLowerCase()));
+
+let toque: { id: number; x0: number; y0: number; x: number; y: number } | null = null;
+tela.addEventListener('pointerdown', (e) => {
+  toque = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY };
+});
+window.addEventListener('pointermove', (e) => {
+  if (!toque || e.pointerId !== toque.id) return;
+  toque.x = e.clientX; toque.y = e.clientY;
+  // O ponto de partida acompanha o dedo de longe: dá para virar sem levantar.
+  const dx = toque.x - toque.x0, dy = toque.y - toque.y0;
+  const d = Math.hypot(dx, dy);
+  if (d > 60) { toque.x0 = toque.x - (dx / d) * 60; toque.y0 = toque.y - (dy / d) * 60; }
+});
+window.addEventListener('pointerup', (e) => { if (toque?.id === e.pointerId) toque = null; });
+window.addEventListener('pointercancel', () => { toque = null; });
+
+function lerDirecao(): number | null {
+  let dx = 0, dy = 0;
+  if (teclas.has('arrowleft') || teclas.has('a')) dx -= 1;
+  if (teclas.has('arrowright') || teclas.has('d')) dx += 1;
+  if (teclas.has('arrowup') || teclas.has('w')) dy -= 1;
+  if (teclas.has('arrowdown') || teclas.has('s')) dy += 1;
+  if (toque) {
+    const tx = toque.x - toque.x0, ty = toque.y - toque.y0;
+    if (Math.hypot(tx, ty) > 10) { dx = tx; dy = ty; }
+  }
+  if (!dx && !dy) return null;
+  if (invertido > 0) { dx = -dx; dy = -dy; }
+  return Math.atan2(dy, dx);
+}
+
+// ─── Atualização ──────────────────────────────────────────
+
+function atualizar(dt: number) {
+  if (pausaImpacto > 0) { pausaImpacto -= dt; return; }
+  tempo += dt;
+  invulneravel = Math.max(0, invulneravel - dt);
+  lento = Math.max(0, lento - dt);
+  invertido = Math.max(0, invertido - dt);
+  latidoPronto = Math.max(0, latidoPronto - dt);
+  latidoAnim = Math.max(0, latidoAnim - dt);
+  tremor = Math.max(0, tremor - dt * 8);
+
+  // Direção e velocidade
+  const desejo = lerDirecao();
+  if (desejo !== null) alvoAng = desejo;
+  if (alvoAng !== null) {
+    let diff = alvoAng - jogador.ang;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    const giro = GIRO * dt * (naZonaDeDemanda() ? 0.45 : 1);
+    jogador.ang += Math.max(-giro, Math.min(giro, diff));
+  }
+  const motoboys = fila.filter((r) => r.tipo === 'motoboy').length;
+  let vel = VELOCIDADE * (1 + Math.min(0.3, motoboys * 0.02));
+  if (lento > 0) vel *= 0.55;
+  if (naZonaDeDemanda()) vel *= 1.75;
+  const nx = jogador.x + Math.cos(jogador.ang) * vel * dt;
+  const ny = jogador.y + Math.sin(jogador.ang) * vel * dt;
+  jogador.x = Math.max(limites.x0 + 4, Math.min(limites.x1 - 4, nx));
+  jogador.y = Math.max(limites.y0 + 6, Math.min(limites.y1 - 4, ny));
+  // Na parede, desliza e vira junto — nada de ficar "colado".
+  if (jogador.x !== nx || jogador.y !== ny) alvoAng = alvoAng ?? jogador.ang;
+
+  // Rastro
+  const ult = rastro[rastro.length - 1];
+  acumulado += Math.hypot(jogador.x - ult.x, jogador.y - ult.y);
+  if (acumulado >= AMOSTRA) {
+    acumulado = 0;
+    rastro.push({ x: jogador.x, y: jogador.y });
+    const maximo = (fila.length + 3) * ESPACO + 40;
+    if (rastro.length > maximo) {
+      const cortar = rastro.length - maximo;
+      rastro.splice(0, cortar);
+      rastroDesde = Math.max(0, rastroDesde - cortar);
+    }
+    verificarRoda();
+  }
+
+  atualizarPovo(dt);
+  atualizarSegurancas(dt);
+  if (chefe) atualizarChefe(dt);
+  atualizarParticulas(dt);
+
+  // Câmera: segue a cabeça e abre conforme a fila cresce.
+  const zoomAlvo = Math.max(0.62, 1 - fila.length / 360);
+  camera.zoom += (zoomAlvo - camera.zoom) * Math.min(1, dt * 2);
+  camera.x += (jogador.x - camera.x) * Math.min(1, dt * 6);
+  camera.y += (jogador.y - camera.y) * Math.min(1, dt * 6);
+
+  ajustarCamadas(fila.length);
+  if (tempo % 1 < dt) atualizarHud();
+}
+
+function naZonaDeDemanda(): boolean {
+  return zonasDemanda.some((z) => jogador.x > z.x && jogador.x < z.x + z.w && jogador.y > z.y && jogador.y < z.y + z.h);
+}
+
+function posicaoNaFila(i: number): Ponto {
+  const idx = rastro.length - 1 - (i + 1) * ESPACO;
+  return rastro[Math.max(0, idx)];
+}
+
+function recrutar(p: Pessoa) {
+  const tipo: Recruta['tipo'] = p.pombo ? 'pombo' : p.tipo;
+  if (p.pombo) {
+    for (let i = 0; i < 10; i++) fila.push({ tipo: 'pombo', sprite: POMBO, nome: 'Pombo da Sé, pombo' });
+    recrutados.push('Pombo da Sé, pombo (vale por dez)');
+    texto(p.x, p.y - 8, '+10 POMBO!', P.neon_verde);
+    arpejo([523, 659, 784, 1047, 1319], 0.05, 'square', 0.05);
+  } else {
+    const nome = nomeDoRecruta(recrutados.length, p.tipo);
+    fila.push({ tipo, sprite: p.sprite, nome });
+    recrutados.push(nome);
+    // Cada tipo entra de um jeito: a tia larga o carrinho, o motoboy derrapa.
+    if (p.tipo === 'tia') explodir(p.x, p.y, 6, [P.amarelo, P.folha, P.laranja]);
+    if (p.tipo === 'motoboy') explodir(p.x, p.y, 5, [P.neblina, P.cimento]);
+    const agora = performance.now();
+    if (agora - ultimaNotaRecruta > 40) { nota(400 + Math.min(fila.length, 60) * 12, 0.06, 'square', 0.035); ultimaNotaRecruta = agora; }
+  }
+  maiorRoda = Math.max(maiorRoda, fila.length);
+  $('contador').parentElement!.classList.remove('contador--pulsa');
+  void $('contador').offsetWidth;
+  $('contador').parentElement!.classList.add('contador--pulsa');
+  atualizarHud();
+}
+
+function atualizarPovo(dt: number) {
+  for (const p of povo) {
+    if (!p.pombo) {
+      p.troca -= dt;
+      if (p.troca < 0) { p.vx = aleatorio(-12, 12); p.vy = aleatorio(-12, 12); p.troca = aleatorio(1.5, 4); }
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.x < limites.x0 + 4 || p.x > limites.x1 - 4) p.vx *= -1;
+      if (p.y < limites.y0 + 6 || p.y > limites.y1 - 4) p.vy *= -1;
+      p.x = Math.max(limites.x0 + 4, Math.min(limites.x1 - 4, p.x));
+      p.y = Math.max(limites.y0 + 6, Math.min(limites.y1 - 4, p.y));
+    }
+  }
+  // Encostar recruta.
+  const restantes: Pessoa[] = [];
+  for (const p of povo) {
+    if (p.pombo) {
+      pomboEspera = Math.max(0, pomboEspera - dt);
+      if (dist2(p, jogador) < 100 && pomboEspera === 0) {
+        pomboPassadas++;
+        pomboEspera = 1.5;
+        nota(900, 0.05, 'triangle', 0.04);
+        if (pomboPassadas >= 3) { recrutar(p); continue; }
+      }
+      restantes.push(p);
+      continue;
+    }
+    if (dist2(p, jogador) < 64) recrutar(p); else restantes.push(p);
+  }
+  povo = restantes;
+  // A cidade não esvazia: entra gente nova pelas bordas.
+  while (povo.length < fase.povo * 0.6) povo.push(novaPessoa());
+}
+
+function atualizarSegurancas(dt: number) {
+  // Grupos de três, em formação de planilha, chegam pelas bordas.
+  const maximo = chefe ? Math.floor(fase.segurancasMax * 0.6) : fase.segurancasMax;
+  if (segurancas.length < maximo && tempo > 6 && Math.random() < dt * 0.35) {
+    const lado = Math.floor(Math.random() * 4);
+    const bx = lado === 0 ? limites.x0 + 6 : lado === 1 ? limites.x1 - 6 : aleatorio(limites.x0 + 20, limites.x1 - 20);
+    const by = lado === 2 ? limites.y0 + 8 : lado === 3 ? limites.y1 - 6 : aleatorio(limites.y0 + 20, limites.y1 - 20);
+    contadorGrupo++;
+    for (let i = 0; i < 3; i++) segurancas.push({ x: bx, y: by, tonto: 0, ox: (i - 1) * 9, oy: 0, grupo: contadorGrupo });
+  }
+  const vel = 26 + numeroFase * 4;
+  for (const s of segurancas) {
+    if (s.tonto > 0) { s.tonto -= dt; continue; }
+    const ax = jogador.x + s.ox, ay = jogador.y + s.oy;
+    const d = Math.hypot(ax - s.x, ay - s.y) || 1;
+    s.x += ((ax - s.x) / d) * vel * dt;
+    s.y += ((ay - s.y) / d) * vel * dt;
+    if (invulneravel === 0 && dist2(s, jogador) < 49) {
+      if (fila.length === 0) return derrota();
+      perderDaFila(3, 'seguranca');
+      s.tonto = 1.2;
+    }
+  }
+}
+
+function perderDaFila(qtd: number, motivo: 'seguranca' | 'viatura' | 'placa' | 'chefe') {
+  invulneravel = 1;
+  tremor = 1;
+  vibrar(40);
+  ruido(0.18, 0.12, 500);
+  // A tia da feira absorve uma colisão no lugar de três pessoas.
+  const tia = fila.findIndex((r) => r.tipo === 'tia');
+  if (motivo === 'seguranca' && tia >= 0) {
+    fila.splice(tia, 1);
+    texto(jogador.x, jogador.y - 12, 'A tia segurou!', P.amarelo);
+  } else {
+    const saem = fila.splice(Math.max(0, fila.length - qtd), qtd);
+    texto(jogador.x, jogador.y - 12, `-${saem.length}`, P.vermelho);
+  }
+  atualizarHud();
+}
+
+// ─── A roda ───────────────────────────────────────────────
+
+function verificarRoda() {
+  if (fila.length < 3) return;
+  // Só o corpo da fila fecha roda: o rastro além do último recruta não conta
+  // (com uma folga de ~2 pessoas, para a primeira roda sair com 6–8 recrutas).
+  const corpo = rastro.length - 1 - (fila.length + 3) * ESPACO;
+  const desde = Math.max(rastroDesde, corpo);
+  const roda = detectarRoda(rastro, desde, AREA_MINIMA);
+  if (!roda) return;
+  rastroDesde = roda.indice;
+  fecharRoda(roda.poligono);
+}
+
+function fecharRoda(poligono: Ponto[]) {
+  rodasFechadas++;
+  const dano = Math.max(4, fila.length) * (1 + Math.floor(fila.length / 50) * 0.25);
+  let acertou = false;
+  const centro = poligono.reduce((a, p) => ({ x: a.x + p.x / poligono.length, y: a.y + p.y / poligono.length }), { x: 0, y: 0 });
+
+  for (const a of alvos) {
+    if (a.caido || !pontoNoPoligono(a, poligono)) continue;
+    a.vida -= dano;
+    acertou = true;
+    texto(a.x, a.y - 20, `-${Math.round(dano)}`, P.amarelo);
+    if (a.vida <= 0) derrubarAlvo(a);
+  }
+  // Quem está dentro da roda entra nela.
+  const dentro = povo.filter((p) => !p.pombo && pontoNoPoligono(p, poligono));
+  for (const p of dentro) recrutar(p);
+  povo = povo.filter((p) => !dentro.includes(p));
+  // Segurança cercado é "realocado": sai de cena.
+  const cercados = segurancas.filter((s) => pontoNoPoligono(s, poligono));
+  if (cercados.length) {
+    segurancas = segurancas.filter((s) => !cercados.includes(s));
+    texto(centro.x, centro.y, cercados.length > 1 ? `${cercados.length} seguranças realocados` : 'segurança realocado', P.neon_ciano);
+  }
+  if (chefe?.ativo) danoAoChefe(poligono, dano);
+
+  // Game feel: pausa de impacto, tremor, panfletos.
+  pausaImpacto = 0.08;
+  tremor = 0.8;
+  explodir(centro.x, centro.y, 28 + Math.min(60, fila.length), [P.branco, P.amarelo, P.neon_rosa, P.papel]);
+  acorde([196, 247, 294, 392], 0.35, 'sawtooth', 0.04);
+  if (primeiraRoda) {
+    // A primeira roda fechada: meio segundo de câmera lenta, o som corta e volta no breakdown.
+    primeiraRoda = false;
+    pausaImpacto = 0.5;
+    cortarEVoltar(500);
+    aviso('A RODA FECHOU!', 1400);
+  } else if (acertou) {
+    aviso(['Roda!', 'Abre a roda!', 'Gira!', 'Mais uma volta!'][rodasFechadas % 4], 700);
+  }
+  atualizarHud();
+}
+
+function derrubarAlvo(a: Alvo) {
+  a.vida = 0;
+  a.caido = 1;
+  greve = Math.min(100, greve + a.max * (100 / fase.alvos.reduce((s, x) => s + VIDA_ALVO[x.tipo], 0)));
+  explodir(a.x, a.y, 50, [P.ceu, P.pastel_azul, P.neblina, P.vermelho]);
+  ruido(0.5, 0.15, 900);
+  vibrar(60);
+  texto(a.x, a.y - 26, a.tipo === 'predio' ? 'O prédio espelhado caiu!' : a.tipo === 'catraca' ? 'Catraca livre!' : 'Viatura desmontada!', P.neon_verde);
+  if (greve >= 99.5 && !chefe) setTimeout(entrarChefe, 900);
+  atualizarHud();
+}
+
+// ─── Chefes ───────────────────────────────────────────────
+
+function entrarChefe() {
+  if (modo !== 'jogando') return;
+  const cx = (limites.x0 + limites.x1) / 2, cy = (limites.y0 + limites.y1) / 2;
+  chefe = { ativo: true, x: cx, y: cy - 40, vida: 180, max: 180, fase: 1, vx: 14, vy: 9, timer: 0, timer2: 0, caindo: 0, copias: [] };
+  $('barra-chefe').hidden = false;
+  $('nome-chefe').textContent = fase.nomeChefe;
+  aviso(`${fase.nomeChefe}: “${fase.fala}”`, 3200, true);
+  ruido(0.6, 0.08, 300);
+  if (fase.chefe === 'algoritmo') nota(988, 0.15, 'sine', 0.06);
+  evento(JOGO, 'chefe', { fase: fase.numero });
+}
+
+function atualizarChefe(dt: number) {
+  const c = chefe!;
+  if (c.caindo > 0) {
+    c.caindo -= dt;
+    if (c.caindo <= 0) vitoria();
+    return;
+  }
+  c.timer += dt; c.timer2 += dt;
+  // Anda pela arena, sem pressa — quem tem que correr é você.
+  c.x += c.vx * dt; c.y += c.vy * dt;
+  if (c.x < limites.x0 + 30 || c.x > limites.x1 - 30) c.vx *= -1;
+  if (c.y < limites.y0 + 30 || c.y > limites.y1 - 30) c.vy *= -1;
+  c.x = Math.max(limites.x0 + 30, Math.min(limites.x1 - 30, c.x));
+  c.y = Math.max(limites.y0 + 30, Math.min(limites.y1 - 30, c.y));
+  c.fase = c.vida > c.max * 0.66 ? 1 : c.vida > c.max * 0.33 ? 2 : 3;
+
+  if (fase.chefe === 'proprietario') {
+    // O mapa encolhe a cada 10 s: o aluguel subindo.
+    if (c.timer >= 10) {
+      c.timer = 0;
+      const enc = 10;
+      const min = { w: fase.arena.w * 0.5, h: fase.arena.h * 0.5 };
+      if (limites.x1 - limites.x0 - enc * 2 > min.w) { limites.x0 += enc; limites.x1 -= enc; }
+      if (limites.y1 - limites.y0 - enc * 2 > min.h) { limites.y0 += enc * 0.6; limites.y1 -= enc * 0.6; }
+      aviso('Aluguel subiu. O bairro encolheu.', 1200);
+      ruido(0.3, 0.06, 200);
+    }
+    if (c.fase === 1 && c.timer2 > 2.6) {
+      c.timer2 = 0;
+      placas.push({ x: aleatorio(limites.x0 + 20, limites.x1 - 20), y: aleatorio(limites.y0 + 20, limites.y1 - 20) });
+      if (placas.length > 10) placas.shift();
+    }
+    if (c.fase === 2 && c.timer2 > 1.4) {
+      c.timer2 = 0;
+      const a = Math.atan2(jogador.y - c.y, jogador.x - c.x);
+      boletos.push({ x: c.x, y: c.y, vx: Math.cos(a) * 40, vy: Math.sin(a) * 40 });
+    }
+    if (c.fase === 3 && !viaturaChefe && c.timer2 > 4) {
+      c.timer2 = 0;
+      const vertical = Math.random() < 0.5;
+      viaturaChefe = vertical
+        ? { x: aleatorio(limites.x0 + 30, limites.x1 - 30), y: limites.y0 - 20, vx: 0, vy: 150, aviso: 1 }
+        : { x: limites.x0 - 20, y: aleatorio(limites.y0 + 30, limites.y1 - 30), vx: 150, vy: 0, aviso: 1 };
+    }
+  } else {
+    // O Algoritmo.
+    if (c.fase === 1 && c.timer2 > 5) {
+      c.timer2 = 0;
+      zonasDemanda = Array.from({ length: 3 }, () => ({ x: aleatorio(limites.x0, limites.x1 - 80), y: aleatorio(limites.y0, limites.y1 - 60), w: 80, h: 60 }));
+    }
+    if (c.fase === 2) {
+      zonasDemanda = [];
+      if (c.timer2 > 11) { c.timer2 = 0; invertido = 5; aviso('Sua taxa foi ajustada.', 1500); nota(988, 0.15, 'sine', 0.05); }
+    }
+    if (c.fase === 3 && c.copias.length === 0) {
+      c.copias = [0, 1, 2].map(() => ({ x: aleatorio(limites.x0 + 40, limites.x1 - 40), y: aleatorio(limites.y0 + 40, limites.y1 - 40), real: false }));
+      aviso('Ele se dividiu. Só um está carregando.', 1600);
+    }
+    for (const cp of c.copias) { cp.x += Math.cos(tempo + cp.y) * 12 * dt; cp.y += Math.sin(tempo + cp.x) * 12 * dt; }
+  }
+
+  // Placas "Aluga-se": encostar custa um recruta e a placa cai.
+  placas = placas.filter((pl) => {
+    if (dist2(pl, jogador) < 49 && invulneravel === 0) { perderDaFila(1, 'placa'); explodir(pl.x, pl.y, 8, [P.amarelo, P.vermelho]); return false; }
+    return true;
+  });
+  // Boletos voadores grudam e deixam tudo lento. O latido espanta.
+  boletos = boletos.filter((b) => {
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    if (dist2(b, jogador) < 64) { lento = 2.5; texto(jogador.x, jogador.y - 12, 'boleto!', P.branco); nota(150, 0.15, 'sawtooth', 0.04); return false; }
+    return b.x > limites.x0 - 10 && b.x < limites.x1 + 10 && b.y > limites.y0 - 10 && b.y < limites.y1 + 10;
+  });
+  // Viatura de despejo atravessa a tela e corta a roda ao meio.
+  if (viaturaChefe) {
+    const v = viaturaChefe;
+    if (v.aviso > 0) v.aviso -= dt;
+    else {
+      v.x += v.vx * dt; v.y += v.vy * dt;
+      for (let i = 0; i < fila.length; i++) {
+        if (dist2(posicaoNaFila(i), v) < 100) {
+          const perdidos = fila.length - i;
+          fila.splice(i);
+          texto(v.x, v.y, `despejo: -${perdidos}`, P.vermelho);
+          tremor = 1; vibrar(50);
+          break;
+        }
+      }
+      if (v.x > limites.x1 + 30 || v.y > limites.y1 + 30) viaturaChefe = null;
+    }
+  }
+  // Encostar no chefe custa gente.
+  if (invulneravel === 0 && dist2(c, jogador) < 120) perderDaFila(4, 'chefe');
+}
+
+function danoAoChefe(poligono: Ponto[], dano: number) {
+  const c = chefe!;
+  if (fase.chefe === 'algoritmo' && c.copias.length) {
+    // Cercar cópia: ela some. Cercar o verdadeiro (o do ícone de carregando): dano.
+    const antes = c.copias.length;
+    c.copias = c.copias.filter((cp) => !pontoNoPoligono(cp, poligono));
+    if (c.copias.length < antes) texto(c.x, c.y - 20, 'era cópia', P.neon_ciano);
+  }
+  if (!pontoNoPoligono(c, poligono)) return;
+  c.vida -= dano;
+  texto(c.x, c.y - 24, `-${Math.round(dano)}`, P.neon_rosa);
+  ruido(0.25, 0.12, 700);
+  if (c.vida <= 0) {
+    c.vida = 0;
+    c.ativo = false;
+    c.caindo = 3.2;
+    placas = []; boletos = []; viaturaChefe = null; zonasDemanda = []; c.copias = [];
+    aviso(fase.queda, 3000, true);
+    explodir(c.x, c.y, 120, [P.vermelho, P.amarelo, P.neon_rosa, P.branco, P.folha]);
+    acorde([262, 330, 392, 523, 659], 1.4, 'triangle', 0.06);
+  }
+  atualizarHud();
+}
+
+// ─── Latido do Shar Pei ───────────────────────────────────
+
+function latir() {
+  if (modo !== 'jogando' || latidoPronto > 0) return;
+  latidoPronto = LATIDO_RECARGA;
+  latidoAnim = 0.6;
+  const cao = posicaoCao();
+  let atordoados = 0;
+  for (const s of segurancas) if (dist2(s, cao) < LATIDO_RAIO ** 2) { s.tonto = 3; atordoados++; }
+  boletos = boletos.filter((b) => dist2(b, cao) > LATIDO_RAIO ** 2);
+  nota(520, 0.06, 'square', 0.08); nota(390, 0.09, 'square', 0.08, 0.07);
+  if (atordoados) texto(cao.x, cao.y - 14, 'AU!', P.amarelo);
+  vibrar(20);
+}
+
+function posicaoCao(): Ponto {
+  // Parceiro: anda ao lado da cabeça, um pouco atrás.
+  const p = rastro[Math.max(0, rastro.length - 1 - 3)];
+  return { x: p.x + Math.cos(jogador.ang + Math.PI / 2) * 10, y: p.y + Math.sin(jogador.ang + Math.PI / 2) * 10 };
+}
+
+// ─── Partículas e textos ──────────────────────────────────
+
+function explodir(x: number, y: number, n: number, cores: string[]) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, v = aleatorio(20, 90);
+    particulas.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, cor: cores[i % cores.length], vida: aleatorio(0.6, 1.4), tam: Math.random() < 0.5 ? 2 : 1 });
+  }
+}
+
+function texto(x: number, y: number, t: string, cor: string) { textos.push({ x, y, t, vida: 1.4, cor }); }
+
+function atualizarParticulas(dt: number) {
+  for (const p of particulas) { p.vy += 120 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vida -= dt; }
+  particulas = particulas.filter((p) => p.vida > 0);
+  if (particulas.length > 600) particulas.splice(0, particulas.length - 600);
+  for (const t of textos) { t.y -= 14 * dt; t.vida -= dt; }
+  textos = textos.filter((t) => t.vida > 0);
+}
+
+// ─── Desenho ──────────────────────────────────────────────
+
+function desenhar() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = fase?.cores.ceu ?? P.preto;
+  ctx.fillRect(0, 0, W, H);
+  if (!fase || !chao) return;
+  const z = camera.zoom;
+  const vw = W / z, vh = H / z;
+  let cx = Math.max(vw / 2, Math.min(fase.arena.w + 80 - vw / 2, camera.x));
+  let cy = Math.max(vh / 2, Math.min(fase.arena.h + 80 - vh / 2, camera.y));
+  if (vw > fase.arena.w + 80) cx = (fase.arena.w + 80) / 2;
+  if (vh > fase.arena.h + 80) cy = (fase.arena.h + 80) / 2;
+  const tr = tremor > 0 ? (Math.random() - 0.5) * tremor * 4 : 0;
+  ctx.setTransform(z, 0, 0, z, Math.round(W / 2 - cx * z + tr), Math.round(H / 2 - cy * z + tr));
+
+  ctx.drawImage(chao, 0, 0);
+  // Bordas que fecham (aluguel subindo).
+  if (limites.x0 > 40 || limites.y0 > 40) {
+    ctx.fillStyle = 'rgba(214, 53, 63, 0.35)';
+    ctx.fillRect(40, 40, limites.x0 - 40, fase.arena.h);
+    ctx.fillRect(limites.x1, 40, 40 + fase.arena.w - limites.x1, fase.arena.h);
+    ctx.fillRect(40, 40, fase.arena.w, limites.y0 - 40);
+    ctx.fillRect(40, limites.y1, fase.arena.w, 40 + fase.arena.h - limites.y1);
+  }
+  for (const zd of zonasDemanda) {
+    ctx.fillStyle = `rgba(255, 79, 163, ${0.18 + Math.sin(tempo * 6) * 0.06})`;
+    ctx.fillRect(zd.x, zd.y, zd.w, zd.h);
+  }
+
+  // Alvos
+  for (const a of alvos) {
+    const s = a.caido && a.tipo === 'predio' ? OCUPACAO : a.sprite;
+    if (a.caido && a.tipo !== 'predio') continue;
+    const treme = !a.caido && a.vida < a.max ? (Math.random() - 0.5) * (1 - a.vida / a.max) * 2 : 0;
+    ctx.drawImage(s, Math.round(a.x - s.width / 2 + treme), Math.round(a.y - s.height + 4));
+    if (!a.caido && a.vida < a.max) {
+      ctx.fillStyle = P.preto; ctx.fillRect(a.x - 10, a.y + 6, 20, 2);
+      ctx.fillStyle = P.vermelho; ctx.fillRect(a.x - 10, a.y + 6, 20 * (a.vida / a.max), 2);
+    }
+  }
+  // Dica sem texto: nos primeiros segundos, um círculo pontilhado gira em volta do alvo mais perto.
+  if (tempo < 25 && rodasFechadas === 0 && fila.length >= 3) {
+    const alvo = alvos.filter((a) => !a.caido).sort((a, b) => dist2(a, jogador) - dist2(b, jogador))[0];
+    if (alvo) {
+      ctx.strokeStyle = P.amarelo;
+      ctx.setLineDash([3, 4]);
+      ctx.lineDashOffset = -tempo * 20;
+      ctx.beginPath(); ctx.arc(alvo.x, alvo.y - 8, 34, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  for (const pl of placas) ctx.drawImage(PLACA, Math.round(pl.x - 4), Math.round(pl.y - 7));
+
+  // Povo
+  for (const p of povo) {
+    if (p.pombo) { ctx.drawImage(POMBO, Math.round(p.x - 4), Math.round(p.y - 6 + Math.sin(tempo * 8) * 0.5)); continue; }
+    ctx.drawImage(p.sprite, Math.round(p.x - 4), Math.round(p.y - 11));
+  }
+  // Pessoa mais perto pisca nos primeiros segundos (ensina a recrutar).
+  if (fila.length < 3 && tempo < 20) {
+    const perto = povo.filter((p) => !p.pombo).sort((a, b) => dist2(a, jogador) - dist2(b, jogador))[0];
+    if (perto && Math.sin(tempo * 8) > 0) { ctx.strokeStyle = P.neon_verde; ctx.strokeRect(Math.round(perto.x - 6), Math.round(perto.y - 13), 12, 15); }
+  }
+
+  // Rastro neon da roda
+  if (fila.length) {
+    const fim = Math.max(0, rastro.length - 1 - (fila.length + 1) * ESPACO);
+    ctx.strokeStyle = rodasFechadas ? fase.cores.neon : 'rgba(255,255,255,0.25)';
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = fim; i < rastro.length; i++) { const r = rastro[i]; if (i === fim) ctx.moveTo(r.x, r.y); else ctx.lineTo(r.x, r.y); }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1;
+  }
+
+  // Fila (do fim para a cabeça, para a cabeça ficar por cima)
+  for (let i = fila.length - 1; i >= 0; i--) {
+    const pos = posicaoNaFila(i);
+    const pulo = Math.abs(Math.sin(tempo * 10 + i * 0.7)) * 1.5;
+    ctx.drawImage(fila[i].sprite, Math.round(pos.x - 4), Math.round(pos.y - 11 - pulo));
+  }
+
+  // Seguranças
+  for (const s of segurancas) ctx.drawImage(s.tonto > 0 ? SEGURANCA_TONTO : SEGURANCA, Math.round(s.x - 4), Math.round(s.y - 11));
+
+  // Chefe
+  if (chefe) {
+    const c = chefe;
+    if (fase.chefe === 'proprietario') {
+      const caindo = c.caindo > 0;
+      ctx.globalAlpha = caindo ? Math.max(0, c.caindo / 3.2) : 1;
+      ctx.drawImage(PROPRIETARIO, Math.round(c.x - 12), Math.round(c.y - 30), 24, 30);
+      ctx.globalAlpha = 1;
+    } else {
+      const flut = Math.sin(tempo * 3) * 2;
+      for (const cp of c.copias) ctx.drawImage(ALGORITMO_COPIA, Math.round(cp.x - 12), Math.round(cp.y - 26 + flut), 24, 26);
+      ctx.drawImage(ALGORITMO, Math.round(c.x - 12), Math.round(c.y - 26 + flut), 24, 26);
+      // Ícone de carregando: só o verdadeiro tem.
+      ctx.strokeStyle = P.neon_rosa;
+      ctx.beginPath(); ctx.arc(c.x, c.y - 36 + flut, 4, tempo * 6, tempo * 6 + Math.PI * 1.4); ctx.stroke();
+    }
+  }
+  for (const b of boletos) ctx.drawImage(BOLETO, Math.round(b.x - 3), Math.round(b.y - 3));
+  if (viaturaChefe) {
+    const v = viaturaChefe;
+    if (v.aviso > 0) {
+      ctx.fillStyle = `rgba(214, 53, 63, ${0.25 + Math.sin(tempo * 20) * 0.15})`;
+      if (v.vy) ctx.fillRect(v.x - 6, limites.y0, 12, limites.y1 - limites.y0);
+      else ctx.fillRect(limites.x0, v.y - 6, limites.x1 - limites.x0, 12);
+    } else ctx.drawImage(VIATURA, Math.round(v.x - 8), Math.round(v.y - 6));
+  }
+
+  // Shar Pei: ao lado; com 50+ na roda, faz stage dive por cima da multidão.
+  const cao = posicaoCao();
+  const dive = fila.length >= 50 ? Math.max(0, Math.sin(tempo * 1.3)) * 14 : 0;
+  desenharSharPei(ctx, Math.round(cao.x - 8), Math.round(cao.y - 16 - dive), 1, {
+    pose: latidoAnim > 0 ? 'feliz' : 'sentado', espelhar: Math.cos(jogador.ang) < 0,
+    acessorios: ler<boolean>(JOGO, 'oculos', false) ? ['oculos'] : [],
+  });
+  if (latidoAnim > 0) {
+    ctx.strokeStyle = P.amarelo;
+    ctx.globalAlpha = latidoAnim;
+    ctx.beginPath(); ctx.arc(cao.x, cao.y - 6, LATIDO_RAIO * (1 - latidoAnim / 0.6), 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // O Vocal
+  const pisca = invulneravel > 0 && Math.floor(tempo * 16) % 2 === 0;
+  if (!pisca) {
+    ctx.save();
+    if (Math.cos(jogador.ang) < 0) { ctx.translate(Math.round(jogador.x), 0); ctx.scale(-1, 1); ctx.drawImage(VOCAL, -5, Math.round(jogador.y - 11)); }
+    else ctx.drawImage(VOCAL, Math.round(jogador.x - 5), Math.round(jogador.y - 11));
+    ctx.restore();
+  }
+
+  for (const p of particulas) { ctx.fillStyle = p.cor; ctx.fillRect(Math.round(p.x), Math.round(p.y), p.tam, p.tam); }
+  ctx.font = 'bold 8px monospace';
+  ctx.textAlign = 'center';
+  for (const t of textos) {
+    ctx.globalAlpha = Math.min(1, t.vida);
+    ctx.fillStyle = P.preto; ctx.fillText(t.t, Math.round(t.x) + 1, Math.round(t.y) + 1);
+    ctx.fillStyle = t.cor; ctx.fillText(t.t, Math.round(t.x), Math.round(t.y));
+  }
+  ctx.globalAlpha = 1;
+
+  // Queda do Algoritmo: tela azul de erro, e todo celular diz "Você está offline".
+  if (chefe && chefe.caindo > 0 && fase.chefe === 'algoritmo') {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = P.azul;
+    ctx.globalAlpha = Math.min(1, (3.2 - chefe.caindo) * 1.5) * 0.92;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = P.branco;
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(':(', W / 2, H / 2 - 14);
+    ctx.fillText('Você está offline', W / 2, H / 2 + 2);
+  }
+
+  // Controles invertidos: glitch na tela.
+  if (invertido > 0) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = 'rgba(61, 240, 230, 0.12)';
+    for (let i = 0; i < 6; i++) ctx.fillRect(0, Math.random() * H, W, 2);
+  }
+}
+
+// ─── HUD e telas ──────────────────────────────────────────
+
+function atualizarHud() {
+  $('contador').textContent = String(fila.length);
+  ($('greve') as HTMLElement).style.width = `${greve}%`;
+  if (chefe) ($('vida-chefe') as HTMLElement).style.width = `${(chefe.vida / chefe.max) * 100}%`;
+  const pronto = latidoPronto <= 0;
+  $('btn-latido').classList.toggle('latido--pronto', pronto);
+  $('latido-tempo').textContent = pronto ? '' : String(Math.ceil(latidoPronto));
+}
+
+let avisoTimer = 0;
+function aviso(t: string, ms = 1200, chefeFala = false) {
+  const el = $('aviso');
+  el.textContent = t;
+  el.classList.add('aviso--ver');
+  el.classList.toggle('aviso--chefe', chefeFala);
+  clearTimeout(avisoTimer);
+  avisoTimer = window.setTimeout(() => el.classList.remove('aviso--ver'), ms);
+}
+
+const mostrar = (...ids: string[]) => ids.forEach((id) => { $(id).hidden = false; });
+const esconder = (...ids: string[]) => ids.forEach((id) => { $(id).hidden = true; });
+
+function formatarTempo(s: number) { return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`; }
+
+let textoCompartilhar = '';
+
+function vitoria() {
+  modo = 'resultado';
+  chefe = null;
+  const recordes = ler<Record<string, number>>(JOGO, 'recordes', {});
+  recordes[fase.numero] = Math.max(recordes[fase.numero] ?? 0, maiorRoda);
+  gravar(JOGO, 'recordes', recordes);
+  const liberadas = Math.max(ler<number>(JOGO, 'liberadas', 1), fase.numero + 1);
+  gravar(JOGO, 'liberadas', Math.min(FASES_RODA.length, liberadas));
+  evento(JOGO, 'fase_completa', { fase: fase.numero, roda: maiorRoda, segundos: Math.round(tempo) });
+  textoCompartilhar = `Minha roda: ${maiorRoda} pessoas. Derrubei ${fase.nomeChefe} em ${formatarTempo(tempo)}. ✊ RODA`;
+  $('res-titulo').textContent = `${fase.nomeChefe} caiu!`;
+  $('res-texto').textContent = `Minha roda: ${maiorRoda} pessoas. Derrubei ${fase.nomeChefe} em ${formatarTempo(tempo)}.`;
+  const ultima = numeroFase >= FASES_RODA.length - 1;
+  $('btn-seguir').textContent = ultima ? 'Créditos' : `Fase ${fase.numero + 1}: ${FASES_RODA[numeroFase + 1].bairro}`;
+  $('res-retorno').textContent = '';
+  esconder('hud');
+  mostrar('resultado');
+  if (ultima) gravar(JOGO, 'oculos', true); // zerou: o Shar Pei ganha óculos escuros
+}
+
+function derrota() {
+  modo = 'resultado';
+  pararMusica();
+  ruido(0.6, 0.12, 300);
+  textoCompartilhar = `Minha roda chegou a ${maiorRoda} pessoas no ${fase.bairro}. ✊ RODA`;
+  $('res-titulo').textContent = 'A roda se desfez';
+  $('res-texto').textContent = `Sem ninguém do lado, o segurança te pegou. A maior roda foi de ${maiorRoda}. Junta o povo de novo.`;
+  $('btn-seguir').textContent = 'Tentar de novo';
+  $('res-retorno').textContent = '';
+  esconder('hud');
+  mostrar('resultado');
+  evento(JOGO, 'derrota', { fase: fase.numero, roda: maiorRoda });
+}
+
+function seguir() {
+  const venceu = $('btn-seguir').textContent !== 'Tentar de novo';
+  if (!venceu) return iniciarFase(numeroFase);
+  if (numeroFase >= FASES_RODA.length - 1) return abrirCreditos();
+  iniciarFase(numeroFase + 1);
+}
+
+function alternarPausa() {
+  if (modo === 'jogando') { modo = 'pausa'; mostrar('pausa'); pararMusica(); }
+  else if (modo === 'pausa') { modo = 'jogando'; esconder('pausa'); iniciarMusica(); }
+}
+
+function abrirTitulo() {
+  modo = 'titulo';
+  pararMusica();
+  esconder('hud', 'pausa', 'resultado', 'creditos');
+  mostrar('titulo');
+  const liberadas = ler<number>(JOGO, 'liberadas', 1);
+  const lista = $('fases-roda');
+  lista.innerHTML = '';
+  FASES_RODA.forEach((f, i) => {
+    const b = document.createElement('button');
+    b.textContent = `${f.numero}. ${f.bairro}`;
+    b.disabled = i >= liberadas;
+    b.addEventListener('click', () => iniciarFase(i));
+    lista.appendChild(b);
+  });
+  const recordes = ler<Record<string, number>>(JOGO, 'recordes', {});
+  const melhor = Math.max(0, ...Object.values(recordes));
+  $('recorde').textContent = melhor ? `Maior roda: ${melhor} pessoas` : '';
+  desenharArteTitulo();
+}
+
+/** Arte do título: a fila girando em volta do prédio espelhado. */
+function desenharArteTitulo() {
+  const cv = $('titulo-arte') as HTMLCanvasElement;
+  const c = cv.getContext('2d')!;
+  c.imageSmoothingEnabled = false;
+  let t = 0;
+  const pinta = () => {
+    if (modo !== 'titulo') return;
+    c.clearRect(0, 0, 160, 64);
+    c.drawImage(PREDIO, 68, 8);
+    for (let i = 0; i < 18; i++) {
+      const a = t + (i / 18) * Math.PI * 2;
+      const x = 80 + Math.cos(a) * 50, y = 34 + Math.sin(a) * 18;
+      if (Math.sin(a) < 0) c.drawImage(spritePessoa(i % 5 === 0 ? 'motoboy' : i % 4 === 0 ? 'tia' : 'povo', i * 13), Math.round(x - 4), Math.round(y - 11));
+    }
+    for (let i = 0; i < 18; i++) {
+      const a = t + (i / 18) * Math.PI * 2;
+      const x = 80 + Math.cos(a) * 50, y = 34 + Math.sin(a) * 18;
+      if (Math.sin(a) >= 0) c.drawImage(spritePessoa(i % 5 === 0 ? 'motoboy' : i % 4 === 0 ? 'tia' : 'povo', i * 13), Math.round(x - 4), Math.round(y - 11));
+    }
+    t += 0.03;
+    requestAnimationFrame(pinta);
+  };
+  pinta();
+}
+
+/** Créditos: centenas de pixels de gente girando, cada um com nome e profissão. */
+function abrirCreditos() {
+  modo = 'creditos';
+  esconder('resultado', 'hud');
+  mostrar('creditos');
+  const nomes = recrutados.length ? recrutados : Array.from({ length: 40 }, (_, i) => nomeDoRecruta(i));
+  $('creditos-nomes').innerHTML = ['O Vocal, entregador e vocalista', 'O Shar Pei, parceiro', ...nomes].map((n) => `<div>${n}</div>`).join('') + '<div><br/>Fases 3 a 5 chegam na versão 1.0</div>';
+  const cv = $('creditos-tela') as HTMLCanvasElement;
+  cv.width = 240; cv.height = 140;
+  const c = cv.getContext('2d')!;
+  c.imageSmoothingEnabled = false;
+  const total = Math.min(240, Math.max(60, recrutados.length));
+  let t = 0;
+  const pinta = () => {
+    if (modo !== 'creditos') return;
+    c.fillStyle = P.preto; c.fillRect(0, 0, 240, 140);
+    c.drawImage(OCUPACAO, 108, 56);
+    for (let anel = 0; anel < 3; anel++) {
+      const n = Math.floor(total / 3);
+      for (let i = 0; i < n; i++) {
+        const a = t * (1 + anel * 0.2) + (i / n) * Math.PI * 2;
+        const x = 120 + Math.cos(a) * (40 + anel * 30), y = 74 + Math.sin(a) * (16 + anel * 12);
+        c.drawImage(spritePessoa(i % 6 === 0 ? 'motoboy' : i % 5 === 0 ? 'tia' : 'povo', i * 7 + anel), Math.round(x - 4), Math.round(y - 11));
+      }
+    }
+    desenharSharPei(c, 112, 100, 1, { pose: 'feliz', acessorios: ['oculos'] });
+    t += 0.02;
+    requestAnimationFrame(pinta);
+  };
+  pinta();
+  evento(JOGO, 'creditos', { recrutados: recrutados.length });
+}
+
+// ─── Laço ─────────────────────────────────────────────────
+let ultimo = performance.now();
+function laco(agora: number) {
+  const dt = Math.min(1 / 30, (agora - ultimo) / 1000);
+  ultimo = agora;
+  if (modo === 'jogando') atualizar(dt);
+  if (modo === 'jogando' || modo === 'pausa' || modo === 'resultado') desenhar();
+  requestAnimationFrame(laco);
+}
+
+// Pausa automática ao trocar de aba (PRD).
+document.addEventListener('visibilitychange', () => { if (document.hidden && modo === 'jogando') alternarPausa(); });
+
+$('btn-jogar').addEventListener('click', () => iniciarFase(Math.min(ler<number>(JOGO, 'liberadas', 1), FASES_RODA.length) - 1));
+$('btn-pausa').addEventListener('click', alternarPausa);
+$('btn-continuar').addEventListener('click', alternarPausa);
+$('btn-sair').addEventListener('click', abrirTitulo);
+$('btn-seguir').addEventListener('click', seguir);
+$('btn-fim-creditos').addEventListener('click', abrirTitulo);
+$('btn-latido').addEventListener('pointerdown', (e) => { e.stopPropagation(); latir(); });
+$('btn-som').addEventListener('click', () => {
+  setMudo(!estaMudo());
+  gravar(JOGO, 'mudo', estaMudo());
+  volumeMusica(estaMudo());
+  $('btn-som').textContent = estaMudo() ? '🔇 Som' : '🔊 Som';
+});
+$('btn-compartilhar').addEventListener('click', async () => {
+  const r = await compartilhar(textoCompartilhar);
+  evento(JOGO, 'compartilhar', { resultado: r });
+  $('res-retorno').textContent = r === 'copiado' ? 'Copiado!' : r === 'falhou' ? textoCompartilhar : '';
+});
+{
+  const lc = ($('latido-cao') as HTMLCanvasElement).getContext('2d')!;
+  desenharSharPei(lc, 0, 0, 2, { pose: 'feliz' });
+}
+
+// Gancho de teste (só com #teste na URL): dá recrutas e expõe contadores.
+if (location.hash === '#teste') {
+  (window as unknown as { __roda: unknown }).__roda = {
+    estado: () => ({ x: jogador.x, y: jogador.y, fila: fila.length, rodas: rodasFechadas, greve: Math.round(greve), alvos: alvos.map((a) => Math.round(a.vida)), chefe: chefe?.vida ?? null, modo }),
+    dar: (n: number) => { for (let i = 0; i < n; i++) recrutar(novaPessoa()); },
+    chefe: () => { greve = 100; entrarChefe(); },
+    // Avança a simulação sem depender do requestAnimationFrame.
+    passo: (dt: number, ang: number | null) => { alvoAng = ang; atualizar(dt); },
+    ir: (x: number, y: number) => { jogador.x = x; jogador.y = y; rastro = [{ x, y }]; rastroDesde = 0; },
+    alvo: (i: number) => ({ x: alvos[i].x, y: alvos[i].y }),
+    chefePos: () => (chefe ? { x: chefe.x, y: chefe.y } : null),
+  };
+}
+
+ajustarTela();
+abrirTitulo();
+requestAnimationFrame(laco);
