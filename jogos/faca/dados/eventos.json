@@ -1,0 +1,212 @@
+[
+  {
+    "id": "sem-tomada",
+    "onde": "cidade",
+    "titulo": "Cadê a tomada?",
+    "texto": "A casa de show não tem tomada no palco. O dono jura que \"sempre funcionou\".",
+    "escolhas": [
+      { "texto": "Puxar extensão do bar do lado", "efeitos": { "grana": -10, "hype": 1 }, "resultado": "A extensão tinha 40 metros. O dono do bar virou fã." },
+      { "texto": "Tocar desplugado no meio do público", "efeitos": { "voz": -2, "hype": 2 }, "resultado": "Sem amplificador, só gogó. Ninguém esquece esse show." },
+      { "texto": "Ligar tudo no gerador da van", "efeitos": { "gasolina": -20, "clima": 1 }, "resultado": "A van virou palco, cozinha e camarim." }
+    ]
+  },
+  {
+    "id": "cerveja",
+    "onde": "cidade",
+    "titulo": "Cachê líquido",
+    "texto": "O dono do lugar quer pagar em cerveja.",
+    "escolhas": [
+      { "texto": "Aceitar a cerveja", "efeitos": { "clima": 2, "voz": -1 }, "resultado": "A banda nunca esteve tão unida. A voz, nem tanto." },
+      { "texto": "Insistir no dinheiro", "efeitos": { "grana": 15, "clima": -1 }, "resultado": "Ele pagou, resmungando. A volta foi em silêncio." },
+      { "texto": "Meio a meio", "efeitos": { "grana": 8, "clima": 1, "voz": -1 }, "resultado": "Metade em cerveja, metade em moeda de um real." }
+    ]
+  },
+  {
+    "id": "chao",
+    "onde": "cidade",
+    "titulo": "Chão pra dormir",
+    "texto": "Uma banda local oferece o chão da sala pra vocês dormirem.",
+    "escolhas": [
+      { "texto": "Aceitar e pagar o pão de manhã", "efeitos": { "voz": 2, "clima": 1, "grana": -5 }, "resultado": "Colchonete, gato no pé e café passado. Vida boa." },
+      { "texto": "Ir pro after com eles", "efeitos": { "hype": 2, "voz": -2 }, "resultado": "Ninguém dormiu. Todo mundo da cidade agora conhece a banda." }
+    ]
+  },
+  {
+    "id": "zine",
+    "onde": "cidade",
+    "titulo": "Entrevista às 8 da manhã",
+    "texto": "Um zine local quer entrevistar a banda. Às 8 da manhã. Depois do show.",
+    "escolhas": [
+      { "texto": "Vai todo mundo", "efeitos": { "hype": 2, "clima": -1, "voz": -1 }, "resultado": "A foto saiu com metade da banda de olho fechado." },
+      { "texto": "Manda só o vocal", "efeitos": { "hype": 1, "voz": -1 }, "resultado": "Ele falou de política por 40 minutos." },
+      { "texto": "Dormir", "efeitos": { "voz": 1, "hype": -1 }, "resultado": "O zine saiu com uma ilustração de vocês dormindo." }
+    ]
+  },
+  {
+    "id": "grupo-tudo",
+    "onde": "cidade",
+    "minNoite": 3,
+    "titulo": "Proposta do Grupo Tudo S.A.",
+    "texto": "Um executivo do Grupo Tudo S.A. viu o show. Quer a banda num comercial de energético. O cheque já está assinado.",
+    "escolhas": [
+      { "texto": "Assinar", "efeitos": { "grana": 60, "hype": -3 }, "flag": "vendido", "resultado": "O cheque compensou. Na cena, ninguém mais olha na sua cara." },
+      { "texto": "Rasgar o contrato no palco", "efeitos": { "hype": 3, "voz": -1 }, "resultado": "O vídeo rodou o país. O executivo pediu reembolso da cerveja." }
+    ]
+  },
+  {
+    "id": "radio",
+    "onde": "cidade",
+    "titulo": "Rádio comunitária",
+    "texto": "A rádio do bairro chama a banda pra tocar ao vivo no programa da tarde.",
+    "escolhas": [
+      { "texto": "Tocar acústico no estúdio", "efeitos": { "hype": 2, "voz": -1 }, "resultado": "O locutor pediu bis. A vizinha ligou reclamando." },
+      { "texto": "Deixar a demo gravada", "efeitos": { "hype": 1, "grana": -5 }, "resultado": "Tocou entre um forró e o horóscopo." }
+    ]
+  },
+  {
+    "id": "vinil",
+    "onde": "cidade",
+    "titulo": "Feira de vinil",
+    "texto": "Feira de vinil na praça. Dá pra montar banca de merch ou gastar o que não tem.",
+    "escolhas": [
+      { "texto": "Montar banca de merch", "efeitos": { "grana": 20, "clima": -1 }, "resultado": "Vendeu tudo. Alguém ficou de castigo na banca o dia inteiro." },
+      { "texto": "Trocar camiseta por disco", "efeitos": { "clima": 2, "grana": -10 }, "resultado": "A van agora tem trilha sonora nova." }
+    ]
+  },
+  {
+    "id": "fa-palco",
+    "onde": "cidade",
+    "titulo": "Posso cantar uma?",
+    "texto": "Uma fã pergunta se pode cantar uma música com vocês no show de amanhã.",
+    "escolhas": [
+      { "texto": "Topar", "efeitos": { "clima": -1 }, "carta": "cantajunto", "resultado": "O guitarrista não gostou da ideia. A plateia adorou." },
+      { "texto": "Recusar com jeito", "efeitos": { "hype": -1, "voz": 1 }, "resultado": "Ela entendeu. O Instagram dela, nem tanto." }
+    ]
+  },
+  {
+    "id": "cancelado",
+    "onde": "cidade",
+    "titulo": "Casa interditada",
+    "texto": "O show de hoje foi cancelado: a casa foi interditada de manhã.",
+    "escolhas": [
+      { "texto": "Fazer o show na calçada", "efeitos": { "hype": 2, "voz": -1 }, "sorte": { "chance": 0.35, "efeitos": { "grana": -15 }, "resultado": "O rapa levou a caixa de som. Fiança de R$ 15." }, "resultado": "Juntou gente, juntou cachorro, juntou vizinho." },
+      { "texto": "Tirar a noite de folga", "efeitos": { "voz": 2, "clima": 1, "hype": -1 }, "resultado": "Pizza, sofá e ninguém falando de música." }
+    ]
+  },
+  {
+    "id": "mae",
+    "onde": "cidade",
+    "titulo": "Almoço de mãe",
+    "texto": "A mãe do baterista mora a 30 km e quer fazer almoço pra banda inteira.",
+    "escolhas": [
+      { "texto": "Desviar a rota", "efeitos": { "gasolina": -15, "clima": 2, "voz": 1 }, "resultado": "Feijoada, marmita pra viagem e um sermão sobre emprego fixo." },
+      { "texto": "Prometer passar na volta", "efeitos": { "clima": -1, "hype": 1 }, "resultado": "Chegaram cedo pra passagem de som. O baterista ficou quieto." }
+    ]
+  },
+  {
+    "id": "selo",
+    "onde": "cidade",
+    "titulo": "Lançamento em fita",
+    "texto": "Um selo independente quer lançar a demo de vocês em fita cassete.",
+    "escolhas": [
+      { "texto": "Topar e bancar a capa", "efeitos": { "grana": -20, "hype": 3 }, "resultado": "Cem cópias numeradas à mão. Esgotou em dois shows." },
+      { "texto": "Pedir adiantamento", "efeitos": { "grana": 15, "hype": -1 }, "resultado": "O selo pagou. E contou pra todo mundo que vocês são chatos." }
+    ]
+  },
+  {
+    "id": "barulho",
+    "onde": "estrada",
+    "momento": "van",
+    "titulo": "A van faz um barulho novo",
+    "texto": "Um barulho que ninguém nunca tinha ouvido. Um clec-clec-fiuuu.",
+    "escolhas": [
+      { "texto": "Parar no mecânico", "efeitos": { "grana": -15, "clima": 1 }, "resultado": "Era a correia. Era sempre a correia." },
+      { "texto": "Aumentar o volume do rádio", "efeitos": { "clima": 1, "voz": -1 }, "sorte": { "chance": 0.5, "efeitos": { "gasolina": -30, "clima": -2 }, "resultado": "O barulho virou silêncio. A van parou. Gasolina pro guincho." }, "resultado": "O barulho sumiu. Ou o rádio ganhou." },
+      { "texto": "O baterista dá um jeito", "requer": "conserto", "efeitos": { "clima": 2 }, "resultado": "Arame, fita e fé. Funcionou. (O conserto da turnê foi usado.)" }
+    ]
+  },
+  {
+    "id": "correia",
+    "onde": "estrada",
+    "momento": "van",
+    "titulo": "Alguém sabe trocar correia?",
+    "texto": "3 da manhã. Acostamento. A van parou e não quer mais.",
+    "escolhas": [
+      { "texto": "Esperar o guincho", "efeitos": { "grana": -25, "voz": 1 }, "resultado": "Quatro horas dormindo na beira da estrada." },
+      { "texto": "Vídeo tutorial no celular", "efeitos": { "clima": -2, "hype": 1 }, "resultado": "Duas horas e uma briga depois, funcionou. A live do conserto viralizou." },
+      { "texto": "O baterista conserta", "requer": "conserto", "efeitos": { "clima": 2 }, "resultado": "Ele trocou a correia com uma lanterna na boca. Herói. (O conserto da turnê foi usado.)" }
+    ]
+  },
+  {
+    "id": "blitz",
+    "onde": "estrada",
+    "titulo": "Blitz",
+    "texto": "Blitz da polícia rodoviária. O pneu de trás está careca.",
+    "escolhas": [
+      { "texto": "Pagar a multa", "efeitos": { "grana": -20, "clima": 1 }, "resultado": "Ninguém foi preso. Todo mundo riu de nervoso." },
+      { "texto": "Cantar uma pro guarda", "efeitos": { "hype": 1, "voz": -1 }, "sorte": { "chance": 0.5, "efeitos": { "grana": -30 }, "resultado": "Ele não era fã. Multa dobrada." }, "resultado": "O guarda era fã de hardcore. Pediu foto." }
+    ]
+  },
+  {
+    "id": "carona",
+    "onde": "estrada",
+    "titulo": "Banda na estrada",
+    "texto": "Uma banda com a van quebrada pede carona até a próxima cidade.",
+    "escolhas": [
+      { "texto": "Levar todo mundo", "efeitos": { "gasolina": -15, "hype": 2, "clima": -1 }, "resultado": "Oito pessoas, dois amplificadores e um contrabaixo no colo." },
+      { "texto": "Levar e cobrar a gasolina", "efeitos": { "grana": 10, "hype": -1 }, "resultado": "Pagaram certinho. Falaram mal de vocês no próximo show." }
+    ]
+  },
+  {
+    "id": "pastel",
+    "onde": "estrada",
+    "titulo": "Pastel de rodoviária",
+    "texto": "4 da manhã. Rodoviária. O pastel está ali desde ontem, talvez anteontem.",
+    "escolhas": [
+      { "texto": "Comer", "efeitos": { "clima": 2, "grana": -5 }, "sorte": { "chance": 0.25, "efeitos": { "voz": -2 }, "resultado": "O pastel cobrou a conta na hora do show." }, "resultado": "Melhor pastel da vida. Ninguém sabe do que era." },
+      { "texto": "Seguir com fome", "efeitos": { "clima": -1, "voz": 1 }, "resultado": "Silêncio na van. Pelo menos a garganta descansou." }
+    ]
+  },
+  {
+    "id": "baqueta",
+    "onde": "estrada",
+    "titulo": "A última baqueta",
+    "texto": "A última baqueta quebrou no ensaio do posto.",
+    "escolhas": [
+      { "texto": "Comprar no posto", "efeitos": { "grana": -10, "clima": 1 }, "resultado": "Era baqueta de criança, rosa e com glitter. Serviu." },
+      { "texto": "Tocar com colher de pau", "efeitos": { "hype": 1, "clima": -1 }, "resultado": "Virou marca registrada. O baterista odiou." }
+    ]
+  },
+  {
+    "id": "posto",
+    "onde": "estrada",
+    "titulo": "Posto no meio do nada",
+    "texto": "Gasolina pela metade do preço. O frentista olha estranho.",
+    "escolhas": [
+      { "texto": "Encher o tanque", "efeitos": { "gasolina": 40, "grana": -10 }, "sorte": { "chance": 0.3, "efeitos": { "clima": -2 }, "resultado": "A van tossiu a viagem inteira. Todo mundo de mau humor." }, "resultado": "Tanque cheio, preço de banana." },
+      { "texto": "Procurar outro posto", "efeitos": { "gasolina": -10, "voz": 1 }, "resultado": "Vinte quilômetros a mais, todo mundo cochilou." }
+    ]
+  },
+  {
+    "id": "afinacao",
+    "onde": "estrada",
+    "titulo": "Briga por afinação",
+    "texto": "O guitarrista diz que o baixo está meio tom abaixo desde 2019.",
+    "escolhas": [
+      { "texto": "Trocar todas as cordas", "efeitos": { "clima": -1, "grana": -5 }, "remover": "corda", "resultado": "Encordoamento novo. Nunca mais Corda estourou (nessa turnê)." },
+      { "texto": "Ligar o rádio bem alto", "efeitos": { "clima": 1, "voz": -1 }, "resultado": "Cantaram junto com o rádio até esquecer a briga." }
+    ]
+  },
+  {
+    "id": "sharpei",
+    "onde": "show",
+    "raro": true,
+    "momento": "sharpei",
+    "titulo": "Visita no palco",
+    "texto": "No meio do show, um cachorro enrugado subiu no palco, sentou do lado da bateria e não quis mais descer.",
+    "escolhas": [
+      { "texto": "Adotar como mascote da turnê", "efeitos": { "hype": 2, "grana": -10 }, "flag": "mascote", "resultado": "Ração, coleira de rebite e um lugar no banco da frente. Agora ele vai em todo show." },
+      { "texto": "Procurar o dono", "efeitos": { "clima": 1, "grana": 5, "gasolina": -10 }, "resultado": "Rodaram a cidade inteira. A dona chorou de alegria e pagou um pastel pra cada um." }
+    ]
+  }
+]

@@ -233,7 +233,64 @@ def roda():
     titulo(d, 'RODA', 40, 40, 12, PAL['neon_rosa'], sombra=PAL['neon_ciano'])
     return img
 
-GERADORES = {'pixo': pixo, 'dobra': dobra, 'roda': roda}
+# ─── FAÇA VOCÊ MESMO ───────────────────────────────────────────
+def integrante_faca(nome):
+    src = (J / 'faca/cena.ts').read_text()
+    base = {k: PAL[v] for k, v in re.findall(r"(\w): P\.(\w+)", re.search(r"const CORPO_BASE[^{]*\{([^}]*)\}", src).group(1))}
+    m = re.search(r"  " + nome + r": \{\s+arte: \[\n((?:\s+'[^']*',\n)+)\s+\],\s+cores: \{([^}]*)\}", src)
+    cores = dict(base)
+    cores.update({k: PAL[v] for k, v in re.findall(r"(\w): P\.(\w+)", m.group(2))})
+    return re.findall(r"'([^']*)'", m.group(1)), cores
+
+def carta_faca(img, x, y, nome, efeito, cor, angulo, custo):
+    w, h = 150, 210
+    c = Image.new('RGBA', (w + 12, h + 12), (0, 0, 0, 0))
+    d = ImageDraw.Draw(c)
+    d.rectangle([6, 10, w + 6, h + 10], fill=(22, 20, 15, 255))
+    d.rectangle([0, 4, w, h + 4], fill=rgb('#ebe5d6'), outline=(22, 20, 15), width=3)
+    d.rectangle([0, 4, w, 16], fill=rgb(cor))
+    f1 = ImageFont.truetype(FONTE, 19)
+    f2 = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 14)
+    d.text((14, 28), nome, font=f1, fill=(22, 20, 15))
+    yy = 64
+    for linha in efeito:
+        d.text((14, yy), linha, font=f2, fill=(22, 20, 15))
+        yy += 20
+    d.ellipse([w - 34, 22, w - 8, 48], fill=rgb(PAL['ceu']), outline=(22, 20, 15), width=2)
+    d.text((w - 26, 26), str(custo), font=f1, fill=(22, 20, 15))
+    c = c.rotate(angulo, expand=True, resample=Image.BICUBIC)
+    img.paste(c, (x, y), c)
+
+def faca():
+    img = fundo('#2a2238', PAL['preto'])
+    d = ImageDraw.Draw(img)
+    # palco e luzes
+    for x in range(10, 800, 26):
+        d.rectangle([x, 18 + (x // 26 % 2) * 4, x + 6, 24 + (x // 26 % 2) * 4], fill=rgb([PAL['neon_rosa'], PAL['amarelo'], PAL['neon_ciano']][x // 26 % 3]))
+    d.rectangle([0, 300, 800, 450], fill=rgb(PAL['chocolate']))
+    for x in range(0, 800, 60):
+        d.line([(x, 300), (x, 450)], fill=rgb(PAL['ruga']), width=3)
+    x = 396
+    for nome in ['guitarra', 'vocal', 'baixo']:
+        arte, cores = integrante_faca(nome)
+        pinta(img, arte, cores, x, 202, 7)
+        x += 96
+    sharpei(img, 682, 188, 7, pose='feliz', acessorios=('oculos',))
+    # mão de cartas
+    carta_faca(img, 372, 300, 'Breakdown', ['Dobra a energia', 'da próxima', 'música'], PAL['vermelho'], 8, 1)
+    carta_faca(img, 515, 288, 'Mosh', ['+4; depois de', 'Breakdown, +10'], PAL['vermelho'], -3, 2)
+    carta_faca(img, 648, 306, 'Discurso', ['+2 hype'], PAL['ceu'], -11, 1)
+    # título em tiras de papel
+    for i, (txt, cor) in enumerate([('FAÇA', '#ebe5d6'), ('VOCÊ', PAL['amarelo']), ('MESMO', '#ebe5d6')]):
+        px = 9
+        y = 60 + i * 92
+        wl = largura_titulo(txt, px)
+        d.rectangle([40 + 8, y - 12 + 8, 40 + wl + 28 + 8, y + 7 * px + 12 + 8], fill=rgb(PAL['neon_rosa']))
+        d.rectangle([40, y - 12, 40 + wl + 28, y + 7 * px + 12], fill=rgb(cor))
+        titulo(d, txt, 54, y, px, '#16140f')
+    return img
+
+GERADORES = {'pixo': pixo, 'dobra': dobra, 'roda': roda, 'faca': faca}
 
 if __name__ == '__main__':
     for nome in sys.argv[1:] or GERADORES:

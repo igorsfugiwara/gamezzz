@@ -17,6 +17,13 @@ export default function GameFrame({ src, title }: GameFrameProps) {
   // `requestFullscreen` em iframe, então lá o botão nativo não faz nada.
   const [imersivo, setImersivo] = useState(false);
 
+  // Jogos do próprio portal recebem a query da página (ex.: ?seed= de uma
+  // turnê compartilhada no Faça Você Mesmo).
+  const [url, setUrl] = useState(src);
+  useEffect(() => {
+    setUrl(src.startsWith('/') && window.location.search ? src + window.location.search : src);
+  }, [src]);
+
   const entrar = useCallback(() => {
     const alvo = wrapperRef.current;
     // Em tela de toque o modo CSS é melhor de propósito: a barra do navegador
@@ -88,7 +95,7 @@ export default function GameFrame({ src, title }: GameFrameProps) {
       <div className={styles.container}>
         <iframe
           ref={iframeRef}
-          src={src}
+          src={url}
           title={title}
           width="100%"
           height="100%"
