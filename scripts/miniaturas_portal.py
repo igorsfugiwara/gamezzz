@@ -206,31 +206,25 @@ def pinta(img, arte, cores, x, y, px):
 
 def roda():
     import math
+    sp = sprites()
     img = fundo('#1a1426', '#2b2233')
     d = ImageDraw.Draw(img)
-    # asfalto com faixa de pedestre
     d.rectangle([0, 300, 800, 450], fill=rgb(PAL['asfalto']))
     for x in range(20, 800, 60):
-        d.rectangle([x, 370, x + 34, 380], fill=rgb(PAL['neblina']))
+        d.rectangle([x, 372, x + 34, 380], fill=rgb(PAL['neblina']))
     pinta(img, *sprite_roda('PREDIO'), 470, 40, 9)
-    # o rastro da roda: elipse no chão em volta do Proprietário
-    cx, cy, rx, ry = 560, 300, 210, 92
+    cx, cy, rx, ry = 570, 330, 220, 70
     d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], outline=rgb(PAL['neon_rosa']), width=4)
+    povo = sp['roda']['povo']
     pessoas = []
-    for i in range(26):
-        a = i / 26 * 2 * math.pi + 0.4
-        pessoas.append((math.sin(a), cx + math.cos(a) * rx - 16, cy + math.sin(a) * ry - 44, i))
+    for i in range(16):
+        a = i / 16 * 2 * math.pi + 0.3
+        pessoas.append((math.sin(a), cx + math.cos(a) * rx, cy + math.sin(a) * ry, i))
     for z, x, y, i in sorted(pessoas):
-        if z < 0:
-            pinta(img, *pessoa_roda(i * 13 + 5, 'motoboy' if i % 7 == 3 else 'povo'), x, y, 4)
-    pinta(img, *sprite_roda('PROPRIETARIO'), cx - 36, cy - 76, 6)
-    for z, x, y, i in sorted(pessoas):
-        if z >= 0:
-            pinta(img, *pessoa_roda(i * 13 + 5, 'motoboy' if i % 7 == 3 else 'povo'), x, y, 4)
-    pinta(img, *sprite_roda('VOCAL'), cx + rx - 30, cy - 20, 5)
-    pinta(img, *sprite_roda('BOLETO'), cx - 120, cy - 150, 5)
-    pinta(img, *sprite_roda('PLACA'), 120, 250, 6)
-    sharpei(img, 40, 330, 6, pose='feliz', acessorios=('oculos',))
+        g = povo[i % len(povo)]
+        colar_grade(img, g, int(x - g['w']), int(y - g['h'] * 2), 2)
+    v = sp['roda']['vocal']
+    colar_grade(img, v, 60, 400 - v['h'] * 3, 3)
     titulo(d, 'RODA', 40, 40, 12, PAL['neon_rosa'], sombra=PAL['neon_ciano'])
     return img
 

@@ -128,21 +128,21 @@ export function deTexto(arte: readonly string[], cores: Record<string, string>):
 }
 
 /**
- * Amplia 2× uma arte simples e dá acabamento: luz na borda de cima/esquerda,
- * sombra embaixo/direita e contorno preto. Deixa cenário antigo na mesma
- * densidade de pixel dos bonecos.
+ * Amplia `k`× uma arte simples e dá acabamento: luz na borda de
+ * cima/esquerda, sombra embaixo/direita e contorno preto. Deixa cenário
+ * antigo na mesma densidade de pixel dos bonecos.
  */
-export function refinar(g: Grade, clarear: (c: string) => string = (c) => c, escurecer: (c: string) => string = (c) => c): Grade {
-  const out = novaGrade(g.w * 2 + 2, g.h * 2 + 2);
+export function refinar(g: Grade, k = 2): Grade {
+  const out = novaGrade(g.w * k + 2, g.h * k + 2);
   for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
     const c = ler(g, x, y);
     if (!c) continue;
     const topo = !ler(g, x, y - 1), esq = !ler(g, x - 1, y), base = !ler(g, x, y + 1), dir = !ler(g, x + 1, y);
-    for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) {
+    for (let j = 0; j < k; j++) for (let i = 0; i < k; i++) {
       let cor = c;
       if ((topo && j === 0) || (esq && i === 0)) cor = clarear(c);
-      if ((base && j === 1) || (dir && i === 1)) cor = escurecer(c);
-      px(out, 1 + x * 2 + i, 1 + y * 2 + j, cor);
+      if ((base && j === k - 1) || (dir && i === k - 1)) cor = escurecer(c);
+      px(out, 1 + x * k + i, 1 + y * k + j, cor);
     }
   }
   return contornar(out);

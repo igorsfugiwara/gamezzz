@@ -3,12 +3,11 @@ import './estilo.css';
 import { detectarRoda, pontoNoPoligono, dist2, type Ponto } from './geometria';
 import { FASES_RODA, VIDA_ALVO, type FaseRoda, type TipoAlvo } from './fases';
 import {
-  spritePessoa, SEGURANCA, SEGURANCA_TONTO, VOCAL, PREDIO, CATRACA, VIATURA, PLACA, BOLETO,
+  spritePessoa, spriteVocal, desenharSprite, ESC_ARTE, SEGURANCA, SEGURANCA_TONTO, PREDIO, CATRACA, VIATURA, PLACA, BOLETO,
   PROPRIETARIO, ALGORITMO, ALGORITMO_COPIA, OCUPACAO, arteParaSprite, type Sprite, type TipoPessoa,
 } from './sprites';
 import { nomeDoRecruta } from './nomes';
 import { iniciarMusica, pararMusica, cortarEVoltar, ajustarCamadas, volumeMusica } from './musica';
-import { desenharSharPei } from '../compartilhado/sharpei';
 import { PALETA as P } from '../compartilhado/paleta';
 import { ler, gravar } from '../compartilhado/salvar';
 import { compartilhar } from '../compartilhado/compartilhar';
@@ -25,15 +24,15 @@ const GIRO = 5.2;            // rad/s
 const AMOSTRA = 2;           // distância entre pontos do rastro
 const ESPACO = 4;            // pontos de rastro entre um recruta e o próximo
 const AREA_MINIMA = 160;     // roda menor que isso é tremida
-const LATIDO_RECARGA = 20;   // s (PRD)
-const LATIDO_RAIO = 52;
+const GRITO_RECARGA = 20;    // s (PRD)
+const GRITO_RAIO = 52;
 
 setMudo(ler<boolean>(JOGO, 'mudo', false));
 destravarAudio();
 
 // ─── Tipos ────────────────────────────────────────────────
-interface Pessoa { x: number; y: number; vx: number; vy: number; tipo: TipoPessoa; sprite: Sprite; troca: number; pombo?: boolean }
-interface Recruta { tipo: TipoPessoa | 'pombo'; sprite: Sprite; nome: string }
+interface Pessoa { x: number; y: number; vx: number; vy: number; tipo: TipoPessoa; semente: number; troca: number; pombo?: boolean }
+interface Recruta { tipo: TipoPessoa | 'pombo'; semente: number; nome: string }
 interface Seguranca { x: number; y: number; tonto: number; ox: number; oy: number; grupo: number }
 interface Alvo { tipo: TipoAlvo; x: number; y: number; vida: number; max: number; caido: number; sprite: Sprite }
 interface Particula { x: number; y: number; vx: number; vy: number; cor: string; vida: number; tam: number }
@@ -68,8 +67,10 @@ let tempo = 0;
 let maiorRoda = 0;
 let rodasFechadas = 0;
 let primeiraRoda = true;
-let latidoPronto = 0;
-let latidoAnim = 0;
+let gritoPronto = 0;
+let gritoAnim = 0;
+/** Zerou o jogo: o Vocal anda de óculos escuros. */
+let oculosDoVocal = ler<boolean>(JOGO, 'oculos', false);
 let contadorGrupo = 0;
 let limites = { x0: 0, y0: 0, x1: 0, y1: 0 };
 let recrutados: string[] = [];
@@ -87,22 +88,25 @@ let boletos: { x: number; y: number; vx: number; vy: number }[] = [];
 let viaturaChefe: { x: number; y: number; vx: number; vy: number; aviso: number } | null = null;
 let zonasDemanda: { x: number; y: number; w: number; h: number }[] = [];
 
-// ─── Canvas em baixa resolução, escalado em inteiro ───────
+// ─── Canvas na resolução da tela; o mundo mostra a mesma janela de sempre ──
 const tela = $('tela') as HTMLCanvasElement;
 const ctx = tela.getContext('2d')!;
+/** Janela do mundo em unidades (o que cabe na tela no zoom 1). */
 let W = 320, H = 180;
+/** Pixels do canvas por unidade do mundo no zoom 1. */
+let ESC = 1;
 
 function ajustarTela() {
   const r = tela.getBoundingClientRect();
   const retrato = r.height > r.width;
-  W = retrato ? 180 : 320;
-  H = retrato ? 320 : 180;
-  // Escala inteira que cabe; a sobra vira área extra de mapa (sem tarja).
-  const escala = Math.max(1, Math.floor(Math.min(r.width / W, r.height / H)));
-  W = Math.ceil(r.width / escala);
-  H = Math.ceil(r.height / escala);
-  tela.width = W;
-  tela.height = H;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  tela.width = Math.max(1, Math.round(r.width * dpr));
+  tela.height = Math.max(1, Math.round(r.height * dpr));
+  // Mesmo pedaço de mundo de antes (180×320 em pé, 320×180 deitado), agora com
+  // os bonecos em 3 pixels de arte por unidade: dá para ver o detalhe.
+  ESC = Math.max(1, Math.min(tela.width / (retrato ? 180 : 320), tela.height / (retrato ? 320 : 180)));
+  W = tela.width / ESC;
+  H = tela.height / ESC;
   ctx.imageSmoothingEnabled = false;
 }
 window.addEventListener('resize', ajustarTela);
@@ -153,7 +157,7 @@ function novaPessoa(): Pessoa {
   const semente = Math.floor(Math.random() * 1000);
   return {
     x: aleatorio(limites.x0 + 10, limites.x1 - 10), y: aleatorio(limites.y0 + 10, limites.y1 - 10),
-    vx: aleatorio(-10, 10), vy: aleatorio(-10, 10), tipo, sprite: spritePessoa(tipo, semente), troca: aleatorio(1, 4),
+    vx: aleatorio(-10, 10), vy: aleatorio(-10, 10), tipo, semente, troca: aleatorio(1, 4),
   };
 }
 
@@ -170,13 +174,13 @@ function iniciarFase(i: number) {
   fila = []; recrutados = [];
   povo = Array.from({ length: fase.povo }, novaPessoa);
   // O pombo secreto: passe por ele três vezes e ele entra na roda valendo por dez.
-  povo.push({ x: (limites.x0 + limites.x1) / 2 + 60, y: limites.y0 + 30, vx: 0, vy: 0, tipo: 'povo', sprite: POMBO, troca: 99, pombo: true });
+  povo.push({ x: (limites.x0 + limites.x1) / 2 + 60, y: limites.y0 + 30, vx: 0, vy: 0, tipo: 'povo', semente: -1, troca: 99, pombo: true });
   pomboPassadas = 0; pomboEspera = 0;
   segurancas = [];
   alvos = fase.alvos.map((a) => ({ ...a, vida: VIDA_ALVO[a.tipo], max: VIDA_ALVO[a.tipo], caido: 0, sprite: a.tipo === 'predio' ? PREDIO : a.tipo === 'catraca' ? CATRACA : VIATURA }));
   particulas = []; textos = [];
   greve = 0; invulneravel = 0; lento = 0; invertido = 0; pausaImpacto = 0;
-  tempo = 0; maiorRoda = 0; rodasFechadas = 0; latidoPronto = 0; contadorGrupo = 0;
+  tempo = 0; maiorRoda = 0; rodasFechadas = 0; gritoPronto = 0; contadorGrupo = 0;
   chefe = null; placas = []; boletos = []; viaturaChefe = null; zonasDemanda = [];
   camera = { x: jogador.x, y: jogador.y, zoom: 1 };
   modo = 'jogando';
@@ -216,9 +220,9 @@ const tutorial = new Tutorial(JOGO, [
     alvo: () => { const a = maisPerto(alvos.filter((x) => !x.caido)); return a && naTela(a, 4); }, ok: () => alvos.some((a) => a.vida < a.max) },
   { id: 'seguranca', texto: 'Segurança corta sua fila! Fuja dele ou cerque numa roda.', lugar: 'topo',
     quando: () => jogando() && segurancas.length > 0, alvo: () => { const g = maisPerto(segurancas); return g && naTela(g); }, segundos: 5 },
-  { id: 'latido', texto: 'Late! O Shar Pei atordoa quem estiver perto.', luz: true,
-    quando: () => jogando() && latidoPronto === 0 && segurancas.some((g) => !g.tonto && dist2(g, jogador) < 90 ** 2),
-    alvo: () => $('btn-latido'), ok: () => latidoAnim > 0, segundos: 8 },
+  { id: 'latido', texto: 'Grite! O berro do Vocal atordoa quem estiver perto.', luz: true,
+    quando: () => jogando() && gritoPronto === 0 && segurancas.some((g) => !g.tonto && dist2(g, jogador) < 90 ** 2),
+    alvo: () => $('btn-latido'), ok: () => gritoAnim > 0, segundos: 8 },
 ]);
 
 // ─── Entrada ──────────────────────────────────────────────
@@ -226,7 +230,7 @@ const teclas = new Set<string>();
 window.addEventListener('keydown', (e) => {
   teclas.add(e.key.toLowerCase());
   if (e.key.startsWith('Arrow')) e.preventDefault();
-  if (e.key === ' ' || e.key.toLowerCase() === 'e') { e.preventDefault(); latir(); }
+  if (e.key === ' ' || e.key.toLowerCase() === 'e') { e.preventDefault(); gritar(); }
   if (e.key === 'Escape' || e.key.toLowerCase() === 'p') alternarPausa();
 });
 window.addEventListener('keyup', (e) => teclas.delete(e.key.toLowerCase()));
@@ -269,8 +273,8 @@ function atualizar(dt: number) {
   invulneravel = Math.max(0, invulneravel - dt);
   lento = Math.max(0, lento - dt);
   invertido = Math.max(0, invertido - dt);
-  latidoPronto = Math.max(0, latidoPronto - dt);
-  latidoAnim = Math.max(0, latidoAnim - dt);
+  gritoPronto = Math.max(0, gritoPronto - dt);
+  gritoAnim = Math.max(0, gritoAnim - dt);
   tremor = Math.max(0, tremor - dt * 8);
 
   // Direção e velocidade
@@ -336,13 +340,13 @@ function posicaoNaFila(i: number): Ponto {
 function recrutar(p: Pessoa) {
   const tipo: Recruta['tipo'] = p.pombo ? 'pombo' : p.tipo;
   if (p.pombo) {
-    for (let i = 0; i < 10; i++) fila.push({ tipo: 'pombo', sprite: POMBO, nome: 'Pombo da Sé, pombo' });
+    for (let i = 0; i < 10; i++) fila.push({ tipo: 'pombo', semente: -1, nome: 'Pombo da Sé, pombo' });
     recrutados.push('Pombo da Sé, pombo (vale por dez)');
     texto(p.x, p.y - 8, '+10 POMBO!', P.neon_verde);
     arpejo([523, 659, 784, 1047, 1319], 0.05, 'square', 0.05);
   } else {
     const nome = nomeDoRecruta(recrutados.length, p.tipo);
-    fila.push({ tipo, sprite: p.sprite, nome });
+    fila.push({ tipo, semente: p.semente, nome });
     recrutados.push(nome);
     // Cada tipo entra de um jeito: a tia larga o carrinho, o motoboy derrapa.
     if (p.tipo === 'tia') explodir(p.x, p.y, 6, [P.amarelo, P.folha, P.laranja]);
@@ -580,7 +584,7 @@ function atualizarChefe(dt: number) {
     if (dist2(pl, jogador) < 49 && invulneravel === 0) { perderDaFila(1, 'placa'); explodir(pl.x, pl.y, 8, [P.amarelo, P.vermelho]); return false; }
     return true;
   });
-  // Boletos voadores grudam e deixam tudo lento. O latido espanta.
+  // Boletos voadores grudam e deixam tudo lento. O grito espanta.
   boletos = boletos.filter((b) => {
     b.x += b.vx * dt; b.y += b.vy * dt;
     if (dist2(b, jogador) < 64) { lento = 2.5; texto(jogador.x, jogador.y - 12, 'boleto!', P.branco); nota(150, 0.15, 'sawtooth', 0.04); return false; }
@@ -632,25 +636,20 @@ function danoAoChefe(poligono: Ponto[], dano: number) {
   atualizarHud();
 }
 
-// ─── Latido do Shar Pei ───────────────────────────────────
+// ─── Grito do Vocal ───────────────────────────────────────
 
-function latir() {
-  if (modo !== 'jogando' || latidoPronto > 0) return;
-  latidoPronto = LATIDO_RECARGA;
-  latidoAnim = 0.6;
-  const cao = posicaoCao();
+function gritar() {
+  if (modo !== 'jogando' || gritoPronto > 0) return;
+  gritoPronto = GRITO_RECARGA;
+  gritoAnim = 0.6;
   let atordoados = 0;
-  for (const s of segurancas) if (dist2(s, cao) < LATIDO_RAIO ** 2) { s.tonto = 3; atordoados++; }
-  boletos = boletos.filter((b) => dist2(b, cao) > LATIDO_RAIO ** 2);
-  nota(520, 0.06, 'square', 0.08); nota(390, 0.09, 'square', 0.08, 0.07);
-  if (atordoados) texto(cao.x, cao.y - 14, 'AU!', P.amarelo);
-  vibrar(20);
-}
-
-function posicaoCao(): Ponto {
-  // Parceiro: anda ao lado da cabeça, um pouco atrás.
-  const p = rastro[Math.max(0, rastro.length - 1 - 3)];
-  return { x: p.x + Math.cos(jogador.ang + Math.PI / 2) * 10, y: p.y + Math.sin(jogador.ang + Math.PI / 2) * 10 };
+  for (const s of segurancas) if (dist2(s, jogador) < GRITO_RAIO ** 2) { s.tonto = 3; atordoados++; }
+  boletos = boletos.filter((b) => dist2(b, jogador) > GRITO_RAIO ** 2);
+  // Gutural: ruído grave filtrado com um rosnado por baixo.
+  ruido(0.5, 0.14, 700); nota(82, 0.45, 'sawtooth', 0.07); nota(87, 0.45, 'sawtooth', 0.05);
+  texto(jogador.x, jogador.y - 24, atordoados ? 'AAARGH!' : 'ARGH!', P.amarelo);
+  tremor = 0.6;
+  vibrar(25);
 }
 
 // ─── Partículas e textos ──────────────────────────────────
@@ -675,7 +674,8 @@ function atualizarParticulas(dt: number) {
 // ─── Desenho ──────────────────────────────────────────────
 
 function desenhar() {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(ESC, 0, 0, ESC, 0, 0);
+  ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = fase?.cores.ceu ?? P.preto;
   ctx.fillRect(0, 0, W, H);
   if (!fase || !chao) return;
@@ -687,7 +687,8 @@ function desenhar() {
   if (vh > fase.arena.h + 80) cy = (fase.arena.h + 80) / 2;
   vista = { cx, cy, z };
   const tr = tremor > 0 ? (Math.random() - 0.5) * tremor * 4 : 0;
-  ctx.setTransform(z, 0, 0, z, Math.round(W / 2 - cx * z + tr), Math.round(H / 2 - cy * z + tr));
+  const k = z * ESC;
+  ctx.setTransform(k, 0, 0, k, Math.round((W / 2 - cx * z + tr) * ESC), Math.round((H / 2 - cy * z + tr) * ESC));
 
   ctx.drawImage(chao, 0, 0);
   // Bordas que fecham (aluguel subindo).
@@ -708,7 +709,7 @@ function desenhar() {
     const s = a.caido && a.tipo === 'predio' ? OCUPACAO : a.sprite;
     if (a.caido && a.tipo !== 'predio') continue;
     const treme = !a.caido && a.vida < a.max ? (Math.random() - 0.5) * (1 - a.vida / a.max) * 2 : 0;
-    ctx.drawImage(s, Math.round(a.x - s.width / 2 + treme), Math.round(a.y - s.height + 4));
+    desenharSprite(ctx, s, a.x + treme, a.y + 4);
     if (!a.caido && a.vida < a.max) {
       ctx.fillStyle = P.preto; ctx.fillRect(a.x - 10, a.y + 6, 20, 2);
       ctx.fillStyle = P.vermelho; ctx.fillRect(a.x - 10, a.y + 6, 20 * (a.vida / a.max), 2);
@@ -726,17 +727,17 @@ function desenhar() {
     }
   }
 
-  for (const pl of placas) ctx.drawImage(PLACA, Math.round(pl.x - 4), Math.round(pl.y - 7));
+  for (const pl of placas) desenharSprite(ctx, PLACA, pl.x, pl.y);
 
   // Povo
   for (const p of povo) {
-    if (p.pombo) { ctx.drawImage(POMBO, Math.round(p.x - 4), Math.round(p.y - 6 + Math.sin(tempo * 8) * 0.5)); continue; }
-    ctx.drawImage(p.sprite, Math.round(p.x - 4), Math.round(p.y - 11));
+    if (p.pombo) { desenharSprite(ctx, POMBO, p.x, p.y + Math.sin(tempo * 8) * 0.5); continue; }
+    desenharSprite(ctx, spritePessoa(p.tipo, p.semente), p.x, p.y, p.vx < 0);
   }
   // Pessoa mais perto pisca nos primeiros segundos (ensina a recrutar).
   if (fila.length < 3 && tempo < 20) {
     const perto = povo.filter((p) => !p.pombo).sort((a, b) => dist2(a, jogador) - dist2(b, jogador))[0];
-    if (perto && Math.sin(tempo * 8) > 0) { ctx.strokeStyle = P.neon_verde; ctx.strokeRect(Math.round(perto.x - 6), Math.round(perto.y - 13), 12, 15); }
+    if (perto && Math.sin(tempo * 8) > 0) { ctx.strokeStyle = P.neon_verde; ctx.lineWidth = 1 / ESC_ARTE * 2; ctx.strokeRect(perto.x - 7, perto.y - 21, 14, 22); ctx.lineWidth = 1; }
   }
 
   // Rastro neon da roda
@@ -756,11 +757,14 @@ function desenhar() {
   for (let i = fila.length - 1; i >= 0; i--) {
     const pos = posicaoNaFila(i);
     const pulo = Math.abs(Math.sin(tempo * 10 + i * 0.7)) * 1.5;
-    ctx.drawImage(fila[i].sprite, Math.round(pos.x - 4), Math.round(pos.y - 11 - pulo));
+    const r = fila[i];
+    // Na fila todo mundo bate cabeça, cada um no seu tempo.
+    const bang = (Math.floor(tempo * 6 + i * 1.7) % 2) as 0 | 1;
+    desenharSprite(ctx, r.tipo === 'pombo' ? POMBO : spritePessoa(r.tipo, r.semente, bang), pos.x, pos.y - pulo);
   }
 
   // Seguranças
-  for (const s of segurancas) ctx.drawImage(s.tonto > 0 ? SEGURANCA_TONTO : SEGURANCA, Math.round(s.x - 4), Math.round(s.y - 11));
+  for (const s of segurancas) desenharSprite(ctx, s.tonto > 0 ? SEGURANCA_TONTO : SEGURANCA, s.x, s.y, s.x > jogador.x);
 
   // Chefe
   if (chefe) {
@@ -768,52 +772,44 @@ function desenhar() {
     if (fase.chefe === 'proprietario') {
       const caindo = c.caindo > 0;
       ctx.globalAlpha = caindo ? Math.max(0, c.caindo / 3.2) : 1;
-      ctx.drawImage(PROPRIETARIO, Math.round(c.x - 12), Math.round(c.y - 30), 24, 30);
+      desenharSprite(ctx, PROPRIETARIO, c.x, c.y + 2, c.x > jogador.x);
       ctx.globalAlpha = 1;
     } else {
       const flut = Math.sin(tempo * 3) * 2;
-      for (const cp of c.copias) ctx.drawImage(ALGORITMO_COPIA, Math.round(cp.x - 12), Math.round(cp.y - 26 + flut), 24, 26);
-      ctx.drawImage(ALGORITMO, Math.round(c.x - 12), Math.round(c.y - 26 + flut), 24, 26);
+      for (const cp of c.copias) desenharSprite(ctx, ALGORITMO_COPIA, cp.x, cp.y + flut + 2);
+      desenharSprite(ctx, ALGORITMO, c.x, c.y + flut + 2);
       // Ícone de carregando: só o verdadeiro tem.
       ctx.strokeStyle = P.neon_rosa;
       ctx.beginPath(); ctx.arc(c.x, c.y - 36 + flut, 4, tempo * 6, tempo * 6 + Math.PI * 1.4); ctx.stroke();
     }
   }
-  for (const b of boletos) ctx.drawImage(BOLETO, Math.round(b.x - 3), Math.round(b.y - 3));
+  for (const b of boletos) desenharSprite(ctx, BOLETO, b.x, b.y + 3);
   if (viaturaChefe) {
     const v = viaturaChefe;
     if (v.aviso > 0) {
       ctx.fillStyle = `rgba(214, 53, 63, ${0.25 + Math.sin(tempo * 20) * 0.15})`;
       if (v.vy) ctx.fillRect(v.x - 6, limites.y0, 12, limites.y1 - limites.y0);
       else ctx.fillRect(limites.x0, v.y - 6, limites.x1 - limites.x0, 12);
-    } else ctx.drawImage(VIATURA, Math.round(v.x - 8), Math.round(v.y - 6));
+    } else desenharSprite(ctx, VIATURA, v.x, v.y + 4, v.vx < 0);
   }
 
-  // Shar Pei: ao lado; com 50+ na roda, faz stage dive por cima da multidão.
-  const cao = posicaoCao();
-  const dive = fila.length >= 50 ? Math.max(0, Math.sin(tempo * 1.3)) * 14 : 0;
-  desenharSharPei(ctx, Math.round(cao.x - 8), Math.round(cao.y - 16 - dive), 1, {
-    pose: latidoAnim > 0 ? 'feliz' : 'sentado', espelhar: Math.cos(jogador.ang) < 0,
-    acessorios: ler<boolean>(JOGO, 'oculos', false) ? ['oculos'] : [],
-  });
-  if (latidoAnim > 0) {
+  // Onda do grito.
+  if (gritoAnim > 0) {
     ctx.strokeStyle = P.amarelo;
-    ctx.globalAlpha = latidoAnim;
-    ctx.beginPath(); ctx.arc(cao.x, cao.y - 6, LATIDO_RAIO * (1 - latidoAnim / 0.6), 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = gritoAnim;
+    for (const f of [1, 0.7]) { ctx.beginPath(); ctx.arc(jogador.x, jogador.y - 10, GRITO_RAIO * f * (1 - gritoAnim / 0.6), 0, Math.PI * 2); ctx.stroke(); }
     ctx.globalAlpha = 1;
   }
 
-  // O Vocal
+  // O Vocal (headbang quando a roda tá grande; grita no berro).
   const pisca = invulneravel > 0 && Math.floor(tempo * 16) % 2 === 0;
   if (!pisca) {
-    ctx.save();
-    if (Math.cos(jogador.ang) < 0) { ctx.translate(Math.round(jogador.x), 0); ctx.scale(-1, 1); ctx.drawImage(VOCAL, -5, Math.round(jogador.y - 11)); }
-    else ctx.drawImage(VOCAL, Math.round(jogador.x - 5), Math.round(jogador.y - 11));
-    ctx.restore();
+    const bang = (fila.length > 10 && Math.floor(tempo * 6) % 2 === 1 ? 1 : 0) as 0 | 1;
+    desenharSprite(ctx, spriteVocal(gritoAnim > 0 || fila.length > 30, bang, oculosDoVocal), jogador.x, jogador.y, Math.cos(jogador.ang) < 0);
   }
 
   for (const p of particulas) { ctx.fillStyle = p.cor; ctx.fillRect(Math.round(p.x), Math.round(p.y), p.tam, p.tam); }
-  ctx.font = 'bold 8px monospace';
+  ctx.font = 'bold 9px monospace';
   ctx.textAlign = 'center';
   for (const t of textos) {
     ctx.globalAlpha = Math.min(1, t.vida);
@@ -824,7 +820,7 @@ function desenhar() {
 
   // Queda do Algoritmo: tela azul de erro, e todo celular diz "Você está offline".
   if (chefe && chefe.caindo > 0 && fase.chefe === 'algoritmo') {
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.setTransform(ESC, 0, 0, ESC, 0, 0);
     ctx.fillStyle = P.azul;
     ctx.globalAlpha = Math.min(1, (3.2 - chefe.caindo) * 1.5) * 0.92;
     ctx.fillRect(0, 0, W, H);
@@ -838,7 +834,7 @@ function desenhar() {
 
   // Controles invertidos: glitch na tela.
   if (invertido > 0) {
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.setTransform(ESC, 0, 0, ESC, 0, 0);
     ctx.fillStyle = 'rgba(61, 240, 230, 0.12)';
     for (let i = 0; i < 6; i++) ctx.fillRect(0, Math.random() * H, W, 2);
   }
@@ -850,9 +846,9 @@ function atualizarHud() {
   $('contador').textContent = String(fila.length);
   ($('greve') as HTMLElement).style.width = `${greve}%`;
   if (chefe) ($('vida-chefe') as HTMLElement).style.width = `${(chefe.vida / chefe.max) * 100}%`;
-  const pronto = latidoPronto <= 0;
-  $('btn-latido').classList.toggle('latido--pronto', pronto);
-  $('latido-tempo').textContent = pronto ? '' : String(Math.ceil(latidoPronto));
+  const pronto = gritoPronto <= 0;
+  $('btn-grito').classList.toggle('grito--pronto', pronto);
+  $('grito-tempo').textContent = pronto ? '' : String(Math.ceil(gritoPronto));
 }
 
 let avisoTimer = 0;
@@ -889,7 +885,7 @@ function vitoria() {
   $('res-retorno').textContent = '';
   esconder('hud');
   mostrar('resultado');
-  if (ultima) gravar(JOGO, 'oculos', true); // zerou: o Shar Pei ganha óculos escuros
+  if (ultima) { gravar(JOGO, 'oculos', true); oculosDoVocal = true; } // zerou: o Vocal ganha óculos escuros
 }
 
 function derrota() {
@@ -939,27 +935,29 @@ function abrirTitulo() {
   desenharArteTitulo();
 }
 
-/** Arte do título: a fila girando em volta do prédio espelhado. */
+/** Arte do título: a fila girando em volta do prédio espelhado (em pixel de arte, 3×). */
 function desenharArteTitulo() {
   const cv = $('titulo-arte') as HTMLCanvasElement;
+  cv.width = 480; cv.height = 210;
   const c = cv.getContext('2d')!;
   c.imageSmoothingEnabled = false;
   let t = 0;
+  const pessoa = (i: number) => spritePessoa(i % 5 === 0 ? 'motoboy' : i % 4 === 0 ? 'tia' : 'povo', i * 13, (Math.floor(t * 4 + i) % 2) as 0 | 1);
   const pinta = () => {
     if (modo !== 'titulo') return;
-    c.clearRect(0, 0, 160, 64);
-    c.drawImage(PREDIO, 68, 8);
-    for (let i = 0; i < 18; i++) {
-      const a = t + (i / 18) * Math.PI * 2;
-      const x = 80 + Math.cos(a) * 50, y = 34 + Math.sin(a) * 18;
-      if (Math.sin(a) < 0) c.drawImage(spritePessoa(i % 5 === 0 ? 'motoboy' : i % 4 === 0 ? 'tia' : 'povo', i * 13), Math.round(x - 4), Math.round(y - 11));
-    }
-    for (let i = 0; i < 18; i++) {
-      const a = t + (i / 18) * Math.PI * 2;
-      const x = 80 + Math.cos(a) * 50, y = 34 + Math.sin(a) * 18;
-      if (Math.sin(a) >= 0) c.drawImage(spritePessoa(i % 5 === 0 ? 'motoboy' : i % 4 === 0 ? 'tia' : 'povo', i * 13), Math.round(x - 4), Math.round(y - 11));
-    }
-    t += 0.03;
+    c.clearRect(0, 0, cv.width, cv.height);
+    const anel = (frente: boolean) => {
+      for (let i = 0; i < 16; i++) {
+        const a = t + (i / 16) * Math.PI * 2;
+        if ((Math.sin(a) >= 0) !== frente) continue;
+        const s = pessoa(i);
+        c.drawImage(s, Math.round(240 + Math.cos(a) * 190 - s.width / 2), Math.round(150 + Math.sin(a) * 40 - s.height));
+      }
+    };
+    anel(false);
+    c.drawImage(PREDIO, 240 - PREDIO.width / 2, 130 - PREDIO.height);
+    anel(true);
+    t += 0.012;
     requestAnimationFrame(pinta);
   };
   pinta();
@@ -971,27 +969,32 @@ function abrirCreditos() {
   esconder('resultado', 'hud');
   mostrar('creditos');
   const nomes = recrutados.length ? recrutados : Array.from({ length: 40 }, (_, i) => nomeDoRecruta(i));
-  $('creditos-nomes').innerHTML = ['O Vocal, entregador e vocalista', 'O Shar Pei, parceiro', ...nomes].map((n) => `<div>${n}</div>`).join('') + '<div><br/>Fases 3 a 5 chegam na versão 1.0</div>';
+  $('creditos-nomes').innerHTML = ['O Vocal, entregador e vocalista', ...nomes].map((n) => `<div>${n}</div>`).join('') + '<div><br/>Fases 3 a 5 chegam na versão 1.0</div>';
   const cv = $('creditos-tela') as HTMLCanvasElement;
-  cv.width = 240; cv.height = 140;
+  cv.width = 720; cv.height = 420;
   const c = cv.getContext('2d')!;
   c.imageSmoothingEnabled = false;
-  const total = Math.min(240, Math.max(60, recrutados.length));
+  const total = Math.min(90, Math.max(36, recrutados.length));
   let t = 0;
   const pinta = () => {
     if (modo !== 'creditos') return;
-    c.fillStyle = P.preto; c.fillRect(0, 0, 240, 140);
-    c.drawImage(OCUPACAO, 108, 56);
+    c.fillStyle = P.preto; c.fillRect(0, 0, cv.width, cv.height);
+    const gente: { x: number; y: number; s: Sprite }[] = [];
     for (let anel = 0; anel < 3; anel++) {
       const n = Math.floor(total / 3);
       for (let i = 0; i < n; i++) {
         const a = t * (1 + anel * 0.2) + (i / n) * Math.PI * 2;
-        const x = 120 + Math.cos(a) * (40 + anel * 30), y = 74 + Math.sin(a) * (16 + anel * 12);
-        c.drawImage(spritePessoa(i % 6 === 0 ? 'motoboy' : i % 5 === 0 ? 'tia' : 'povo', i * 7 + anel), Math.round(x - 4), Math.round(y - 11));
+        gente.push({
+          x: 360 + Math.cos(a) * (120 + anel * 90), y: 250 + Math.sin(a) * (50 + anel * 36),
+          s: spritePessoa(i % 6 === 0 ? 'motoboy' : i % 5 === 0 ? 'tia' : 'povo', i * 7 + anel, (Math.floor(t * 8 + i) % 2) as 0 | 1),
+        });
       }
     }
-    desenharSharPei(c, 112, 100, 1, { pose: 'feliz', acessorios: ['oculos'] });
-    t += 0.02;
+    gente.push({ x: 360, y: 236, s: OCUPACAO });
+    gente.push({ x: 360, y: 300, s: spriteVocal(true, (Math.floor(t * 8) % 2) as 0 | 1, true) });
+    gente.sort((a, b) => a.y - b.y);
+    for (const g of gente) c.drawImage(g.s, Math.round(g.x - g.s.width / 2), Math.round(g.y - g.s.height));
+    t += 0.01;
     requestAnimationFrame(pinta);
   };
   pinta();
@@ -1017,7 +1020,7 @@ $('btn-continuar').addEventListener('click', alternarPausa);
 $('btn-sair').addEventListener('click', abrirTitulo);
 $('btn-seguir').addEventListener('click', seguir);
 $('btn-fim-creditos').addEventListener('click', abrirTitulo);
-$('btn-latido').addEventListener('pointerdown', (e) => { e.stopPropagation(); latir(); });
+$('btn-grito').addEventListener('pointerdown', (e) => { e.stopPropagation(); gritar(); });
 $('btn-som').addEventListener('click', () => {
   setMudo(!estaMudo());
   gravar(JOGO, 'mudo', estaMudo());
@@ -1030,8 +1033,13 @@ $('btn-compartilhar').addEventListener('click', async () => {
   $('res-retorno').textContent = r === 'copiado' ? 'Copiado!' : r === 'falhou' ? textoCompartilhar : '';
 });
 {
-  const lc = ($('latido-cao') as HTMLCanvasElement).getContext('2d')!;
-  desenharSharPei(lc, 0, 0, 2, { pose: 'feliz' });
+  // Botão do grito: a cara do Vocal berrando.
+  const gc = $('grito-vocal') as HTMLCanvasElement;
+  const v = spriteVocal(true, 0, oculosDoVocal);
+  gc.width = 22; gc.height = 22;
+  const g2 = gc.getContext('2d')!;
+  g2.imageSmoothingEnabled = false;
+  g2.drawImage(v, 3, 2, 22, 22, 0, 0, 22, 22);
 }
 
 // Gancho de teste (só com #teste na URL): dá recrutas e expõe contadores.

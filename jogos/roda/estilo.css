@@ -18,7 +18,7 @@
 .barra--chefe i { background: linear-gradient(90deg, var(--neon-rosa), var(--neon-roxo, #9b5cff)); }
 .barra--chefe .barra__nome { font-size: 9px; line-height: 16px; }
 
-.latido {
+.grito {
   position: absolute;
   right: 12px;
   bottom: calc(12px + env(safe-area-inset-bottom, 0px));
@@ -31,10 +31,10 @@
   display: grid;
   place-items: center;
 }
-.latido canvas { width: 40px; height: 40px; }
-.latido span { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--pixel-font); font-size: 14px; color: var(--branco); background: rgba(13, 11, 20, 0.6); border-radius: 50%; }
-.latido span:empty { display: none; }
-.latido--pronto { animation: chamado 1.2s ease-in-out infinite; }
+.grito canvas { width: 40px; height: 40px; }
+.grito span { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--pixel-font); font-size: 14px; color: var(--branco); background: rgba(13, 11, 20, 0.6); border-radius: 50%; }
+.grito span:empty { display: none; }
+.grito--pronto { animation: chamado 1.2s ease-in-out infinite; }
 @keyframes chamado { 50% { box-shadow: 0 0 0 6px rgba(246, 196, 67, 0.35); } }
 
 .aviso {
@@ -74,7 +74,7 @@
 .painel--titulo { background: radial-gradient(120% 90% at 50% 100%, #3a1430 0%, var(--preto) 70%); }
 .logo { margin: 0; font-family: var(--pixel-font); font-size: clamp(40px, 13vw, 76px); color: var(--neon-rosa); text-shadow: 4px 4px 0 var(--neon-ciano), 8px 8px 0 var(--preto); letter-spacing: 4px; }
 .sub { margin: -4px 0 0; color: var(--papel); font-weight: 700; letter-spacing: 1px; }
-.titulo-arte { width: min(320px, 80vw); height: auto; }
+.titulo-arte { width: min(460px, 96vw); height: auto; }
 .fases-roda { display: flex; gap: 8px; }
 .fases-roda button { padding: 6px 12px; border-radius: 8px; background: var(--asfalto); border: 2px solid var(--concreto); font-weight: 700; }
 .fases-roda button:disabled { opacity: 0.4; }
