@@ -32,6 +32,7 @@ LETRAS = {
     'P': ['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'],
     'R': ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
     'S': ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'],
+    'Y': ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
     'U': ['#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
     'V': ['#...#', '#...#', '#...#', '#...#', '.#.#.', '.#.#.', '..#..'],
     'X': ['#...#', '.#.#.', '..#..', '..#..', '..#..', '.#.#.', '#...#'],
@@ -233,61 +234,46 @@ def roda():
     titulo(d, 'RODA', 40, 40, 12, PAL['neon_rosa'], sombra=PAL['neon_ciano'])
     return img
 
-# ─── FAÇA VOCÊ MESMO ───────────────────────────────────────────
-def integrante_faca(nome):
-    src = (J / 'faca/cena.ts').read_text()
-    base = {k: PAL[v] for k, v in re.findall(r"(\w): P\.(\w+)", re.search(r"const CORPO_BASE[^{]*\{([^}]*)\}", src).group(1))}
-    m = re.search(r"  " + nome + r": \{\s+arte: \[\n((?:\s+'[^']*',\n)+)\s+\],\s+cores: \{([^}]*)\}", src)
-    cores = dict(base)
-    cores.update({k: PAL[v] for k, v in re.findall(r"(\w): P\.(\w+)", m.group(2))})
-    return re.findall(r"'([^']*)'", m.group(1)), cores
+# ─── Bonecos exportados (npx vite-node scripts/exportar-sprites.ts) ───
+def sprites():
+    import json
+    return json.loads((RAIZ / 'scripts/sprites.json').read_text())
 
-def carta_faca(img, x, y, nome, efeito, cor, angulo, custo):
-    w, h = 150, 210
-    c = Image.new('RGBA', (w + 12, h + 12), (0, 0, 0, 0))
-    d = ImageDraw.Draw(c)
-    d.rectangle([6, 10, w + 6, h + 10], fill=(22, 20, 15, 255))
-    d.rectangle([0, 4, w, h + 4], fill=rgb('#ebe5d6'), outline=(22, 20, 15), width=3)
-    d.rectangle([0, 4, w, 16], fill=rgb(cor))
-    f1 = ImageFont.truetype(FONTE, 19)
-    f2 = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 14)
-    d.text((14, 28), nome, font=f1, fill=(22, 20, 15))
-    yy = 64
-    for linha in efeito:
-        d.text((14, yy), linha, font=f2, fill=(22, 20, 15))
-        yy += 20
-    d.ellipse([w - 34, 22, w - 8, 48], fill=rgb(PAL['ceu']), outline=(22, 20, 15), width=2)
-    d.text((w - 26, 26), str(custo), font=f1, fill=(22, 20, 15))
-    c = c.rotate(angulo, expand=True, resample=Image.BICUBIC)
-    img.paste(c, (x, y), c)
-
-def faca():
-    img = fundo('#2a2238', PAL['preto'])
+def colar_grade(img, g, x, y, k):
     d = ImageDraw.Draw(img)
-    # palco e luzes
-    for x in range(10, 800, 26):
-        d.rectangle([x, 18 + (x // 26 % 2) * 4, x + 6, 24 + (x // 26 % 2) * 4], fill=rgb([PAL['neon_rosa'], PAL['amarelo'], PAL['neon_ciano']][x // 26 % 3]))
-    d.rectangle([0, 300, 800, 450], fill=rgb(PAL['chocolate']))
-    for x in range(0, 800, 60):
-        d.line([(x, 300), (x, 450)], fill=rgb(PAL['ruga']), width=3)
-    x = 396
-    for nome in ['guitarra', 'vocal', 'baixo']:
-        arte, cores = integrante_faca(nome)
-        pinta(img, arte, cores, x, 202, 7)
-        x += 96
-    sharpei(img, 682, 188, 7, pose='feliz', acessorios=('oculos',))
-    # mão de cartas
-    carta_faca(img, 372, 300, 'Breakdown', ['Dobra a energia', 'da próxima', 'música'], PAL['vermelho'], 8, 1)
-    carta_faca(img, 515, 288, 'Mosh', ['+4; depois de', 'Breakdown, +10'], PAL['vermelho'], -3, 2)
-    carta_faca(img, 648, 306, 'Discurso', ['+2 hype'], PAL['ceu'], -11, 1)
-    # título em tiras de papel
-    for i, (txt, cor) in enumerate([('FAÇA', '#ebe5d6'), ('VOCÊ', PAL['amarelo']), ('MESMO', '#ebe5d6')]):
-        px = 9
-        y = 60 + i * 92
-        wl = largura_titulo(txt, px)
-        d.rectangle([40 + 8, y - 12 + 8, 40 + wl + 28 + 8, y + 7 * px + 12 + 8], fill=rgb(PAL['neon_rosa']))
-        d.rectangle([40, y - 12, 40 + wl + 28, y + 7 * px + 12], fill=rgb(cor))
-        titulo(d, txt, 54, y, px, '#16140f')
+    for i, c in enumerate(g['cor']):
+        if not c:
+            continue
+        gx, gy = i % g['w'], i // g['w']
+        d.rectangle([x + gx * k, y + gy * k, x + gx * k + k - 1, y + gy * k + k - 1], fill=rgb(c))
+
+# ─── DIY - FAÇA VOCÊ MESMO ─────────────────────────────────────
+def faca():
+    sp = sprites()
+    img = fundo('#1a1426', PAL['preto'])
+    d = ImageDraw.Draw(img)
+    # Varal de luz e fachos.
+    for x in range(10, 800, 22):
+        d.rectangle([x, 12 + (x // 22 % 2) * 4, x + 6, 18 + (x // 22 % 2) * 4], fill=rgb([PAL['neon_rosa'], PAL['amarelo'], PAL['neon_ciano']][x // 22 % 3]))
+    # Palco.
+    d.rectangle([360, 330, 800, 450], fill=rgb(PAL['chocolate']))
+    d.rectangle([360, 330, 800, 336], fill=rgb(PAL['ruga']))
+    for x in range(360, 800, 40):
+        d.line([(x, 336), (x, 450)], fill=rgb(PAL['noite']), width=2)
+    # Banda (3×) em cima do palco.
+    for i, q in enumerate(['guitarra', 'vocal', 'baixo', 'bateria']):
+        g = sp['banda'][q]
+        colar_grade(img, g, 372 + i * 104, 336 - g['h'] * 3 + 12, 3)
+    # Público na frente com chifres e mãos pro alto (cortado embaixo).
+    for i, g in enumerate(sp['publico'][:9]):
+        colar_grade(img, g, -10 + i * 92, 300 + (i % 2) * 24, 3)
+    # Logo: DIY grande + faixa.
+    d.rectangle([40 + 10, 40 + 10, 330 + 10, 190 + 10], fill=rgb(PAL['neon_rosa']))
+    d.rectangle([40, 40, 330, 190], fill=rgb('#ebe5d6'))
+    titulo(d, 'DIY', 66, 66, 14, '#16140f')
+    d.rectangle([52, 204, 322, 246], fill=rgb(PAL['amarelo']))
+    fonte = ImageFont.truetype(FONTE, 22)
+    d.text((66, 212), 'FAÇA VOCÊ MESMO', font=fonte, fill=rgb('#16140f'))
     return img
 
 GERADORES = {'pixo': pixo, 'dobra': dobra, 'roda': roda, 'faca': faca}

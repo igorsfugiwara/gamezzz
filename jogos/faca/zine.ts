@@ -5,8 +5,12 @@
  */
 import { PALETA as P } from '../compartilhado/paleta';
 import { desenharSharPei } from '../compartilhado/sharpei';
-import { desenharBanda } from './cena';
-import { manchetes, type Turne } from './motor';
+import { emCache } from '../compartilhado/canvas';
+import { BONECO_A } from '../compartilhado/boneco';
+import { integrante } from './visual';
+import { desenharVan } from './paisagem';
+import { manchetes, ORDEM_BANDA, type Turne } from './motor';
+import { t as tr } from './i18n';
 
 export const ZINE_L = 540;
 export const ZINE_A = 960;
@@ -26,24 +30,26 @@ function aleatorioDe(seed: string) {
 
 /** Foto da banda: desenha colorido em baixa resolução e pontilha em P&B. */
 function foto(t: Turne): HTMLCanvasElement {
-  const L = 84;
-  const A = 44;
+  const L = 170;
+  const A = 90;
   const c = document.createElement('canvas');
   c.width = L;
   c.height = A;
   const ctx = c.getContext('2d')!;
-  // Parede clara com lambe-lambe, chão escuro: contraste bom para o pontilhado.
+  // Parede clara, chão escuro e a van atrás da banda: contraste bom para o pontilhado.
   ctx.fillStyle = P.branco;
   ctx.fillRect(0, 0, L, A);
-  ctx.fillStyle = P.neblina;
-  ctx.fillRect(4, 4, 10, 13);
-  ctx.fillRect(62, 6, 12, 10);
-  ctx.fillStyle = P.concreto;
-  ctx.fillRect(6, 7, 6, 2);
-  ctx.fillRect(64, 9, 8, 2);
   ctx.fillStyle = P.cimento;
-  ctx.fillRect(0, 36, L, 8);
-  desenharBanda(ctx, 8, 22, t.banda, !!t.flags.mascote);
+  ctx.fillRect(0, 74, L, 16);
+  desenharVan(ctx, 46, 30, t.nomeBanda, false);
+  let x = 6;
+  for (const quem of ORDEM_BANDA) {
+    if (t.banda.includes(quem)) {
+      ctx.drawImage(emCache(`zine-${quem}`, () => integrante(quem, quem === 'bateria' ? { pose: 'chifres' } : {})), x, A - BONECO_A - 2);
+    }
+    x += 30;
+  }
+  if (t.flags.mascote) desenharSharPei(ctx, x, A - 36, 2, { pose: 'feliz' });
   const img = ctx.getImageData(0, 0, L, A);
   for (let y = 0; y < A; y++) {
     for (let x = 0; x < L; x++) {
@@ -93,13 +99,15 @@ export async function desenharZine(canvas: HTMLCanvasElement, t: Turne): Promise
   ctx.fillStyle = papel;
   ctx.font = `30px ${pixel}`;
   ctx.textBaseline = 'top';
-  ctx.fillText('FAÇA VOCÊ', 24, 22);
-  ctx.fillText('MESMO', 24, 62);
+  ctx.font = `44px ${pixel}`;
+  ctx.fillText('DIY', 24, 18);
+  ctx.font = `13px ${pixel}`;
+  ctx.fillText(t.nomeBanda.toUpperCase().slice(0, 18), 24, 80);
   ctx.font = `bold 15px ${texto}`;
   ctx.textAlign = 'right';
-  ctx.fillText(`ZINE DA TURNÊ ${t.seed}`, ZINE_L - 24, 24);
-  ctx.fillText('nº 1 · grátis · xerox', ZINE_L - 24, 44);
-  ctx.fillText(`${t.noite} noite${t.noite === 1 ? '' : 's'} de estrada`, ZINE_L - 24, 64);
+  ctx.fillText(tr('zine.titulo', { seed: t.seed }), ZINE_L - 24, 24);
+  ctx.fillText(tr('zine.edicao'), ZINE_L - 24, 44);
+  ctx.fillText(tr('zine.noites', { n: t.noite }), ZINE_L - 24, 64);
   ctx.textAlign = 'left';
 
   // Foto.
@@ -114,24 +122,24 @@ export async function desenharZine(canvas: HTMLCanvasElement, t: Turne): Promise
   ctx.restore();
   ctx.font = `italic 14px ${texto}`;
   ctx.fillStyle = tinta;
-  const integrantes = t.banda.length === 4 ? 'a banda inteira, milagrosamente' : `sobraram ${t.banda.length}`;
-  ctx.fillText(`Foto: ${integrantes}${t.flags.mascote ? ' + o mascote' : ''}.`, 32, 420);
+  const integrantes = t.banda.length === 4 ? tr('zine.foto.inteira') : tr('zine.foto.sobraram', { n: t.banda.length });
+  ctx.fillText(tr('zine.foto', { quem: integrantes + (t.flags.mascote ? tr('zine.foto.mascote') : '') }), 32, 420);
 
   // Manchetes.
   ctx.fillStyle = tinta;
   ctx.fillRect(24, 448, ZINE_L - 48, 4);
   ctx.font = `14px ${pixel}`;
-  ctx.fillText('MANCHETES DA TURNÊ', 24, 466);
+  ctx.fillText(tr('zine.manchetes'), 24, 466);
   let y = 500;
   const lista = manchetes(t, 4);
-  if (!lista.length) lista.push({ noite: Math.max(1, t.noite), texto: 'Turnê sem nenhum causo. Isso existe?', peso: 0 });
+  if (!lista.length) lista.push({ noite: Math.max(1, t.noite), chave: 'zine.vazio', p: {}, peso: 0 });
   // As mais pesadas primeiro; para quando não couber mais nada acima dos números.
   const limite = ZINE_A - 200;
   const cabem: { noite: number; linhas: string[] }[] = [];
   let altura = 0;
   ctx.font = `bold 22px ${texto}`;
   for (const m of [...lista].sort((a, b) => b.peso - a.peso)) {
-    const linhas = quebrar(ctx, m.texto.toUpperCase(), ZINE_L - 48);
+    const linhas = quebrar(ctx, tr(m.chave, m.p).toUpperCase(), ZINE_L - 48);
     const h = 20 + linhas.length * 24 + 16;
     if (y + altura + h > limite) continue;
     altura += h;
@@ -139,7 +147,7 @@ export async function desenharZine(canvas: HTMLCanvasElement, t: Turne): Promise
   }
   for (const m of cabem.sort((a, b) => a.noite - b.noite)) {
     ctx.font = `bold 13px ${texto}`;
-    ctx.fillText(`NOITE ${m.noite}`, 24, y);
+    ctx.fillText(tr('zine.noite', { n: m.noite }), 24, y);
     y += 20;
     ctx.font = `bold 22px ${texto}`;
     for (const linha of m.linhas) {
@@ -152,11 +160,11 @@ export async function desenharZine(canvas: HTMLCanvasElement, t: Turne): Promise
   // Números.
   const s = t.stats;
   const numeros = [
-    `${s.shows} shows`,
-    `${s.sucessos} com a casa abaixo`,
-    `${s.publico} pessoas`,
-    `R$ ${s.cache} de cachê`,
-    t.saidas.length ? `${t.saidas.length} saída${t.saidas.length > 1 ? 's' : ''} da banda` : 'ninguém saiu da banda',
+    tr('zine.shows', { n: s.shows }),
+    tr('zine.sucessos', { n: s.sucessos }),
+    tr('zine.publico', { n: s.publico }),
+    tr('zine.cache', { n: s.cache }),
+    t.saidas.length > 1 ? tr('zine.saidas', { n: t.saidas.length }) : t.saidas.length ? tr('zine.saida1') : tr('zine.ninguem'),
   ];
   ctx.fillStyle = tinta;
   ctx.fillRect(24, ZINE_A - 190, ZINE_L - 48, 2);
@@ -174,23 +182,23 @@ export async function desenharZine(canvas: HTMLCanvasElement, t: Turne): Promise
   ctx.strokeRect(-118, -30, 236, 60);
   ctx.font = `15px ${pixel}`;
   ctx.textAlign = 'center';
-  ctx.fillText(completa ? 'TURNÊ' : 'A BANDA', 0, -18);
-  ctx.fillText(completa ? 'COMPLETA' : 'ACABOU', 0, 4);
+  ctx.fillText(tr(completa ? 'zine.completa1' : 'zine.acabou1'), 0, -18);
+  ctx.fillText(tr(completa ? 'zine.completa2' : 'zine.acabou2'), 0, 4);
   ctx.restore();
   ctx.textAlign = 'left';
 
-  // Shar Pei carimbado no canto.
-  const cao = document.createElement('canvas');
-  cao.width = 16;
-  cao.height = 16;
-  desenharSharPei(cao.getContext('2d')!, 0, 0, 1, { pose: completa ? 'feliz' : 'dormindo', acessorios: t.flags.mascote ? ['oculos'] : [] });
-  ctx.drawImage(cao, 24, ZINE_A - 150, 80, 80);
+  // Carimbo da banda no canto (o mesmo integrante da capa, em tinta).
+  const cara = emCache('zine-carimbo', () => integrante('vocal', { pose: 'chifres', grito: true }));
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+  ctx.drawImage(cara, 24, ZINE_A - 158, cara.width * 1.6, cara.height * 1.6);
+  ctx.restore();
 
   ctx.fillStyle = tinta;
   ctx.font = `bold 14px ${texto}`;
-  ctx.fillText(`Turnê ${t.seed}: faz essa aí e vê se volta vivo.`, 24, ZINE_A - 52);
+  ctx.fillText(tr('zine.rodape', { seed: t.seed }), 24, ZINE_A - 52);
   ctx.font = `13px ${texto}`;
-  ctx.fillText('gamezzz · Faça Você Mesmo', 24, ZINE_A - 32);
+  ctx.fillText('gamezzz · DIY - Faça você mesmo', 24, ZINE_A - 32);
 
   // Textura de xerox: pontinhos e faixas de toner.
   for (let i = 0; i < 2600; i++) {
@@ -211,7 +219,7 @@ export async function exportarZine(canvas: HTMLCanvasElement, t: Turne): Promise
   const arquivo = new File([blob], nome, { type: 'image/png' });
   if (navigator.canShare?.({ files: [arquivo] })) {
     try {
-      await navigator.share({ files: [arquivo], text: `Turnê ${t.seed} no Faça Você Mesmo` });
+      await navigator.share({ files: [arquivo], text: `DIY · ${t.nomeBanda} · ${t.seed}` });
       return 'compartilhado';
     } catch (e) {
       if ((e as { name?: string })?.name === 'AbortError') return 'compartilhado';

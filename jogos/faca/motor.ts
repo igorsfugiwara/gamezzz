@@ -5,6 +5,7 @@
  */
 import CARTAS_JSON from './dados/cartas.json';
 import EVENTOS_JSON from './dados/eventos.json';
+import { t as tr, idiomaAtual } from './i18n';
 
 // ─── Tipos ────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ export interface Carta {
   texto: string;
   raridade: 'inicial' | 'comum' | 'rara';
   especial?: Especial;
+  en?: { nome: string; efeito: string; texto: string };
 }
 
 export interface Escolha {
@@ -69,6 +71,7 @@ export interface Evento {
   minNoite?: number;
   raro?: boolean;
   momento?: string;
+  en?: { titulo: string; texto: string; escolhas: { texto: string; resultado: string; sorte?: string }[] };
 }
 
 export const CARTAS: Carta[] = CARTAS_JSON as Carta[];
@@ -80,22 +83,29 @@ export function carta(id: string): Carta {
   return c;
 }
 
+/** Nome, efeito e frase da carta no idioma atual. */
+export function textoDaCarta(c: Carta) {
+  return idiomaAtual() === 'en' && c.en ? c.en : { nome: c.nome, efeito: c.efeito, texto: c.texto };
+}
+
+/** Evento no idioma atual (mesma forma do original). */
+export function textoDoEvento(ev: Evento): { titulo: string; texto: string; escolhas: { texto: string; resultado: string; sorte?: string }[] } {
+  if (idiomaAtual() === 'en' && ev.en) return ev.en;
+  return { titulo: ev.titulo, texto: ev.texto, escolhas: ev.escolhas.map((e) => ({ texto: e.texto, resultado: e.resultado, sorte: e.sorte?.resultado })) };
+}
+
 export type Integrante = 'vocal' | 'guitarra' | 'baixo' | 'bateria';
 
-export const BANDA: Record<Integrante, { papel: string; nome: string; habilidade: string; defeito: string }> = {
-  vocal: { papel: 'Vocal', nome: 'Lia', habilidade: 'Um Discurso grátis em todo show', defeito: 'Perde 1 de voz por show' },
-  guitarra: { papel: 'Guitarra', nome: 'Téo', habilidade: 'Vê a próxima carta do baralho', defeito: 'Briga por afinação derruba o clima' },
-  baixo: { papel: 'Baixo', nome: 'Duda', habilidade: 'Gasta 20% menos gasolina', defeito: 'Dorme no meio dos eventos' },
-  bateria: { papel: 'Bateria', nome: 'Caco', habilidade: 'Conserta a van uma vez por turnê', defeito: 'Quebra baqueta e gasta grana' },
-};
+/** Nomes de fábrica; a pessoa pode trocar na tela da banda. */
+export const NOMES_PADRAO: Record<Integrante, string> = { vocal: 'Lia', guitarra: 'Téo', baixo: 'Duda', bateria: 'Caco' };
 export const ORDEM_BANDA: Integrante[] = ['vocal', 'guitarra', 'baixo', 'bateria'];
-/** "do vocal", "da bateria"... para as manchetes. */
-export const DO: Record<Integrante, string> = { vocal: 'do vocal', guitarra: 'da guitarra', baixo: 'do baixo', bateria: 'da bateria' };
 
 export type TipoNo = 'show' | 'evento' | 'estrada' | 'descanso';
-export interface No { tipo: TipoNo; lugar: string; final?: boolean }
+/** `local` é o índice do tipo de lugar (traduzido na tela); `cidade` é nome próprio. */
+export interface No { tipo: TipoNo; local: number; cidade: string; final?: boolean }
 
-export interface Causo { noite: number; texto: string; peso: number }
+/** Manchete guardada como chave + parâmetros: muda de idioma junto com o jogo. */
+export interface Causo { noite: number; chave: string; p: Record<string, string | number>; peso: number }
 
 export type Fase =
   | { tipo: 'mapa' }
@@ -107,7 +117,7 @@ export type Fase =
   | { tipo: 'fim' };
 
 export interface Turne {
-  versao: 1;
+  versao: 2;
   seed: string;
   rng: number;
   noite: number;
@@ -121,6 +131,8 @@ export interface Turne {
   voz: number;
   hype: number;
   banda: Integrante[];
+  nomes: Record<Integrante, string>;
+  nomeBanda: string;
   saidas: Integrante[];
   baralho: string[];
   eventosVistos: string[];
@@ -151,9 +163,9 @@ export const NOITES_ATE_CANSAR = 2;
 export const BARALHO_INICIAL = CARTAS.filter((c) => c.raridade === 'inicial').map((c) => c.id);
 
 export const DESCANSOS = {
-  dormir: { titulo: 'Pousada de beira de estrada', texto: 'Cama de verdade, chuveiro quente.', efeitos: { voz: 2, clima: 2, grana: -10 } as Efeitos },
-  ensaiar: { titulo: 'Ensaio no quintal', texto: 'Tira uma carta do baralho. Ensaio sempre termina em discussão.', efeitos: { clima: -1 } as Efeitos },
-  live: { titulo: 'Live no celular', texto: 'Uma música, três desafinadas, mil visualizações.', efeitos: { hype: 2, voz: -1 } as Efeitos },
+  dormir: { efeitos: { voz: 2, clima: 2, grana: -10 } as Efeitos },
+  ensaiar: { efeitos: { clima: -1 } as Efeitos },
+  live: { efeitos: { hype: 2, voz: -1 } as Efeitos },
 } as const;
 export type Descanso = keyof typeof DESCANSOS;
 
@@ -162,12 +174,8 @@ const CIDADES = [
   'Pedra Rachada', 'Vale do Escapamento', 'Morro do Cabo', 'Itaquerinha do Norte', 'Barro Branco', 'Campo do Feedback',
   'Nova Distorção', 'Porto Microfonia', 'Serra da Palheta', 'Jardim Amplificador',
 ];
-const LUGARES: Record<TipoNo, string[]> = {
-  show: ['porão', 'centro cultural', 'garagem', 'sindicato', 'pizzaria com palco', 'skate park', 'casa ocupada', 'bar do Zé'],
-  evento: ['praça', 'rodoviária', 'feira', 'centro'],
-  estrada: ['BR', 'estrada de terra', 'rodovia', 'serra'],
-  descanso: ['quintal', 'pousada', 'casa de amigo'],
-};
+/** Quantos tipos de lugar há por nó (os nomes ficam em i18n, `lugar.<tipo>`). */
+const LUGARES: Record<TipoNo, number> = { show: 8, evento: 4, estrada: 4, descanso: 3 };
 
 // ─── Aleatório com seed ───────────────────────────────────
 
@@ -212,9 +220,9 @@ function embaralhar<T>(t: { rng: number }, lista: T[]): T[] {
 
 // ─── Turnê ────────────────────────────────────────────────
 
-export function novaTurne(seed: string): Turne {
+export function novaTurne(seed: string, nomes: Partial<Record<Integrante, string>> = {}, nomeBanda = ''): Turne {
   const t: Turne = {
-    versao: 1,
+    versao: 2,
     seed,
     rng: hashSeed(seed),
     noite: 0,
@@ -223,6 +231,8 @@ export function novaTurne(seed: string): Turne {
     mapa: [],
     ...INICIO,
     banda: [...ORDEM_BANDA],
+    nomes: { ...NOMES_PADRAO, ...Object.fromEntries(Object.entries(nomes).filter(([, v]) => v && v.trim()).map(([k, v]) => [k, v!.trim().slice(0, 16)])) },
+    nomeBanda: nomeBanda.trim().slice(0, 28) || tr('banda.padrao'),
     saidas: [],
     baralho: [...BARALHO_INICIAL],
     eventosVistos: [],
@@ -239,23 +249,20 @@ export function novaTurne(seed: string): Turne {
 
 function gerarMapa(t: Turne): No[][] {
   const cidades = embaralhar(t, [...CIDADES]);
-  const lugar = (tipo: TipoNo, n: number) => `${escolher(t, LUGARES[tipo])} · ${cidades[n % cidades.length]}`;
+  const no = (tipo: TipoNo, n: number, final = false): No => ({ tipo, local: inteiro(t, 0, LUGARES[tipo] - 1), cidade: cidades[n % cidades.length], ...(final ? { final } : {}) });
   const mapa: No[][] = [];
   for (let n = 1; n <= NOITES; n++) {
-    if (n === 1) { mapa.push([{ tipo: 'show', lugar: lugar('show', 0) }]); continue; }
-    if (n === NOITES) { mapa.push([{ tipo: 'show', final: true, lugar: `festival de quintal · ${cidades[n % cidades.length]}` }]); continue; }
+    if (n === 1) { mapa.push([no('show', 0)]); continue; }
+    if (n === NOITES) { mapa.push([no('show', n, true)]); continue; }
     const linha: No[] = [];
     for (let f = 0; f < 3; f++) {
       const r = sortear(t);
       const tipo: TipoNo = r < 0.4 ? 'show' : r < 0.68 ? 'evento' : r < 0.84 ? 'estrada' : 'descanso';
-      linha.push({ tipo, lugar: lugar(tipo, n) });
+      linha.push(no(tipo, n));
     }
     // Toda noite tem pelo menos um show e nunca três nós iguais.
-    if (!linha.some((no) => no.tipo === 'show')) linha[inteiro(t, 0, 2)] = { tipo: 'show', lugar: lugar('show', n) };
-    if (linha.every((no) => no.tipo === linha[0].tipo)) {
-      const outro: TipoNo = linha[0].tipo === 'descanso' ? 'evento' : 'descanso';
-      linha[1] = { tipo: outro, lugar: lugar(outro, n) };
-    }
+    if (!linha.some((x) => x.tipo === 'show')) linha[inteiro(t, 0, 2)] = no('show', n);
+    if (linha.every((x) => x.tipo === linha[0].tipo)) linha[1] = no(linha[0].tipo === 'descanso' ? 'evento' : 'descanso', n);
     mapa.push(linha);
   }
   return mapa;
@@ -278,13 +285,15 @@ export function custoGasolina(t: Turne): number {
   return t.banda.includes('baixo') ? Math.round(GASOLINA_POR_VIAGEM * 0.8) : GASOLINA_POR_VIAGEM;
 }
 
-function causo(t: Turne, texto: string, peso: number) {
-  t.causos.push({ noite: Math.max(1, t.noite), texto, peso });
+function causo(t: Turne, chave: string, peso: number, p: Record<string, string | number> = {}) {
+  t.causos.push({ noite: Math.max(1, t.noite), chave, p, peso });
 }
 
 function cidadeAtual(t: Turne): string {
-  return t.noite ? noAtual(t).lugar.split(' · ')[1] : 'casa';
+  return t.noite ? noAtual(t).cidade : '';
 }
+
+const quemE = (t: Turne, q: Integrante) => ({ nome: t.nomes[q], do: tr(`do.${q}`) });
 
 /** Aplica efeitos com limites; clima zerado tira alguém da banda. Devolve avisos. */
 export function aplicar(t: Turne, efeitos: Efeitos): string[] {
@@ -298,15 +307,14 @@ export function aplicar(t: Turne, efeitos: Efeitos): string[] {
     const quem = escolher(t, t.banda);
     t.banda = t.banda.filter((b) => b !== quem);
     t.saidas.push(quem);
-    const m = BANDA[quem];
-    avisos.push(`${m.nome}, ${DO[quem]}, saiu da banda.`);
+    avisos.push(tr('aviso.saiu', quemE(t, quem)));
     if (t.saidas.length >= 2) {
       t.fim = 'acabou';
       t.fase = { tipo: 'fim' };
-      causo(t, `Banda acaba em ${cidadeAtual(t)}: ${m.nome}, ${DO[quem]}, desce da van de vez`, 9);
+      causo(t, 'causo.fim', 9, { ...quemE(t, quem), cidade: cidadeAtual(t) });
     } else {
       t.clima = CLIMA_DEPOIS_DE_SAIDA;
-      causo(t, `${m.nome}, ${DO[quem]}, larga a turnê no meio e volta de ônibus`, 6);
+      causo(t, 'causo.saida', 6, quemE(t, quem));
     }
   }
   return avisos;
@@ -321,20 +329,24 @@ export function abastecer(t: Turne): void {
   aplicar(t, { grana: -ABASTECER.grana, gasolina: ABASTECER.gasolina });
 }
 
-const SEM_GASOLINA: Evento = {
-  id: 'sem-gasolina',
-  onde: 'sistema',
-  momento: 'van',
-  titulo: 'A van secou',
-  texto: 'O ponteiro bateu no zero no meio da estrada. Ninguém tinha olhado.',
-  escolhas: [
-    { texto: 'Chamar o guincho', efeitos: { grana: -20, gasolina: 20 }, resultado: 'O guincheiro cobrou caro e ainda pediu um CD.' },
-    { texto: 'Empurrar até o posto', efeitos: { clima: -2, voz: -1, gasolina: 15 }, resultado: 'Três quilômetros empurrando. Ninguém disse uma palavra.' },
-  ],
-};
+/** Resgate da van seca: fora do sorteio, com o texto vindo do i18n. */
+function semGasolina(): Evento {
+  const ev: Evento = {
+    id: 'sem-gasolina',
+    onde: 'sistema',
+    momento: 'van',
+    titulo: tr('sg.titulo'),
+    texto: tr('sg.texto'),
+    escolhas: [
+      { texto: tr('sg.guincho'), efeitos: { grana: -20, gasolina: 20 }, resultado: tr('sg.guincho.res') },
+      { texto: tr('sg.empurrar'), efeitos: { clima: -2, voz: -1, gasolina: 15 }, resultado: tr('sg.empurrar.res') },
+    ],
+  };
+  return ev;
+}
 
 export function evento(id: string): Evento {
-  if (id === SEM_GASOLINA.id) return SEM_GASOLINA;
+  if (id === 'sem-gasolina') return semGasolina();
   const e = EVENTOS.find((ev) => ev.id === id);
   if (!e) throw new Error(`Evento desconhecido: ${id}`);
   return e;
@@ -357,8 +369,8 @@ export function viajar(t: Turne, faixa: number): void {
   }
   if (custo > t.gasolina) {
     t.gasolina = 0;
-    causo(t, `Van seca na estrada antes de ${cidadeAtual(t)}`, 3);
-    t.fase = abrirEvento(t, SEM_GASOLINA, true);
+    causo(t, 'causo.van_seca', 3, { cidade: cidadeAtual(t) });
+    t.fase = abrirEvento(t, semGasolina(), true);
     return;
   }
   t.gasolina -= custo;
@@ -413,11 +425,11 @@ function abrirEvento(t: Turne, ev: Evento, depois: boolean): Fase {
 /** null = pode escolher; senão, o motivo. */
 export function escolhaDisponivel(t: Turne, ev: Evento, i: number, bloqueada: number | null): string | null {
   const e = ev.escolhas[i];
-  if (i === bloqueada) return `${BANDA.baixo.nome} dormiu no meio da conversa`;
+  if (i === bloqueada) return tr('motivo.dormiu', { nome: t.nomes.baixo });
   if (e.requer === 'conserto' && (!t.banda.includes('bateria') || t.flags.conserto)) {
-    return t.banda.includes('bateria') ? 'O conserto da turnê já foi usado' : 'Sem baterista na banda';
+    return tr(t.banda.includes('bateria') ? 'motivo.conserto_usado' : 'motivo.sem_baterista');
   }
-  if ((e.efeitos.grana ?? 0) < 0 && t.grana < -(e.efeitos.grana ?? 0)) return 'Sem grana';
+  if ((e.efeitos.grana ?? 0) < 0 && t.grana < -(e.efeitos.grana ?? 0)) return tr('motivo.sem_grana');
   return null;
 }
 
@@ -429,15 +441,16 @@ export function escolherNoEvento(t: Turne, i: number): Desfecho | null {
   const ev = evento(fase.id);
   if (escolhaDisponivel(t, ev, i, fase.bloqueada) !== null) return null;
   const e = ev.escolhas[i];
+  const traduzida = textoDoEvento(ev).escolhas[i];
   const total: Efeitos = { ...e.efeitos };
-  let texto = e.resultado;
+  let texto = traduzida.resultado;
   if (e.sorte && sortear(t) < e.sorte.chance) {
-    texto = e.sorte.resultado;
+    texto = traduzida.sorte ?? e.sorte.resultado;
     for (const [r, v] of Object.entries(e.sorte.efeitos) as [Recurso, number][]) total[r] = (total[r] ?? 0) + v;
   }
   if (e.requer === 'conserto') {
     t.flags.conserto = true;
-    causo(t, `${BANDA.bateria.nome} conserta a van no acostamento com arame e fita`, 4);
+    causo(t, 'causo.conserto', 4, { nome: t.nomes.bateria });
   }
   if (e.carta) t.baralho.push(e.carta);
   if (e.remover) {
@@ -446,15 +459,15 @@ export function escolherNoEvento(t: Turne, i: number): Desfecho | null {
   }
   if (e.flag === 'vendido') {
     t.flags.vendido = true;
-    causo(t, 'Banda fecha com o Grupo Tudo S.A.; a cena torce o nariz', 7);
+    causo(t, 'causo.vendido', 7, { banda: t.nomeBanda });
   } else if (ev.id === 'grupo-tudo') {
-    causo(t, 'Vocalista rasga contrato do Grupo Tudo S.A. no palco', 8);
+    causo(t, 'causo.rasgou', 8, { banda: t.nomeBanda });
   }
   if (e.flag === 'mascote') {
     t.flags.mascote = true;
-    causo(t, `Shar Pei sobe no palco em ${cidadeAtual(t)} e vira mascote da turnê`, 8);
+    causo(t, 'causo.mascote', 8, { cidade: cidadeAtual(t) });
   }
-  if (ev.id === 'correia') causo(t, 'Van quebra às 3 da manhã; banda descobre quem sabe trocar correia', 5);
+  if (ev.id === 'correia') causo(t, 'causo.correia', 5);
   const avisos = aplicar(t, total);
   if (!t.fim) {
     if (fase.depois) entrarNo(t);
@@ -522,7 +535,7 @@ export function alvoDoShow(t: Turne): number {
 }
 
 export function cacheBase(t: Turne): number {
-  const base = (6 + 2 * t.noite) * (0.5 + t.hype * 0.05);
+  const base = (8 + 2.5 * t.noite) * (0.55 + t.hype * 0.05);
   return Math.round(noAtual(t).final ? base * 1.5 : base);
 }
 
@@ -550,13 +563,13 @@ export function iniciarShow(t: Turne): { show: Show; avisos: string[] } {
     desabou: false,
     mosh: false,
   };
-  if (s.semVoz) avisos.push('Sem voz: as cartas do vocal estão bloqueadas neste show.');
+  if (s.semVoz) avisos.push(tr('show.sem_voz'));
   if (t.banda.includes('guitarra') && sortear(t) < 0.2) {
-    avisos.push(`Briga por afinação antes do show. ${BANDA.guitarra.nome} não olha pra ninguém.`, ...aplicar(t, { clima: -1 }));
+    avisos.push(tr('show.afinacao', { nome: t.nomes.guitarra }), ...aplicar(t, { clima: -1 }));
   }
   if (t.banda.includes('bateria') && sortear(t) < 0.25 && t.grana >= 5) {
     aplicar(t, { grana: -5 });
-    avisos.push(`${BANDA.bateria.nome} quebrou a baqueta na passagem de som: −R$ 5.`);
+    avisos.push(tr('show.baqueta', { nome: t.nomes.bateria }));
   }
   if (t.banda.includes('vocal') && !s.semVoz) s.mao.push({ id: 'discurso', temp: true });
   const j = comprar(t, s, MAO - s.mao.length);
@@ -581,7 +594,8 @@ function comprar(t: Turne, s: Show, n: number): Jogada {
       s.energia = Math.max(0, s.energia + c.especial.aoComprar);
       j.energia += s.energia - antes;
       j.microfonias++;
-      j.textos.push(`${c.nome}! “${c.texto}”`);
+      const tc = textoDaCarta(c);
+      j.textos.push(tr('jog.microfonia', { nome: tc.nome, texto: tc.texto }));
       s.descarte.push(id);
       k--; // a microfonia não ocupa espaço: compra outra no lugar
       continue;
@@ -601,16 +615,16 @@ export function custoDe(s: Show, c: Carta): number {
   return Math.max(0, (c.folego ?? 0) - s.desconto);
 }
 
-/** null = pode jogar; senão, o motivo. */
+/** null = pode jogar; senão, o código do motivo (i18n: `motivo.<código>`). */
 export function podeJogar(t: Turne, s: Show, i: number): string | null {
   const m = s.mao[i];
-  if (!m || s.encerrado) return 'Show encerrado';
+  if (!m || s.encerrado) return 'encerrado';
   const c = carta(m.id);
-  if (c.folego === null) return 'Não dá pra jogar';
-  if (custoDe(s, c) > s.folego) return 'Sem fôlego';
+  if (c.folego === null) return 'injogavel';
+  if (custoDe(s, c) > s.folego) return 'sem_folego';
   const gastaVoz = (c.voz ?? 0) < 0 && !s.cantaJunto;
-  if ((c.vocal || gastaVoz) && s.semVoz && !s.cantaJunto) return 'Sem voz';
-  if (gastaVoz && t.voz + (c.voz ?? 0) < 0) return 'Sem voz';
+  if ((c.vocal || gastaVoz) && s.semVoz && !s.cantaJunto) return 'sem_voz';
+  if (gastaVoz && t.voz + (c.voz ?? 0) < 0) return 'sem_voz';
   return null;
 }
 
@@ -627,7 +641,7 @@ export function jogar(t: Turne, s: Show, i: number): Jogada | null {
 
   if (esp.ocupa) {
     j.momento = 'troca';
-    j.textos.push('Corda trocada. Bora.');
+    j.textos.push(tr('jog.corda'));
     return j;
   }
 
@@ -659,7 +673,7 @@ export function jogar(t: Turne, s: Show, i: number): Jogada | null {
     s.mosh = true;
     if (!t.flags.mosh) {
       t.flags.mosh = true;
-      causo(t, `Primeiro mosh de verdade em ${cidadeAtual(t)}: alguém perdeu um tênis`, 6);
+      causo(t, 'causo.mosh', 6, { cidade: cidadeAtual(t) });
     }
   }
 
@@ -667,10 +681,10 @@ export function jogar(t: Turne, s: Show, i: number): Jogada | null {
   if (esp.hype) j.avisos.push(...aplicar(t, { hype: esp.hype }));
   if (esp.clima) j.avisos.push(...aplicar(t, { clima: esp.clima }));
   if (esp.risco && sortear(t) < esp.risco.chance) {
-    j.textos.push('O discurso dividiu a banda.');
+    j.textos.push(tr('jog.discurso'));
     j.avisos.push(...aplicar(t, { clima: esp.risco.clima }));
   }
-  if (esp.grana) { s.grana += esp.grana; j.textos.push(`+R$ ${esp.grana} no cachê`); }
+  if (esp.grana) { s.grana += esp.grana; j.textos.push(tr('jog.grana', { v: esp.grana })); }
   if (esp.folego) s.folego += esp.folego;
   if (esp.fuzz) s.fuzz = esp.fuzz;
   if (esp.cantaJunto) s.cantaJunto = true;
@@ -678,8 +692,8 @@ export function jogar(t: Turne, s: Show, i: number): Jogada | null {
   if (esp.machuca && sortear(t) < esp.machuca) {
     t.flags.machucado = true;
     j.momento = 'machucou';
-    j.textos.push('Ninguém segurou. Amanhã é posto de saúde.');
-    causo(t, `Stage dive em ${cidadeAtual(t)} termina no posto de saúde`, 5);
+    j.textos.push(tr('jog.machucou'));
+    causo(t, 'causo.stagedive', 5, { cidade: cidadeAtual(t) });
   }
   if (esp.compra) {
     const k = comprar(t, s, esp.compra);
@@ -746,9 +760,9 @@ export function encerrarShow(t: Turne, s: Show): ResultadoShow {
   t.stats.maiorEnergia = Math.max(t.stats.maiorEnergia, s.energia);
   if (s.energia >= s.alvo * 1.5) t.stats.bombados++;
   const cidade = cidadeAtual(t);
-  if (s.desabou) causo(t, `Palco desaba em ${cidade}; dono paga cachê dobrado de indenização`, 9);
-  else if (no.final && sucesso) causo(t, `Festival de quintal em ${cidade} termina com ${publico} pessoas cantando junto`, 7);
-  else if (!sucesso && sortear(t) < 0.5) causo(t, `Show morno em ${cidade}: alguém dormiu na van de cara fechada`, 2);
+  if (s.desabou) causo(t, 'causo.palco', 9, { cidade });
+  else if (no.final && sucesso) causo(t, 'causo.festival', 7, { cidade, n: publico });
+  else if (!sucesso && sortear(t) < 0.5) causo(t, 'causo.morno', 2, { cidade });
 
   const res: ResultadoShow = { sucesso, energia: s.energia, alvo: s.alvo, cache, merch, extra: s.grana, desabou: s.desabou, publico, avisos };
   if (t.fim) return res;
@@ -793,16 +807,9 @@ export function manchetes(t: Turne, n = 4): Causo[] {
   return [...t.causos].sort((a, b) => b.peso - a.peso || a.noite - b.noite).slice(0, n).sort((a, b) => a.noite - b.noite);
 }
 
-const NOMES_RECURSO: Record<Recurso, string> = { grana: 'R$', gasolina: 'L', clima: 'clima', voz: 'voz', hype: 'hype' };
-
 export function descreverEfeitos(e: Efeitos): string {
   return (Object.entries(e) as [Recurso, number][])
     .filter(([, v]) => v)
-    .map(([r, v]) => {
-      const sinal = v > 0 ? '+' : '−';
-      if (r === 'grana') return `${sinal}R$ ${Math.abs(v)}`;
-      if (r === 'gasolina') return `${sinal}${Math.abs(v)} L`;
-      return `${sinal}${Math.abs(v)} ${NOMES_RECURSO[r]}`;
-    })
+    .map(([r, v]) => `${v > 0 ? '+' : '−'}${tr(`ef.${r}`, { v: Math.abs(v) })}`)
     .join(' · ');
 }

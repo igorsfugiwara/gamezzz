@@ -94,7 +94,7 @@ describe('turnê', () => {
     expect(t.fim).toBeNull();
     aplicar(t, { clima: -20 });
     expect(t.fim).toBe('acabou');
-    expect(t.causos.at(-1)!.texto).toMatch(/Banda acaba/);
+    expect(t.causos.at(-1)!.chave).toBe('causo.fim');
   });
 
   it('baterista conserta a van uma vez só', () => {
@@ -117,7 +117,7 @@ describe('show', () => {
     const j = jogar(t, s, 0)!;
     expect(j.energia).toBe(20);
     expect(j.momento).toBe('mosh');
-    expect(t.causos.some((c) => /Primeiro mosh/.test(c.texto))).toBe(true);
+    expect(t.causos.some((c) => c.chave === 'causo.mosh')).toBe(true);
   });
 
   it('Cover não entra em combo e não gasta o Breakdown', () => {
@@ -143,7 +143,7 @@ describe('show', () => {
     const t = novaTurne('ROUCA1');
     const s = showCom(t, ['grito', 'cantajunto', 'grito']);
     t.voz = 0;
-    expect(podeJogar(t, s, 0)).toBe('Sem voz');
+    expect(podeJogar(t, s, 0)).toBe('sem_voz');
     jogar(t, s, 1);
     expect(podeJogar(t, s, 0)).toBeNull();
   });
@@ -167,7 +167,7 @@ describe('show', () => {
     expect(s.desabou).toBe(true);
     const r = encerrarShow(t, s);
     expect(r.cache).toBeGreaterThan(0);
-    expect(t.causos.some((c) => /Palco desaba/.test(c.texto))).toBe(true);
+    expect(t.causos.some((c) => c.chave === 'causo.palco')).toBe(true);
   });
 
   it('Agradecimento encerra o show na hora', () => {

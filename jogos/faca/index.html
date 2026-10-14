@@ -3,43 +3,63 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Faça Você Mesmo — roguelike de turnê</title>
+  <title>DIY - Faça você mesmo</title>
   <meta name="description" content="Roguelike de cartas sobre a vida de banda independente: dez noites de estrada, uma van que não deveria funcionar e quatro pessoas tentando continuar amigas." />
 </head>
 <body>
   <div id="app" class="faca">
+    <button class="idioma" id="btn-idioma" aria-label="Idioma / Language">EN</button>
+
     <!-- Título -->
     <section class="tela tela--titulo" id="titulo">
-      <h1 class="logo"><span>FAÇA</span><span>VOCÊ</span><span>MESMO</span></h1>
-      <p class="sub">dez noites de estrada, uma van e quatro amigos (por enquanto)</p>
-      <canvas id="titulo-banda" class="pixel titulo-banda" width="76" height="20" aria-hidden="true"></canvas>
+      <h1 class="logo"><span class="logo__diy">DIY</span><span class="logo__sub">Faça você mesmo</span></h1>
+      <p class="sub" data-t="titulo.sub"></p>
+      <canvas id="titulo-banda" class="pixel titulo-banda" width="128" height="64" aria-hidden="true"></canvas>
       <div class="botoes">
         <button class="botao botao--forte" id="btn-continuar" hidden></button>
-        <button class="botao botao--forte" id="btn-nova">Nova turnê</button>
+        <button class="botao botao--forte" id="btn-nova" data-t="titulo.nova"></button>
         <button class="botao" id="btn-amigo" hidden></button>
       </div>
       <p class="rodape" id="caderno"></p>
     </section>
 
-    <!-- HUD da turnê (mapa, evento, descanso) -->
+    <!-- Banda: nomes editáveis -->
+    <section class="tela tela--banda" id="banda-tela" hidden>
+      <h2 class="banda-titulo" data-t="banda.titulo"></h2>
+      <label class="campo">
+        <span data-t="banda.nome"></span>
+        <input id="banda-nome" maxlength="28" autocomplete="off" />
+      </label>
+      <div class="membros-cards" id="banda-membros"></div>
+      <div class="botoes botoes--linha">
+        <button class="botao" id="btn-voltar-banda">←</button>
+        <button class="botao botao--forte" id="btn-bora" data-t="banda.pronto"></button>
+      </div>
+    </section>
+
+    <!-- HUD da turnê (mapa, evento, pousada) -->
     <header class="hud" id="hud" hidden>
       <div class="recursos" id="recursos"></div>
       <div class="banda" id="banda"></div>
     </header>
 
-    <!-- Mapa -->
+    <!-- Mapa: as noites ligadas pela estrada -->
     <section class="tela tela--mapa" id="mapa" hidden>
       <div class="mapa__acoes">
         <button class="botao botao--mini" id="btn-abastecer"></button>
         <button class="botao botao--mini" id="btn-baralho"></button>
         <button class="icone" id="btn-som" aria-label="Som">🔊</button>
-        <button class="icone" id="btn-sair" aria-label="Sair para o título">✕</button>
+        <button class="icone" id="btn-sair" aria-label="Sair">✕</button>
       </div>
-      <ol class="noites" id="noites"></ol>
+      <div class="mapa__rolagem" id="mapa-rolagem">
+        <svg class="estradas" id="estradas" aria-hidden="true"></svg>
+        <ol class="noites" id="noites"></ol>
+      </div>
     </section>
 
-    <!-- Evento / descanso / nó perdido -->
+    <!-- Evento / pousada / nó perdido -->
     <section class="tela tela--folha" id="folha" hidden>
+      <canvas id="paisagem" class="pixel paisagem" width="480" height="180" hidden></canvas>
       <article class="papel" id="papel">
         <p class="papel__onde" id="folha-onde"></p>
         <h2 class="papel__titulo" id="folha-titulo"></h2>
@@ -48,7 +68,7 @@
         <div class="desfecho" id="folha-desfecho" hidden>
           <p class="desfecho__texto" id="desfecho-texto"></p>
           <p class="desfecho__efeitos" id="desfecho-efeitos"></p>
-          <button class="botao botao--forte" id="btn-seguir">Seguir viagem</button>
+          <button class="botao botao--forte" id="btn-seguir"></button>
         </div>
       </article>
     </section>
@@ -72,7 +92,7 @@
       <div class="show__linha">
         <div class="folego" id="folego" aria-label="Fôlego"></div>
         <span class="espiar" id="espiar"></span>
-        <button class="botao botao--mini" id="btn-bloco">Próxima música ▶</button>
+        <button class="botao botao--mini" id="btn-bloco"></button>
       </div>
       <div class="mao" id="mao"></div>
     </section>
@@ -85,7 +105,7 @@
         <ul class="res-numeros" id="res-numeros"></ul>
         <p class="papel__onde" id="res-escolha"></p>
         <div class="recompensas" id="recompensas"></div>
-        <button class="botao" id="btn-pular">Seguir sem carta nova</button>
+        <button class="botao" id="btn-pular"></button>
       </article>
     </section>
 
@@ -93,9 +113,9 @@
     <section class="tela tela--fim" id="fim" hidden>
       <canvas id="zine" class="zine" width="540" height="960"></canvas>
       <div class="botoes">
-        <button class="botao botao--forte" id="btn-zine">Salvar o zine</button>
-        <button class="botao" id="btn-desafio">Desafiar com esta turnê</button>
-        <button class="botao" id="btn-denovo">Nova turnê</button>
+        <button class="botao botao--forte" id="btn-zine" data-t="fim.zine"></button>
+        <button class="botao" id="btn-desafio" data-t="fim.desafio"></button>
+        <button class="botao" id="btn-denovo" data-t="fim.denovo"></button>
       </div>
       <p class="retorno" id="fim-retorno" aria-live="polite"></p>
     </section>
@@ -103,9 +123,9 @@
     <!-- Baralho / escolher carta para tirar -->
     <section class="modal" id="modal-baralho" hidden>
       <div class="modal__caixa">
-        <h2 id="baralho-titulo">Baralho</h2>
+        <h2 id="baralho-titulo"></h2>
         <div class="lista-cartas" id="baralho-lista"></div>
-        <button class="botao" id="btn-fechar-baralho">Fechar</button>
+        <button class="botao" id="btn-fechar-baralho" data-t="baralho.fechar"></button>
       </div>
     </section>
 

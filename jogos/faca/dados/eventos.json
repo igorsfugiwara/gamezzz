@@ -5,10 +5,49 @@
     "titulo": "Cadê a tomada?",
     "texto": "A casa de show não tem tomada no palco. O dono jura que \"sempre funcionou\".",
     "escolhas": [
-      { "texto": "Puxar extensão do bar do lado", "efeitos": { "grana": -10, "hype": 1 }, "resultado": "A extensão tinha 40 metros. O dono do bar virou fã." },
-      { "texto": "Tocar desplugado no meio do público", "efeitos": { "voz": -2, "hype": 2 }, "resultado": "Sem amplificador, só gogó. Ninguém esquece esse show." },
-      { "texto": "Ligar tudo no gerador da van", "efeitos": { "gasolina": -20, "clima": 1 }, "resultado": "A van virou palco, cozinha e camarim." }
-    ]
+      {
+        "texto": "Puxar extensão do bar do lado",
+        "efeitos": {
+          "grana": -10,
+          "hype": 1
+        },
+        "resultado": "A extensão tinha 40 metros. O dono do bar virou fã."
+      },
+      {
+        "texto": "Tocar desplugado no meio do público",
+        "efeitos": {
+          "voz": -2,
+          "hype": 2
+        },
+        "resultado": "Sem amplificador, só gogó. Ninguém esquece esse show."
+      },
+      {
+        "texto": "Ligar tudo no gerador da van",
+        "efeitos": {
+          "gasolina": -20,
+          "clima": 1
+        },
+        "resultado": "A van virou palco, cozinha e camarim."
+      }
+    ],
+    "en": {
+      "titulo": "Where’s the outlet?",
+      "texto": "The venue has no power outlet on stage. The owner swears it \"always worked\".",
+      "escolhas": [
+        {
+          "texto": "Run an extension from the bar next door",
+          "resultado": "The cord was 40 meters long. The bar owner became a fan."
+        },
+        {
+          "texto": "Play unplugged in the middle of the crowd",
+          "resultado": "No amps, just lungs. Nobody will forget this show."
+        },
+        {
+          "texto": "Power everything from the van",
+          "resultado": "The van became stage, kitchen and backstage."
+        }
+      ]
+    }
   },
   {
     "id": "cerveja",
@@ -16,10 +55,50 @@
     "titulo": "Cachê líquido",
     "texto": "O dono do lugar quer pagar em cerveja.",
     "escolhas": [
-      { "texto": "Aceitar a cerveja", "efeitos": { "clima": 2, "voz": -1 }, "resultado": "A banda nunca esteve tão unida. A voz, nem tanto." },
-      { "texto": "Insistir no dinheiro", "efeitos": { "grana": 15, "clima": -1 }, "resultado": "Ele pagou, resmungando. A volta foi em silêncio." },
-      { "texto": "Meio a meio", "efeitos": { "grana": 8, "clima": 1, "voz": -1 }, "resultado": "Metade em cerveja, metade em moeda de um real." }
-    ]
+      {
+        "texto": "Aceitar a cerveja",
+        "efeitos": {
+          "clima": 2,
+          "voz": -1
+        },
+        "resultado": "A banda nunca esteve tão unida. A voz, nem tanto."
+      },
+      {
+        "texto": "Insistir no dinheiro",
+        "efeitos": {
+          "grana": 15,
+          "clima": -1
+        },
+        "resultado": "Ele pagou, resmungando. A volta foi em silêncio."
+      },
+      {
+        "texto": "Meio a meio",
+        "efeitos": {
+          "grana": 8,
+          "clima": 1,
+          "voz": -1
+        },
+        "resultado": "Metade em cerveja, metade em moeda de um real."
+      }
+    ],
+    "en": {
+      "titulo": "Liquid pay",
+      "texto": "The venue owner wants to pay in beer.",
+      "escolhas": [
+        {
+          "texto": "Take the beer",
+          "resultado": "The band has never been closer. The voice, not so much."
+        },
+        {
+          "texto": "Insist on cash",
+          "resultado": "He paid, grumbling. The ride back was silent."
+        },
+        {
+          "texto": "Half and half",
+          "resultado": "Half in beer, half in one-dollar coins."
+        }
+      ]
+    }
   },
   {
     "id": "chao",
@@ -27,9 +106,38 @@
     "titulo": "Chão pra dormir",
     "texto": "Uma banda local oferece o chão da sala pra vocês dormirem.",
     "escolhas": [
-      { "texto": "Aceitar e pagar o pão de manhã", "efeitos": { "voz": 2, "clima": 1, "grana": -5 }, "resultado": "Colchonete, gato no pé e café passado. Vida boa." },
-      { "texto": "Ir pro after com eles", "efeitos": { "hype": 2, "voz": -2 }, "resultado": "Ninguém dormiu. Todo mundo da cidade agora conhece a banda." }
-    ]
+      {
+        "texto": "Aceitar e pagar o pão de manhã",
+        "efeitos": {
+          "voz": 2,
+          "clima": 1,
+          "grana": -5
+        },
+        "resultado": "Colchonete, gato no pé e café passado. Vida boa."
+      },
+      {
+        "texto": "Ir pro after com eles",
+        "efeitos": {
+          "hype": 2,
+          "voz": -2
+        },
+        "resultado": "Ninguém dormiu. Todo mundo da cidade agora conhece a banda."
+      }
+    ],
+    "en": {
+      "titulo": "Floor to sleep on",
+      "texto": "A local band offers their living room floor for the night.",
+      "escolhas": [
+        {
+          "texto": "Accept and buy breakfast",
+          "resultado": "Sleeping mat, cat on your feet and fresh coffee. Good life."
+        },
+        {
+          "texto": "Go to the after-party with them",
+          "resultado": "Nobody slept. The whole town knows the band now."
+        }
+      ]
+    }
   },
   {
     "id": "zine",
@@ -37,10 +145,50 @@
     "titulo": "Entrevista às 8 da manhã",
     "texto": "Um zine local quer entrevistar a banda. Às 8 da manhã. Depois do show.",
     "escolhas": [
-      { "texto": "Vai todo mundo", "efeitos": { "hype": 2, "clima": -1, "voz": -1 }, "resultado": "A foto saiu com metade da banda de olho fechado." },
-      { "texto": "Manda só o vocal", "efeitos": { "hype": 1, "voz": -1 }, "resultado": "Ele falou de política por 40 minutos." },
-      { "texto": "Dormir", "efeitos": { "voz": 1, "hype": -1 }, "resultado": "O zine saiu com uma ilustração de vocês dormindo." }
-    ]
+      {
+        "texto": "Vai todo mundo",
+        "efeitos": {
+          "hype": 2,
+          "clima": -1,
+          "voz": -1
+        },
+        "resultado": "A foto saiu com metade da banda de olho fechado."
+      },
+      {
+        "texto": "Manda só o vocal",
+        "efeitos": {
+          "hype": 1,
+          "voz": -1
+        },
+        "resultado": "Ele falou de política por 40 minutos."
+      },
+      {
+        "texto": "Dormir",
+        "efeitos": {
+          "voz": 1,
+          "hype": -1
+        },
+        "resultado": "O zine saiu com uma ilustração de vocês dormindo."
+      }
+    ],
+    "en": {
+      "titulo": "Interview at 8 a.m.",
+      "texto": "A local zine wants to interview the band. At 8 a.m. After the show.",
+      "escolhas": [
+        {
+          "texto": "Everybody goes",
+          "resultado": "The photo came out with half the band’s eyes closed."
+        },
+        {
+          "texto": "Send only the singer",
+          "resultado": "They talked politics for 40 minutes."
+        },
+        {
+          "texto": "Sleep",
+          "resultado": "The zine ran a drawing of you all sleeping."
+        }
+      ]
+    }
   },
   {
     "id": "grupo-tudo",
@@ -49,9 +197,38 @@
     "titulo": "Proposta do Grupo Tudo S.A.",
     "texto": "Um executivo do Grupo Tudo S.A. viu o show. Quer a banda num comercial de energético. O cheque já está assinado.",
     "escolhas": [
-      { "texto": "Assinar", "efeitos": { "grana": 60, "hype": -3 }, "flag": "vendido", "resultado": "O cheque compensou. Na cena, ninguém mais olha na sua cara." },
-      { "texto": "Rasgar o contrato no palco", "efeitos": { "hype": 3, "voz": -1 }, "resultado": "O vídeo rodou o país. O executivo pediu reembolso da cerveja." }
-    ]
+      {
+        "texto": "Assinar",
+        "efeitos": {
+          "grana": 60,
+          "hype": -3
+        },
+        "flag": "vendido",
+        "resultado": "O cheque compensou. Na cena, ninguém mais olha na sua cara."
+      },
+      {
+        "texto": "Rasgar o contrato no palco",
+        "efeitos": {
+          "hype": 3,
+          "voz": -1
+        },
+        "resultado": "O vídeo rodou o país. O executivo pediu reembolso da cerveja."
+      }
+    ],
+    "en": {
+      "titulo": "Offer from Everything Corp.",
+      "texto": "An Everything Corp. executive saw the show. They want the band in an energy drink ad. The check is already signed.",
+      "escolhas": [
+        {
+          "texto": "Sign it",
+          "resultado": "The check cleared. Nobody in the scene looks at you anymore."
+        },
+        {
+          "texto": "Tear up the contract on stage",
+          "resultado": "The video went viral. The executive asked for the beer money back."
+        }
+      ]
+    }
   },
   {
     "id": "radio",
@@ -59,9 +236,37 @@
     "titulo": "Rádio comunitária",
     "texto": "A rádio do bairro chama a banda pra tocar ao vivo no programa da tarde.",
     "escolhas": [
-      { "texto": "Tocar acústico no estúdio", "efeitos": { "hype": 2, "voz": -1 }, "resultado": "O locutor pediu bis. A vizinha ligou reclamando." },
-      { "texto": "Deixar a demo gravada", "efeitos": { "hype": 1, "grana": -5 }, "resultado": "Tocou entre um forró e o horóscopo." }
-    ]
+      {
+        "texto": "Tocar acústico no estúdio",
+        "efeitos": {
+          "hype": 2,
+          "voz": -1
+        },
+        "resultado": "O locutor pediu bis. A vizinha ligou reclamando."
+      },
+      {
+        "texto": "Deixar a demo gravada",
+        "efeitos": {
+          "hype": 1,
+          "grana": -5
+        },
+        "resultado": "Tocou entre um forró e o horóscopo."
+      }
+    ],
+    "en": {
+      "titulo": "Community radio",
+      "texto": "The neighborhood radio invites the band to play live on the afternoon show.",
+      "escolhas": [
+        {
+          "texto": "Play acoustic in the studio",
+          "resultado": "The host asked for an encore. The neighbor called to complain."
+        },
+        {
+          "texto": "Leave the demo",
+          "resultado": "It played between a forró and the horoscope."
+        }
+      ]
+    }
   },
   {
     "id": "vinil",
@@ -69,9 +274,37 @@
     "titulo": "Feira de vinil",
     "texto": "Feira de vinil na praça. Dá pra montar banca de merch ou gastar o que não tem.",
     "escolhas": [
-      { "texto": "Montar banca de merch", "efeitos": { "grana": 20, "clima": -1 }, "resultado": "Vendeu tudo. Alguém ficou de castigo na banca o dia inteiro." },
-      { "texto": "Trocar camiseta por disco", "efeitos": { "clima": 2, "grana": -10 }, "resultado": "A van agora tem trilha sonora nova." }
-    ]
+      {
+        "texto": "Montar banca de merch",
+        "efeitos": {
+          "grana": 20,
+          "clima": -1
+        },
+        "resultado": "Vendeu tudo. Alguém ficou de castigo na banca o dia inteiro."
+      },
+      {
+        "texto": "Trocar camiseta por disco",
+        "efeitos": {
+          "clima": 2,
+          "grana": -10
+        },
+        "resultado": "A van agora tem trilha sonora nova."
+      }
+    ],
+    "en": {
+      "titulo": "Record fair",
+      "texto": "Vinyl fair in the square. You can set up a merch table or spend what you don’t have.",
+      "escolhas": [
+        {
+          "texto": "Set up the merch table",
+          "resultado": "Sold out. Someone got stuck at the table all day."
+        },
+        {
+          "texto": "Trade shirts for records",
+          "resultado": "The van has a new soundtrack."
+        }
+      ]
+    }
   },
   {
     "id": "fa-palco",
@@ -79,9 +312,37 @@
     "titulo": "Posso cantar uma?",
     "texto": "Uma fã pergunta se pode cantar uma música com vocês no show de amanhã.",
     "escolhas": [
-      { "texto": "Topar", "efeitos": { "clima": -1 }, "carta": "cantajunto", "resultado": "O guitarrista não gostou da ideia. A plateia adorou." },
-      { "texto": "Recusar com jeito", "efeitos": { "hype": -1, "voz": 1 }, "resultado": "Ela entendeu. O Instagram dela, nem tanto." }
-    ]
+      {
+        "texto": "Topar",
+        "efeitos": {
+          "clima": -1
+        },
+        "carta": "cantajunto",
+        "resultado": "O guitarrista não gostou da ideia. A plateia adorou."
+      },
+      {
+        "texto": "Recusar com jeito",
+        "efeitos": {
+          "hype": -1,
+          "voz": 1
+        },
+        "resultado": "Ela entendeu. O Instagram dela, nem tanto."
+      }
+    ],
+    "en": {
+      "titulo": "Can I sing one?",
+      "texto": "A fan asks if she can sing a song with you at tomorrow’s show.",
+      "escolhas": [
+        {
+          "texto": "Say yes",
+          "resultado": "The guitarist didn’t like it. The crowd loved it."
+        },
+        {
+          "texto": "Politely decline",
+          "resultado": "She understood. Her Instagram, not so much."
+        }
+      ]
+    }
   },
   {
     "id": "cancelado",
@@ -89,9 +350,46 @@
     "titulo": "Casa interditada",
     "texto": "O show de hoje foi cancelado: a casa foi interditada de manhã.",
     "escolhas": [
-      { "texto": "Fazer o show na calçada", "efeitos": { "hype": 2, "voz": -1 }, "sorte": { "chance": 0.35, "efeitos": { "grana": -15 }, "resultado": "O rapa levou a caixa de som. Fiança de R$ 15." }, "resultado": "Juntou gente, juntou cachorro, juntou vizinho." },
-      { "texto": "Tirar a noite de folga", "efeitos": { "voz": 2, "clima": 1, "hype": -1 }, "resultado": "Pizza, sofá e ninguém falando de música." }
-    ]
+      {
+        "texto": "Fazer o show na calçada",
+        "efeitos": {
+          "hype": 2,
+          "voz": -1
+        },
+        "sorte": {
+          "chance": 0.35,
+          "efeitos": {
+            "grana": -15
+          },
+          "resultado": "O rapa levou a caixa de som. Fiança de R$ 15."
+        },
+        "resultado": "Juntou gente, juntou cachorro, juntou vizinho."
+      },
+      {
+        "texto": "Tirar a noite de folga",
+        "efeitos": {
+          "voz": 2,
+          "clima": 1,
+          "hype": -1
+        },
+        "resultado": "Pizza, sofá e ninguém falando de música."
+      }
+    ],
+    "en": {
+      "titulo": "Venue shut down",
+      "texto": "Tonight’s show is cancelled: the venue was shut down this morning.",
+      "escolhas": [
+        {
+          "texto": "Play on the sidewalk",
+          "resultado": "Gathered people, dogs and neighbors.",
+          "sorte": "The cops took the PA. $ 15 bail."
+        },
+        {
+          "texto": "Take the night off",
+          "resultado": "Pizza, couch and nobody talking about music."
+        }
+      ]
+    }
   },
   {
     "id": "mae",
@@ -99,9 +397,38 @@
     "titulo": "Almoço de mãe",
     "texto": "A mãe do baterista mora a 30 km e quer fazer almoço pra banda inteira.",
     "escolhas": [
-      { "texto": "Desviar a rota", "efeitos": { "gasolina": -15, "clima": 2, "voz": 1 }, "resultado": "Feijoada, marmita pra viagem e um sermão sobre emprego fixo." },
-      { "texto": "Prometer passar na volta", "efeitos": { "clima": -1, "hype": 1 }, "resultado": "Chegaram cedo pra passagem de som. O baterista ficou quieto." }
-    ]
+      {
+        "texto": "Desviar a rota",
+        "efeitos": {
+          "gasolina": -15,
+          "clima": 2,
+          "voz": 1
+        },
+        "resultado": "Feijoada, marmita pra viagem e um sermão sobre emprego fixo."
+      },
+      {
+        "texto": "Prometer passar na volta",
+        "efeitos": {
+          "clima": -1,
+          "hype": 1
+        },
+        "resultado": "Chegaram cedo pra passagem de som. O baterista ficou quieto."
+      }
+    ],
+    "en": {
+      "titulo": "Mom’s lunch",
+      "texto": "The drummer’s mom lives 20 miles away and wants to cook for the whole band.",
+      "escolhas": [
+        {
+          "texto": "Take the detour",
+          "resultado": "Feijoada, leftovers for the road and a lecture about getting a real job."
+        },
+        {
+          "texto": "Promise to stop by on the way back",
+          "resultado": "Got to soundcheck early. The drummer stayed quiet."
+        }
+      ]
+    }
   },
   {
     "id": "selo",
@@ -109,9 +436,37 @@
     "titulo": "Lançamento em fita",
     "texto": "Um selo independente quer lançar a demo de vocês em fita cassete.",
     "escolhas": [
-      { "texto": "Topar e bancar a capa", "efeitos": { "grana": -20, "hype": 3 }, "resultado": "Cem cópias numeradas à mão. Esgotou em dois shows." },
-      { "texto": "Pedir adiantamento", "efeitos": { "grana": 15, "hype": -1 }, "resultado": "O selo pagou. E contou pra todo mundo que vocês são chatos." }
-    ]
+      {
+        "texto": "Topar e bancar a capa",
+        "efeitos": {
+          "grana": -20,
+          "hype": 3
+        },
+        "resultado": "Cem cópias numeradas à mão. Esgotou em dois shows."
+      },
+      {
+        "texto": "Pedir adiantamento",
+        "efeitos": {
+          "grana": 15,
+          "hype": -1
+        },
+        "resultado": "O selo pagou. E contou pra todo mundo que vocês são chatos."
+      }
+    ],
+    "en": {
+      "titulo": "Cassette release",
+      "texto": "An indie label wants to release your demo on cassette.",
+      "escolhas": [
+        {
+          "texto": "Do it and pay for the cover",
+          "resultado": "A hundred hand-numbered copies. Sold out in two shows."
+        },
+        {
+          "texto": "Ask for an advance",
+          "resultado": "The label paid. And told everyone you’re a pain."
+        }
+      ]
+    }
   },
   {
     "id": "barulho",
@@ -120,10 +475,58 @@
     "titulo": "A van faz um barulho novo",
     "texto": "Um barulho que ninguém nunca tinha ouvido. Um clec-clec-fiuuu.",
     "escolhas": [
-      { "texto": "Parar no mecânico", "efeitos": { "grana": -15, "clima": 1 }, "resultado": "Era a correia. Era sempre a correia." },
-      { "texto": "Aumentar o volume do rádio", "efeitos": { "clima": 1, "voz": -1 }, "sorte": { "chance": 0.5, "efeitos": { "gasolina": -30, "clima": -2 }, "resultado": "O barulho virou silêncio. A van parou. Gasolina pro guincho." }, "resultado": "O barulho sumiu. Ou o rádio ganhou." },
-      { "texto": "O baterista dá um jeito", "requer": "conserto", "efeitos": { "clima": 2 }, "resultado": "Arame, fita e fé. Funcionou. (O conserto da turnê foi usado.)" }
-    ]
+      {
+        "texto": "Parar no mecânico",
+        "efeitos": {
+          "grana": -15,
+          "clima": 1
+        },
+        "resultado": "Era a correia. Era sempre a correia."
+      },
+      {
+        "texto": "Aumentar o volume do rádio",
+        "efeitos": {
+          "clima": 1,
+          "voz": -1
+        },
+        "sorte": {
+          "chance": 0.5,
+          "efeitos": {
+            "gasolina": -30,
+            "clima": -2
+          },
+          "resultado": "O barulho virou silêncio. A van parou. Gasolina pro guincho."
+        },
+        "resultado": "O barulho sumiu. Ou o rádio ganhou."
+      },
+      {
+        "texto": "O baterista dá um jeito",
+        "requer": "conserto",
+        "efeitos": {
+          "clima": 2
+        },
+        "resultado": "Arame, fita e fé. Funcionou. (O conserto da turnê foi usado.)"
+      }
+    ],
+    "en": {
+      "titulo": "The van makes a new noise",
+      "texto": "A noise nobody had ever heard. A clack-clack-wheee.",
+      "escolhas": [
+        {
+          "texto": "Stop at the mechanic",
+          "resultado": "It was the belt. It’s always the belt."
+        },
+        {
+          "texto": "Turn the radio up",
+          "resultado": "The noise is gone. Or the radio won.",
+          "sorte": "The noise became silence. The van stopped. Gas for the tow."
+        },
+        {
+          "texto": "The drummer fixes it",
+          "resultado": "Wire, tape and faith. It worked. (The tour fix was used.)"
+        }
+      ]
+    }
   },
   {
     "id": "correia",
@@ -132,10 +535,49 @@
     "titulo": "Alguém sabe trocar correia?",
     "texto": "3 da manhã. Acostamento. A van parou e não quer mais.",
     "escolhas": [
-      { "texto": "Esperar o guincho", "efeitos": { "grana": -25, "voz": 1 }, "resultado": "Quatro horas dormindo na beira da estrada." },
-      { "texto": "Vídeo tutorial no celular", "efeitos": { "clima": -2, "hype": 1 }, "resultado": "Duas horas e uma briga depois, funcionou. A live do conserto viralizou." },
-      { "texto": "O baterista conserta", "requer": "conserto", "efeitos": { "clima": 2 }, "resultado": "Ele trocou a correia com uma lanterna na boca. Herói. (O conserto da turnê foi usado.)" }
-    ]
+      {
+        "texto": "Esperar o guincho",
+        "efeitos": {
+          "grana": -25,
+          "voz": 1
+        },
+        "resultado": "Quatro horas dormindo na beira da estrada."
+      },
+      {
+        "texto": "Vídeo tutorial no celular",
+        "efeitos": {
+          "clima": -2,
+          "hype": 1
+        },
+        "resultado": "Duas horas e uma briga depois, funcionou. A live do conserto viralizou."
+      },
+      {
+        "texto": "O baterista conserta",
+        "requer": "conserto",
+        "efeitos": {
+          "clima": 2
+        },
+        "resultado": "Ele trocou a correia com uma lanterna na boca. Herói. (O conserto da turnê foi usado.)"
+      }
+    ],
+    "en": {
+      "titulo": "Anyone know how to change a belt?",
+      "texto": "3 a.m. Road shoulder. The van stopped and won’t start.",
+      "escolhas": [
+        {
+          "texto": "Wait for the tow truck",
+          "resultado": "Four hours sleeping by the road."
+        },
+        {
+          "texto": "Video tutorial on the phone",
+          "resultado": "Two hours and one fight later, it worked. The repair livestream went viral."
+        },
+        {
+          "texto": "The drummer fixes it",
+          "resultado": "Changed the belt with a flashlight in their mouth. Hero. (The tour fix was used.)"
+        }
+      ]
+    }
   },
   {
     "id": "blitz",
@@ -143,9 +585,45 @@
     "titulo": "Blitz",
     "texto": "Blitz da polícia rodoviária. O pneu de trás está careca.",
     "escolhas": [
-      { "texto": "Pagar a multa", "efeitos": { "grana": -20, "clima": 1 }, "resultado": "Ninguém foi preso. Todo mundo riu de nervoso." },
-      { "texto": "Cantar uma pro guarda", "efeitos": { "hype": 1, "voz": -1 }, "sorte": { "chance": 0.5, "efeitos": { "grana": -30 }, "resultado": "Ele não era fã. Multa dobrada." }, "resultado": "O guarda era fã de hardcore. Pediu foto." }
-    ]
+      {
+        "texto": "Pagar a multa",
+        "efeitos": {
+          "grana": -20,
+          "clima": 1
+        },
+        "resultado": "Ninguém foi preso. Todo mundo riu de nervoso."
+      },
+      {
+        "texto": "Cantar uma pro guarda",
+        "efeitos": {
+          "hype": 1,
+          "voz": -1
+        },
+        "sorte": {
+          "chance": 0.5,
+          "efeitos": {
+            "grana": -30
+          },
+          "resultado": "Ele não era fã. Multa dobrada."
+        },
+        "resultado": "O guarda era fã de hardcore. Pediu foto."
+      }
+    ],
+    "en": {
+      "titulo": "Checkpoint",
+      "texto": "Highway patrol checkpoint. The back tire is bald.",
+      "escolhas": [
+        {
+          "texto": "Pay the fine",
+          "resultado": "Nobody got arrested. Everybody laughed nervously."
+        },
+        {
+          "texto": "Sing one for the officer",
+          "resultado": "The officer was a hardcore fan. Asked for a selfie.",
+          "sorte": "Not a fan. Double fine."
+        }
+      ]
+    }
   },
   {
     "id": "carona",
@@ -153,9 +631,38 @@
     "titulo": "Banda na estrada",
     "texto": "Uma banda com a van quebrada pede carona até a próxima cidade.",
     "escolhas": [
-      { "texto": "Levar todo mundo", "efeitos": { "gasolina": -15, "hype": 2, "clima": -1 }, "resultado": "Oito pessoas, dois amplificadores e um contrabaixo no colo." },
-      { "texto": "Levar e cobrar a gasolina", "efeitos": { "grana": 10, "hype": -1 }, "resultado": "Pagaram certinho. Falaram mal de vocês no próximo show." }
-    ]
+      {
+        "texto": "Levar todo mundo",
+        "efeitos": {
+          "gasolina": -15,
+          "hype": 2,
+          "clima": -1
+        },
+        "resultado": "Oito pessoas, dois amplificadores e um contrabaixo no colo."
+      },
+      {
+        "texto": "Levar e cobrar a gasolina",
+        "efeitos": {
+          "grana": 10,
+          "hype": -1
+        },
+        "resultado": "Pagaram certinho. Falaram mal de vocês no próximo show."
+      }
+    ],
+    "en": {
+      "titulo": "Band on the road",
+      "texto": "A band with a broken van asks for a ride to the next town.",
+      "escolhas": [
+        {
+          "texto": "Take everybody",
+          "resultado": "Eight people, two amps and a bass on someone’s lap."
+        },
+        {
+          "texto": "Take them and charge for gas",
+          "resultado": "They paid in full. Then trashed you at the next show."
+        }
+      ]
+    }
   },
   {
     "id": "pastel",
@@ -163,9 +670,45 @@
     "titulo": "Pastel de rodoviária",
     "texto": "4 da manhã. Rodoviária. O pastel está ali desde ontem, talvez anteontem.",
     "escolhas": [
-      { "texto": "Comer", "efeitos": { "clima": 2, "grana": -5 }, "sorte": { "chance": 0.25, "efeitos": { "voz": -2 }, "resultado": "O pastel cobrou a conta na hora do show." }, "resultado": "Melhor pastel da vida. Ninguém sabe do que era." },
-      { "texto": "Seguir com fome", "efeitos": { "clima": -1, "voz": 1 }, "resultado": "Silêncio na van. Pelo menos a garganta descansou." }
-    ]
+      {
+        "texto": "Comer",
+        "efeitos": {
+          "clima": 2,
+          "grana": -5
+        },
+        "sorte": {
+          "chance": 0.25,
+          "efeitos": {
+            "voz": -2
+          },
+          "resultado": "O pastel cobrou a conta na hora do show."
+        },
+        "resultado": "Melhor pastel da vida. Ninguém sabe do que era."
+      },
+      {
+        "texto": "Seguir com fome",
+        "efeitos": {
+          "clima": -1,
+          "voz": 1
+        },
+        "resultado": "Silêncio na van. Pelo menos a garganta descansou."
+      }
+    ],
+    "en": {
+      "titulo": "Bus station pastry",
+      "texto": "4 a.m. Bus station. That pastry has been there since yesterday, maybe the day before.",
+      "escolhas": [
+        {
+          "texto": "Eat it",
+          "resultado": "Best pastry ever. Nobody knows what was in it.",
+          "sorte": "The pastry sent the bill at showtime."
+        },
+        {
+          "texto": "Stay hungry",
+          "resultado": "Silence in the van. At least the throat got a rest."
+        }
+      ]
+    }
   },
   {
     "id": "baqueta",
@@ -173,9 +716,37 @@
     "titulo": "A última baqueta",
     "texto": "A última baqueta quebrou no ensaio do posto.",
     "escolhas": [
-      { "texto": "Comprar no posto", "efeitos": { "grana": -10, "clima": 1 }, "resultado": "Era baqueta de criança, rosa e com glitter. Serviu." },
-      { "texto": "Tocar com colher de pau", "efeitos": { "hype": 1, "clima": -1 }, "resultado": "Virou marca registrada. O baterista odiou." }
-    ]
+      {
+        "texto": "Comprar no posto",
+        "efeitos": {
+          "grana": -10,
+          "clima": 1
+        },
+        "resultado": "Era baqueta de criança, rosa e com glitter. Serviu."
+      },
+      {
+        "texto": "Tocar com colher de pau",
+        "efeitos": {
+          "hype": 1,
+          "clima": -1
+        },
+        "resultado": "Virou marca registrada. O baterista odiou."
+      }
+    ],
+    "en": {
+      "titulo": "The last stick",
+      "texto": "The last drumstick broke during gas-station practice.",
+      "escolhas": [
+        {
+          "texto": "Buy one at the gas station",
+          "resultado": "Kid’s drumsticks, pink with glitter. They worked."
+        },
+        {
+          "texto": "Play with a wooden spoon",
+          "resultado": "It became a trademark. The drummer hated it."
+        }
+      ]
+    }
   },
   {
     "id": "posto",
@@ -183,9 +754,45 @@
     "titulo": "Posto no meio do nada",
     "texto": "Gasolina pela metade do preço. O frentista olha estranho.",
     "escolhas": [
-      { "texto": "Encher o tanque", "efeitos": { "gasolina": 40, "grana": -10 }, "sorte": { "chance": 0.3, "efeitos": { "clima": -2 }, "resultado": "A van tossiu a viagem inteira. Todo mundo de mau humor." }, "resultado": "Tanque cheio, preço de banana." },
-      { "texto": "Procurar outro posto", "efeitos": { "gasolina": -10, "voz": 1 }, "resultado": "Vinte quilômetros a mais, todo mundo cochilou." }
-    ]
+      {
+        "texto": "Encher o tanque",
+        "efeitos": {
+          "gasolina": 40,
+          "grana": -10
+        },
+        "sorte": {
+          "chance": 0.3,
+          "efeitos": {
+            "clima": -2
+          },
+          "resultado": "A van tossiu a viagem inteira. Todo mundo de mau humor."
+        },
+        "resultado": "Tanque cheio, preço de banana."
+      },
+      {
+        "texto": "Procurar outro posto",
+        "efeitos": {
+          "gasolina": -10,
+          "voz": 1
+        },
+        "resultado": "Vinte quilômetros a mais, todo mundo cochilou."
+      }
+    ],
+    "en": {
+      "titulo": "Gas station in the middle of nowhere",
+      "texto": "Gas at half price. The attendant looks at you funny.",
+      "escolhas": [
+        {
+          "texto": "Fill the tank",
+          "resultado": "Full tank, dirt cheap.",
+          "sorte": "The van coughed the whole way. Everyone in a bad mood."
+        },
+        {
+          "texto": "Look for another station",
+          "resultado": "Twelve extra miles, everyone napped."
+        }
+      ]
+    }
   },
   {
     "id": "afinacao",
@@ -193,9 +800,38 @@
     "titulo": "Briga por afinação",
     "texto": "O guitarrista diz que o baixo está meio tom abaixo desde 2019.",
     "escolhas": [
-      { "texto": "Trocar todas as cordas", "efeitos": { "clima": -1, "grana": -5 }, "remover": "corda", "resultado": "Encordoamento novo. Nunca mais Corda estourou (nessa turnê)." },
-      { "texto": "Ligar o rádio bem alto", "efeitos": { "clima": 1, "voz": -1 }, "resultado": "Cantaram junto com o rádio até esquecer a briga." }
-    ]
+      {
+        "texto": "Trocar todas as cordas",
+        "efeitos": {
+          "clima": -1,
+          "grana": -5
+        },
+        "remover": "corda",
+        "resultado": "Encordoamento novo. Nunca mais Corda estourou (nessa turnê)."
+      },
+      {
+        "texto": "Ligar o rádio bem alto",
+        "efeitos": {
+          "clima": 1,
+          "voz": -1
+        },
+        "resultado": "Cantaram junto com o rádio até esquecer a briga."
+      }
+    ],
+    "en": {
+      "titulo": "Tuning fight",
+      "texto": "The guitarist says the bass has been a half step flat since 2019.",
+      "escolhas": [
+        {
+          "texto": "Change all the strings",
+          "resultado": "Brand new strings. No more Broken string (this tour)."
+        },
+        {
+          "texto": "Turn the radio way up",
+          "resultado": "Sang along with the radio until they forgot the fight."
+        }
+      ]
+    }
   },
   {
     "id": "sharpei",
@@ -205,8 +841,38 @@
     "titulo": "Visita no palco",
     "texto": "No meio do show, um cachorro enrugado subiu no palco, sentou do lado da bateria e não quis mais descer.",
     "escolhas": [
-      { "texto": "Adotar como mascote da turnê", "efeitos": { "hype": 2, "grana": -10 }, "flag": "mascote", "resultado": "Ração, coleira de rebite e um lugar no banco da frente. Agora ele vai em todo show." },
-      { "texto": "Procurar o dono", "efeitos": { "clima": 1, "grana": 5, "gasolina": -10 }, "resultado": "Rodaram a cidade inteira. A dona chorou de alegria e pagou um pastel pra cada um." }
-    ]
+      {
+        "texto": "Adotar como mascote da turnê",
+        "efeitos": {
+          "hype": 2,
+          "grana": -10
+        },
+        "flag": "mascote",
+        "resultado": "Ração, coleira de rebite e um lugar no banco da frente. Agora ele vai em todo show."
+      },
+      {
+        "texto": "Procurar o dono",
+        "efeitos": {
+          "clima": 1,
+          "grana": 5,
+          "gasolina": -10
+        },
+        "resultado": "Rodaram a cidade inteira. A dona chorou de alegria e pagou um pastel pra cada um."
+      }
+    ],
+    "en": {
+      "titulo": "Visitor on stage",
+      "texto": "Mid-show, a wrinkly dog climbed on stage, sat by the drums and refused to leave.",
+      "escolhas": [
+        {
+          "texto": "Adopt it as tour mascot",
+          "resultado": "Food, a studded collar and a front seat. Now it goes to every show."
+        },
+        {
+          "texto": "Look for the owner",
+          "resultado": "Drove around the whole town. The owner cried and bought everyone a pastry."
+        }
+      ]
+    }
   }
 ]

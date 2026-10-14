@@ -23,6 +23,9 @@ export function destravarAudio(): void {
   window.addEventListener('keydown', destravar);
 }
 
+/** Contexto de áudio para quem monta o próprio grafo (trilhas). null se mudo ou sem WebAudio. */
+export function contextoDeAudio(): AudioContext | null { return ctx(); }
+
 export function setMudo(valor: boolean): void { mudo = valor; }
 export function estaMudo(): boolean { return mudo; }
 

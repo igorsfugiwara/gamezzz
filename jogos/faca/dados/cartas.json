@@ -8,7 +8,14 @@
     "efeito": "+2 energia; a próxima carta custa 1 a menos",
     "texto": "Um, dois, três, quatro!",
     "raridade": "inicial",
-    "especial": { "desconto": 1 }
+    "especial": {
+      "desconto": 1
+    },
+    "en": {
+      "nome": "Stick count-in",
+      "efeito": "+2 energy; the next card costs 1 less",
+      "texto": "One, two, three, four!"
+    }
   },
   {
     "id": "blast",
@@ -19,7 +26,12 @@
     "voz": -1,
     "efeito": "+6 energia; −1 voz",
     "texto": "O baterista sumiu atrás dos pratos.",
-    "raridade": "inicial"
+    "raridade": "inicial",
+    "en": {
+      "nome": "Blast beat",
+      "efeito": "+6 energy; −1 voice",
+      "texto": "The drummer vanished behind the cymbals."
+    }
   },
   {
     "id": "breakdown",
@@ -30,7 +42,14 @@
     "efeito": "Dobra a energia da próxima música",
     "texto": "Agora sim, abre a roda.",
     "raridade": "inicial",
-    "especial": { "dobra": true }
+    "especial": {
+      "dobra": true
+    },
+    "en": {
+      "nome": "Breakdown",
+      "efeito": "Doubles the energy of the next song",
+      "texto": "Now open up the pit."
+    }
   },
   {
     "id": "mosh",
@@ -41,7 +60,20 @@
     "efeito": "+4; depois de Breakdown, +10 e o público sobe no palco",
     "texto": "Alguém perdeu um tênis.",
     "raridade": "inicial",
-    "especial": { "combo": { "apos": ["breakdown"], "energia": 10, "momento": "mosh" } }
+    "especial": {
+      "combo": {
+        "apos": [
+          "breakdown"
+        ],
+        "energia": 10,
+        "momento": "mosh"
+      }
+    },
+    "en": {
+      "nome": "Mosh",
+      "efeito": "+4; after Breakdown, +10 and the crowd climbs on stage",
+      "texto": "Somebody lost a sneaker."
+    }
   },
   {
     "id": "lenta",
@@ -52,7 +84,12 @@
     "voz": 1,
     "efeito": "+3; recupera 1 voz",
     "texto": "Respira, que vem mais.",
-    "raridade": "inicial"
+    "raridade": "inicial",
+    "en": {
+      "nome": "Slow heavy song",
+      "efeito": "+3; recover 1 voice",
+      "texto": "Breathe, there’s more coming."
+    }
   },
   {
     "id": "nova",
@@ -63,7 +100,17 @@
     "efeito": "Energia aleatória de +1 a +9",
     "texto": "Essa a gente nunca tocou ao vivo.",
     "raridade": "inicial",
-    "especial": { "aleatoria": [1, 9] }
+    "especial": {
+      "aleatoria": [
+        1,
+        9
+      ]
+    },
+    "en": {
+      "nome": "New song",
+      "efeito": "Random energy from +1 to +9",
+      "texto": "We’ve never played this one live."
+    }
   },
   {
     "id": "cover",
@@ -74,7 +121,14 @@
     "efeito": "+4 fixo, não entra em combo",
     "texto": "Todo mundo conhece essa.",
     "raridade": "inicial",
-    "especial": { "semCombo": true }
+    "especial": {
+      "semCombo": true
+    },
+    "en": {
+      "nome": "Cover",
+      "efeito": "Fixed +4, no combos",
+      "texto": "Everybody knows this one."
+    }
   },
   {
     "id": "discurso",
@@ -86,7 +140,18 @@
     "texto": "Antes da próxima, queria dizer uma coisa...",
     "raridade": "inicial",
     "vocal": true,
-    "especial": { "hype": 2, "risco": { "chance": 0.3, "clima": -1 } }
+    "especial": {
+      "hype": 2,
+      "risco": {
+        "chance": 0.3,
+        "clima": -1
+      }
+    },
+    "en": {
+      "nome": "Speech",
+      "efeito": "+2 hype; 30% chance of −1 mood",
+      "texto": "Before the next one, I wanna say something..."
+    }
   },
   {
     "id": "agradecimento",
@@ -98,7 +163,15 @@
     "texto": "Valeu demais por segurar o rolê.",
     "raridade": "inicial",
     "vocal": true,
-    "especial": { "grana": 10, "encerra": true }
+    "especial": {
+      "grana": 10,
+      "encerra": true
+    },
+    "en": {
+      "nome": "Thank the venue",
+      "efeito": "+$ 10 in pay; ends the show",
+      "texto": "Thanks so much for having us."
+    }
   },
   {
     "id": "stagedive",
@@ -109,7 +182,14 @@
     "efeito": "+8; 20% de chance de se machucar e perder a próxima noite",
     "texto": "Confia no público.",
     "raridade": "inicial",
-    "especial": { "machuca": 0.2 }
+    "especial": {
+      "machuca": 0.2
+    },
+    "en": {
+      "nome": "Stage dive",
+      "efeito": "+8; 20% chance of getting hurt and losing the next night",
+      "texto": "Trust the crowd."
+    }
   },
   {
     "id": "corda",
@@ -120,7 +200,14 @@
     "efeito": "Ocupa espaço na mão. Trocar a corda custa 1 fôlego",
     "texto": "Alguém tem uma lá de 10?",
     "raridade": "inicial",
-    "especial": { "ocupa": true }
+    "especial": {
+      "ocupa": true
+    },
+    "en": {
+      "nome": "Broken string",
+      "efeito": "Takes up hand space. Changing it costs 1 breath",
+      "texto": "Anyone got a .010?"
+    }
   },
   {
     "id": "microfonia",
@@ -131,7 +218,14 @@
     "efeito": "−2 energia ao entrar na mão",
     "texto": "Iiiiiiii.",
     "raridade": "inicial",
-    "especial": { "aoComprar": -2 }
+    "especial": {
+      "aoComprar": -2
+    },
+    "en": {
+      "nome": "Feedback",
+      "efeito": "−2 energy when drawn",
+      "texto": "Eeeeeeee."
+    }
   },
   {
     "id": "parede",
@@ -142,7 +236,14 @@
     "efeito": "+3; divide o público: a próxima música ganha +15 no choque",
     "texto": "Metade pra cá, metade pra lá. Agora!",
     "raridade": "rara",
-    "especial": { "choque": 15 }
+    "especial": {
+      "choque": 15
+    },
+    "en": {
+      "nome": "Wall of death",
+      "efeito": "+3; splits the crowd: the next song gets +15 on impact",
+      "texto": "Half this side, half that side. Now!"
+    }
   },
   {
     "id": "cantajunto",
@@ -153,7 +254,14 @@
     "efeito": "+3; o vocal não gasta voz pelo resto do show",
     "texto": "Essa parte é de vocês!",
     "raridade": "rara",
-    "especial": { "cantaJunto": true }
+    "especial": {
+      "cantaJunto": true
+    },
+    "en": {
+      "nome": "Crowd sings along",
+      "efeito": "+3; the singer spends no voice for the rest of the show",
+      "texto": "This part is yours!"
+    }
   },
   {
     "id": "hino",
@@ -164,7 +272,12 @@
     "voz": -1,
     "efeito": "+12; −1 voz",
     "texto": "Todo mundo sabe a letra.",
-    "raridade": "rara"
+    "raridade": "rara",
+    "en": {
+      "nome": "Scene anthem",
+      "efeito": "+12; −1 voice",
+      "texto": "Everybody knows the words."
+    }
   },
   {
     "id": "dbeat",
@@ -175,7 +288,14 @@
     "efeito": "+3; +3 se vier logo depois de outra música",
     "texto": "Tupá-tupá-tupá-tupá.",
     "raridade": "comum",
-    "especial": { "emSequencia": 3 }
+    "especial": {
+      "emSequencia": 3
+    },
+    "en": {
+      "nome": "D-beat",
+      "efeito": "+3; +3 more right after another song",
+      "texto": "Ta-ka-ta-ka-ta-ka."
+    }
   },
   {
     "id": "curta",
@@ -185,7 +305,12 @@
     "energia": 2,
     "efeito": "+2 sem gastar fôlego",
     "texto": "Essa é curta. Acabou.",
-    "raridade": "comum"
+    "raridade": "comum",
+    "en": {
+      "nome": "40-second song",
+      "efeito": "+2 at no breath cost",
+      "texto": "This one’s short. Done."
+    }
   },
   {
     "id": "pit",
@@ -196,7 +321,21 @@
     "efeito": "+5; depois de Breakdown ou Mosh, +8",
     "texto": "Roda, roda, roda!",
     "raridade": "comum",
-    "especial": { "combo": { "apos": ["breakdown", "mosh"], "energia": 8, "momento": "pit" } }
+    "especial": {
+      "combo": {
+        "apos": [
+          "breakdown",
+          "mosh"
+        ],
+        "energia": 8,
+        "momento": "pit"
+      }
+    },
+    "en": {
+      "nome": "Circle pit",
+      "efeito": "+5; after Breakdown or Mosh, +8",
+      "texto": "Run, run, run!"
+    }
   },
   {
     "id": "solo",
@@ -207,7 +346,14 @@
     "efeito": "+7; −1 clima",
     "texto": "O resto da banda foi pegar água.",
     "raridade": "comum",
-    "especial": { "clima": -1 }
+    "especial": {
+      "clima": -1
+    },
+    "en": {
+      "nome": "Endless solo",
+      "efeito": "+7; −1 mood",
+      "texto": "The rest of the band went to get water."
+    }
   },
   {
     "id": "bis",
@@ -218,7 +364,14 @@
     "efeito": "Repete a energia da última música tocada",
     "texto": "Mais uma! Mais uma!",
     "raridade": "comum",
-    "especial": { "bis": true }
+    "especial": {
+      "bis": true
+    },
+    "en": {
+      "nome": "Encore",
+      "efeito": "Repeats the energy of the last song played",
+      "texto": "One more! One more!"
+    }
   },
   {
     "id": "grito",
@@ -230,7 +383,12 @@
     "efeito": "+4; −1 voz",
     "texto": "Ôôô, ô ô ô!",
     "raridade": "comum",
-    "vocal": true
+    "vocal": true,
+    "en": {
+      "nome": "War cry",
+      "efeito": "+4; −1 voice",
+      "texto": "Oh-oh-oh, oh oh oh!"
+    }
   },
   {
     "id": "merch",
@@ -242,7 +400,14 @@
     "texto": "Camiseta a 30, duas por 50!",
     "raridade": "comum",
     "vocal": true,
-    "especial": { "grana": 15 }
+    "especial": {
+      "grana": 15
+    },
+    "en": {
+      "nome": "Merch plug",
+      "efeito": "+$ 15 in pay; −2 energy",
+      "texto": "Shirts are 30, two for 50!"
+    }
   },
   {
     "id": "afinar",
@@ -253,7 +418,14 @@
     "efeito": "Compra 2 cartas; −1 energia",
     "texto": "Só um minutinho...",
     "raridade": "comum",
-    "especial": { "compra": 2 }
+    "especial": {
+      "compra": 2
+    },
+    "en": {
+      "nome": "Tune the guitar",
+      "efeito": "Draw 2 cards; −1 energy",
+      "texto": "Just a minute..."
+    }
   },
   {
     "id": "cerveja",
@@ -265,7 +437,14 @@
     "efeito": "+2 fôlego; −1 voz",
     "texto": "Quem jogou isso aqui?",
     "raridade": "comum",
-    "especial": { "folego": 2 }
+    "especial": {
+      "folego": 2
+    },
+    "en": {
+      "nome": "Beer on stage",
+      "efeito": "+2 breath; −1 voice",
+      "texto": "Who threw this?"
+    }
   },
   {
     "id": "fuzz",
@@ -276,6 +455,13 @@
     "efeito": "As próximas 3 músicas ganham +2",
     "texto": "Emprestado. Não conta pra ninguém.",
     "raridade": "comum",
-    "especial": { "fuzz": 3 }
+    "especial": {
+      "fuzz": 3
+    },
+    "en": {
+      "nome": "Fuzz pedal",
+      "efeito": "The next 3 songs get +2",
+      "texto": "Borrowed. Don’t tell anyone."
+    }
   }
 ]

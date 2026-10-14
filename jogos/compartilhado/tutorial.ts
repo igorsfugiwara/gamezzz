@@ -17,7 +17,8 @@ export type Gesto = 'toque' | 'arrastar' | 'circulo' | 'segurar' | 'nenhum';
 
 export interface Passo {
   id: string;
-  texto: string;
+  /** Texto fixo ou função (para jogos com troca de idioma). */
+  texto: string | (() => string);
   /** Onde a mão aponta (coordenadas da janela). */
   alvo?: Alvo;
   gesto?: Gesto;
@@ -116,7 +117,12 @@ export class Tutorial {
   /** Dica pedida enquanto outra coisa ocupava o balão; sai logo depois. */
   private dicaPendente: Passo | null = null;
 
-  constructor(private jogo: string, private passos: Passo[], private aoFim?: (pulou: boolean) => void) {
+  constructor(
+    private jogo: string,
+    private passos: Passo[],
+    private aoFim?: (pulou: boolean) => void,
+    private rotulos: () => { pular: string; entendi: string; de: string } = () => ({ pular: 'Pular tutorial', entendi: 'Entendi', de: 'de' }),
+  ) {
     this.ativo = forcado || !ler<boolean>(jogo, 'tutorial', false);
   }
 
@@ -245,7 +251,7 @@ export class Tutorial {
   }
 
   private rotulo() {
-    return `${this.indice + 1} de ${this.passos.length}`;
+    return `${this.indice + 1} ${this.rotulos().de} ${this.passos.length}`;
   }
 
   private ir(i: number) {
@@ -255,10 +261,10 @@ export class Tutorial {
   }
 
   private mostrar(p: Passo, rotulo: string) {
-    this.texto.textContent = p.texto;
+    this.texto.textContent = typeof p.texto === 'function' ? p.texto() : p.texto;
     this.contador.textContent = rotulo;
     // Na dica avulsa o botão só fecha; na sequência, pula o tutorial todo.
-    this.pular.textContent = p === this.dicaAtual ? 'Entendi' : 'Pular tutorial';
+    this.pular.textContent = p === this.dicaAtual ? this.rotulos().entendi : this.rotulos().pular;
     this.mao.className = `tut__mao tut__mao--${p.gesto ?? 'toque'}`;
     // Reinicia a animação do balão a cada passo.
     this.bolha.classList.remove('tut__bolha--entra');
