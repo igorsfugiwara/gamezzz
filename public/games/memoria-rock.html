@@ -255,6 +255,7 @@
     <div class="faixa" id="faixa"></div>
   </div>
 
+<script src="tutorial.js"></script>
 <script>
 (() => {
   'use strict';
@@ -393,6 +394,7 @@
     el.classList.add('virada');
     el.setAttribute('aria-label', `${banda.nome}, ${banda.ano}`);
     viradas.push({ el, banda });
+    toques++;
 
     if (viradas.length < 2) return;
 
@@ -529,6 +531,23 @@
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !document.getElementById('scr-over').hidden) iniciar(modo.chave);
   });
+
+  // ------------------------------------------------------------- tutorial
+  // Tutorial jogado na primeira partida (tutorial.js, o mesmo dos outros jogos).
+  let toques = 0;
+  const T = window.TutorialJogo;
+  // Aponta para uma carta do fim do tabuleiro: o balão fica no topo, longe dela.
+  const fechada = () => [...board.querySelectorAll('.card:not(.virada):not(.feita)')].pop() || null;
+  const tutorial = T ? new T.Tutorial('memoria-rock', [
+    { id: 'modo', texto: 'Comece pelo Ensaio: 6 pares, sem pressa.', alvo: () => document.querySelector('[data-modo="ensaio"]'), ok: () => !!modo },
+    { id: 'virar', texto: 'Toque numa carta para ver qual banda está ali.', alvo: fechada, lugar: 'topo', ok: () => toques >= 1 },
+    { id: 'par', texto: 'Agora vire outra. Se for a mesma banda, é par!', alvo: fechada, lugar: 'topo', ok: () => jogadas >= 1 },
+    { id: 'lembrar', texto: 'Quando não bate, as cartas desviram: guarde onde estava cada banda. Menos jogadas, melhor.',
+      gesto: 'nenhum', lugar: 'topo', segundos: 6, ok: () => paresFeitos >= 1 },
+    { id: 'faixa', texto: 'Cada par revela uma curiosidade da banda aqui embaixo.', gesto: 'nenhum', luz: true,
+      quando: () => paresFeitos >= 1 && faixa.classList.contains('on'), alvo: () => faixa, segundos: 5 },
+  ]) : null;
+  tutorial?.iniciar();
 })();
 </script>
 </body>

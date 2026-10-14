@@ -7,9 +7,10 @@
     "build": "npm run build:jogos && next build",
     "start": "next start",
     "lint": "next lint",
-    "build:jogos": "tsc -p jogos && vite build -c vite.jogos.config.ts",
+    "build:jogos": "tsc -p jogos && vite build -c vite.jogos.config.ts && npm run build:tutorial",
     "dev:jogos": "vite -c vite.jogos.config.ts --port 5190",
-    "test:jogos": "vitest run -c vite.jogos.config.ts"
+    "test:jogos": "vitest run -c vite.jogos.config.ts",
+    "build:tutorial": "esbuild jogos/compartilhado/tutorial-global.ts --bundle --format=iife --minify --target=es2019 --outfile=public/games/tutorial.js"
   },
   "dependencies": {
     "next": "14.2.35",

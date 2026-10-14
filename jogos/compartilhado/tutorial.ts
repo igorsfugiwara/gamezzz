@@ -3,8 +3,10 @@
  * alvo, sem travar o jogo. Cada passo só avança quando a pessoa faz a ação
  * de verdade (`ok`), então a primeira fase vira a aula.
  *
- * Mesma família visual nos quatro jogos (estilos em base.css). Uma vez
- * concluído ou pulado, não volta — a não ser com `?tutorial` na URL.
+ * Mesma família visual em todos os jogos do portal: os HTML avulsos de
+ * public/games usam este mesmo código via tutorial.js (npm run
+ * build:tutorial). Uma vez concluído ou pulado, não volta — a não ser com
+ * `?tutorial` na URL.
  */
 import { ler, gravar } from './salvar';
 import { evento } from './eventos';
@@ -31,6 +33,56 @@ export interface Passo {
   quando?: () => boolean;
   /** Onde fica o balão: junto do alvo (padrão) ou preso no topo/base da tela. */
   lugar?: 'auto' | 'topo' | 'base';
+}
+
+/** Estilo embutido: vale igual nos jogos do Vite e nos HTML avulsos. */
+const ESTILO = `
+.tut { position: fixed; inset: 0; z-index: 900; pointer-events: none; }
+.tut, .tut * { box-sizing: border-box; letter-spacing: normal; text-transform: none; text-shadow: none; }
+.tut[hidden], .tut--espera { display: none; }
+.tut__luz { position: fixed; border-radius: 12px; box-shadow: 0 0 0 200vmax rgba(13, 11, 20, 0.55); transition: left 160ms, top 160ms, width 160ms, height 160ms; }
+.tut__bolha {
+  position: fixed;
+  width: max-content;
+  max-width: min(300px, calc(100vw - 16px));
+  padding: 10px 12px 8px;
+  border-radius: 6px;
+  background: #f4f1ea;
+  color: #0d0b14;
+  border: 2px solid #0d0b14;
+  box-shadow: 4px 4px 0 #ff4fa3;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  pointer-events: auto;
+}
+.tut__bolha--entra { animation: tutEntra 220ms ease-out; }
+@keyframes tutEntra { from { opacity: 0; transform: translateY(6px) scale(0.96); } }
+.tut__bolha p { margin: 0; padding: 0; color: #0d0b14; font: 800 16px/1.3 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+.tut__rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.tut__contador { font: 700 12px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: #6f6b7d; }
+.tut__pular { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; min-height: 32px; padding: 0 6px; cursor: pointer; font: 700 13px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: #6f6b7d; text-decoration: underline; }
+.tut__pular:focus-visible { outline: 2px solid #3df0e6; }
+.tut__mao { position: fixed; font-size: 38px; line-height: 1; transform: translate(-50%, 0); filter: drop-shadow(2px 3px 0 rgba(13, 11, 20, 0.7)); }
+.tut__mao[hidden] { display: none; }
+.tut__mao--toque { animation: tutToque 1s ease-in-out infinite; }
+@keyframes tutToque { 0%, 100% { translate: 0 14px; } 45% { translate: 0 0; scale: 1; } 55% { translate: 0 0; scale: 0.88; } }
+.tut__mao--segurar { animation: tutSegura 1.6s ease-in-out infinite; }
+@keyframes tutSegura { 0%, 100% { translate: 0 14px; scale: 1; } 25%, 75% { translate: 0 0; scale: 0.86; } }
+.tut__mao--arrastar { animation: tutArrasta 1.6s ease-in-out infinite; }
+@keyframes tutArrasta { 0% { translate: 0 0; opacity: 0; } 12% { opacity: 1; translate: 0 0; } 75% { translate: var(--dx) var(--dy); opacity: 1; } 100% { translate: var(--dx) var(--dy); opacity: 0; } }
+.tut__mao--circulo { animation: tutCirculo 1.8s linear infinite; }
+@keyframes tutCirculo {
+  0% { translate: 36px 0; } 12.5% { translate: 25px 25px; } 25% { translate: 0 36px; } 37.5% { translate: -25px 25px; }
+  50% { translate: -36px 0; } 62.5% { translate: -25px -25px; } 75% { translate: 0 -36px; } 87.5% { translate: 25px -25px; } 100% { translate: 36px 0; }
+}
+@media (prefers-reduced-motion: reduce) { .tut__mao { animation: none !important; } }
+`;
+
+function garantirEstilo() {
+  if (document.getElementById('tut-estilo')) return;
+  const st = document.createElement('style');
+  st.id = 'tut-estilo';
+  st.textContent = ESTILO;
+  document.head.appendChild(st);
 }
 
 const forcado = (() => {
@@ -136,6 +188,7 @@ export class Tutorial {
 
   private montar() {
     if (this.raiz) { this.raiz.hidden = false; return; }
+    garantirEstilo();
     const raiz = document.createElement('div');
     raiz.className = 'tut';
     raiz.setAttribute('aria-live', 'polite');

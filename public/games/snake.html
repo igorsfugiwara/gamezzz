@@ -243,6 +243,7 @@
     </div>
   </div>
 
+<script src="tutorial.js"></script>
 <script>
 (() => {
   'use strict';
@@ -385,7 +386,7 @@
     const ultima = fila.length ? fila[fila.length - 1] : direcao;
     if (ultima.x === -nx && ultima.y === -ny) return;  // 180° mata a cobra
     if (ultima.x === nx && ultima.y === ny) return;    // repetido, ignora
-    if (fila.length < 2) fila.push({ x: nx, y: ny });
+    if (fila.length < 2) { fila.push({ x: nx, y: ny }); viradas++; }
   }
 
   function passo() {
@@ -514,7 +515,9 @@
 
     if (vivo && !pausado) {
       acumulado += delta;
-      const intervalo = 1000 / velocidade;
+      // No tutorial a cobra anda mais devagar enquanto a pessoa aprende a virar.
+      const aprendendo = tutorial && (tutorial.passo === 'virar' || tutorial.passo === 'fruta');
+      const intervalo = 1000 / (velocidade * (aprendendo ? 0.6 : 1));
       while (acumulado >= intervalo && vivo) {
         acumulado -= intervalo;
         passo();
@@ -522,6 +525,24 @@
     }
     desenhar();
   }
+
+  // ---------------------------------------------------------------- tutorial
+  // Tutorial jogado na primeira partida (tutorial.js, o mesmo dos outros jogos).
+  let viradas = 0;
+  const T = window.TutorialJogo;
+  const comToque = matchMedia('(hover: none)').matches;
+  const naTela = (p) => {
+    const r = cv.getBoundingClientRect();
+    const k = r.width / cv.width;
+    return T.ponto(r.left + (p.x + 0.5) * CEL * k, r.top + (p.y + 0.5) * CEL * k, CEL * k);
+  };
+  const tutorial = T ? new T.Tutorial('snake', [
+    { id: 'nivel', texto: 'Comece pelo Fácil: lá a cobra atravessa as paredes.', alvo: () => document.querySelector('.btn-easy'), ok: () => vivo },
+    { id: 'virar', texto: comToque ? 'Deslize o dedo na tela (ou use os botões) para virar a cobra.' : 'Use as setas ou WASD para virar a cobra.',
+      gesto: comToque ? 'arrastar' : 'nenhum', alvo: () => (comToque ? cv : null), lugar: 'topo', ok: () => viradas >= 2 },
+    { id: 'fruta', texto: 'Coma a fruta vermelha: a cobra cresce e você pontua.', alvo: () => (fruta && vivo ? naTela(fruta) : null), lugar: 'topo', ok: () => frutasComidas >= 1 },
+    { id: 'rabo', texto: 'Só não morda o próprio rabo. Espaço pausa.', gesto: 'nenhum', lugar: 'topo', segundos: 4 },
+  ]) : null;
 
   // ---------------------------------------------------------------- telas
   function mostrar(id) {
@@ -621,6 +642,7 @@
 
   window.addEventListener('resize', ajustar);
   ajustar();
+  tutorial?.iniciar();
 })();
 </script>
 </body>

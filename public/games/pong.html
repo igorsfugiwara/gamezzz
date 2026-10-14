@@ -275,6 +275,7 @@
   <div class="desktop-hint">W / S &mdash; MOVER &nbsp;&bull;&nbsp; SPACE &mdash; INICIAR</div>
 </div>
 
+<script src="tutorial.js"></script>
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -416,7 +417,9 @@ function update(){
   cpu.y=Math.max(0,Math.min(BASE_H-cpu.h,cpu.y));
 
   ballTrail.push({x:ball.x,y:ball.y}); if(ballTrail.length>TRAIL_LENGTH)ballTrail.shift();
-  ball.x+=ball.dx; ball.y+=ball.dy;
+  // No tutorial a bola vem mais devagar enquanto a pessoa aprende a rebater.
+  const ritmo=tutorial&&(tutorial.passo==='mover'||tutorial.passo==='rebater')?0.6:1;
+  ball.x+=ball.dx*ritmo; ball.y+=ball.dy*ritmo;
 
   if(ball.y-ball.size/2<=0||ball.y+ball.size/2>=BASE_H){
     ball.dy*=-1; ball.y=ball.y-ball.size/2<=0?ball.size/2:BASE_H-ball.size/2;
@@ -430,6 +433,7 @@ function update(){
     ball.speed=Math.min(ball.speed+0.3,10);
     ball.dx=Math.cos(a)*ball.speed; ball.dy=Math.sin(a)*ball.speed;
     ball.x=player.x+player.w+ball.size/2; spawnP(ball.x,ball.y,player.glow,12);
+    rebatidas++;
   }
   if(hit(cpu)&&ball.dx>0){
     const h=(ball.y-(cpu.y+cpu.h/2))/(cpu.h/2), a=Math.PI-h*(Math.PI/3);
@@ -486,6 +490,28 @@ function draw(){
   particles.forEach(p=>{ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2);ctx.fill();});
   ctx.globalAlpha=1;
 }
+
+// --- Tutorial jogado na primeira partida (tutorial.js, o mesmo dos outros jogos) ---
+let rebatidas=0, yInicial=player.y;
+const T=window.TutorialJogo;
+const comToque=matchMedia('(hover: none)').matches;
+/** Ponto da simulação na janela (em pé a quadra é desenhada girada). */
+function naTela(sx,sy,raio){
+  const r=canvas.getBoundingClientRect(), k=r.width/canvas.width;
+  const tx=vertical?sy:sx, ty=vertical?BASE_W-sx:sy;
+  return T.ponto(r.left+tx*k, r.top+ty*k, raio*k);
+}
+const raquete=()=>naTela(player.x+player.w/2, player.y+player.h/2, 24);
+const tutorial=T?new T.Tutorial('pong',[
+  {id:'start', texto:comToque?'Toque START para sacar.':'Aperte espaço para sacar.', alvo:()=>comToque?btnStart:overlay, ok:()=>state==='playing'},
+  {id:'mover', texto:comToque?'Arraste o dedo na quadra para mover sua raquete verde.':'W/S ou as setas movem sua raquete verde.',
+    gesto:comToque?'arrastar':'nenhum', alvo:raquete,
+    destino:()=>naTela(player.x+player.w/2, player.y+player.h/2+(player.y>BASE_H/2?-90:90), 24),
+    lugar:'topo', ok:()=>Math.abs(player.y-yInicial)>40},
+  {id:'rebater', texto:'Rebata a bola! Bater na ponta da raquete dá mais efeito.', gesto:'nenhum', alvo:raquete, lugar:'topo', ok:()=>rebatidas>=1},
+  {id:'placar', texto:'Quem fizer 7 pontos primeiro vence. Boa sorte contra a CPU!', gesto:'nenhum', lugar:'topo', segundos:4},
+]):null;
+tutorial?.iniciar();
 
 function gameLoop(){update();draw();requestAnimationFrame(gameLoop);}
 gameLoop();

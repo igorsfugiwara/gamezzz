@@ -299,6 +299,7 @@
     </div>
   </div>
 
+<script src="tutorial.js"></script>
 <script>
 (() => {
   'use strict';
@@ -1041,6 +1042,26 @@
   jogo = posicaoInicial(); historico = []; chaves = []; pilha = [];
   legaisDaSel = []; ultimoLance = null; pensando = false;
   desenhar();
+
+  // ---------------------------------------------------------- tutorial
+  // Tutorial jogado na primeira partida (tutorial.js, o mesmo dos outros jogos).
+  const T = window.TutorialJogo;
+  const comecou = () => document.getElementById('scr-start').hidden;
+  const casa = (nome) => elBoard.querySelector(`[data-nome="${nome}"]`);
+  const tutorial = T ? new T.Tutorial('xadrez', [
+    { id: 'nivel', texto: 'Primeira partida? Comece no Iniciante.', alvo: () => document.querySelector('[data-nivel="1"]'),
+      ok: () => comecou() || document.querySelector('[data-nivel="1"]').classList.contains('sel') },
+    { id: 'comecar', texto: 'Escolha a cor das suas peças e toque em COMEÇAR.', alvo: () => document.getElementById('btn-comecar'), ok: comecou },
+    { id: 'peca', texto: 'Toque numa peça sua para ver onde ela pode ir. Um peão do meio é um bom começo.',
+      quando: () => comecou() && jogo.vez === minhaCor && !pensando, alvo: () => casa(minhaCor === BRANCA ? 'e2' : 'e7'), ok: () => selecionada !== null || historico.length > 0 },
+    { id: 'mover', texto: 'Os pontos mostram as casas possíveis. Toque numa delas para jogar.',
+      alvo: () => elBoard.querySelector('.marca')?.parentElement ?? null, ok: () => historico.length > 0 },
+    { id: 'maquina', texto: 'O computador responde na hora dele. Objetivo: dar xeque-mate no rei adversário.', gesto: 'nenhum',
+      alvo: () => elStatus, segundos: 6 },
+    { id: 'desfazer', texto: 'Errou? Desfazer volta a sua última jogada.', quando: () => historico.length >= 2 && !pensando,
+      alvo: () => document.getElementById('btn-desfazer'), segundos: 5 },
+  ]) : null;
+  tutorial?.iniciar();
 })();
 </script>
 </body>
