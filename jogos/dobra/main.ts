@@ -9,6 +9,7 @@ import { compartilhar } from '../compartilhado/compartilhar';
 import { evento } from '../compartilhado/eventos';
 import { nota, acorde, arpejo, ruido, vibrar, destravarAudio, setMudo, estaMudo } from '../compartilhado/som';
 import { abrirEditor } from './editor';
+import { Tutorial, ponto } from '../compartilhado/tutorial';
 
 const JOGO = 'dobra';
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -59,6 +60,26 @@ function posicionarCao() {
   if (estado.cao.dir === 'L') cao.espelhar = false;
 }
 
+// ─── Tutorial jogado (fase 1) ─────────────────────────────
+/** Ponto do papel (coordenadas do layout) na janela. */
+function naTela(x: number, y: number, raio = 16) {
+  const r = tela.getBoundingClientRect();
+  return ponto(r.left + x, r.top + y, raio);
+}
+function vincoNaTela() {
+  if (!estado || ocupado) return null;
+  const { ox, oy, cel } = layout;
+  const k = estado.vincosV[0];
+  if (k !== undefined) return naTela(ox + k * cel, oy + cel * estado.altura * 0.7);
+  const h = estado.vincosH[0];
+  return h === undefined ? null : naTela(ox + cel * estado.largura * 0.5, oy + h * cel);
+}
+const tutorial = new Tutorial(JOGO, [
+  { id: 'vinco', texto: 'Toque na linha tracejada: o papel dobra.', alvo: vincoNaTela, lugar: 'topo', ok: () => dobrasFeitas > 0, quando: () => indice === 0 && !$('jogo').hidden },
+  { id: 'anda', texto: 'Depois de cada dobra, o Shar Pei anda reto até bater em algo.', gesto: 'nenhum', lugar: 'topo', alvo: () => naTela(cao.px + layout.cel / 2, cao.py + layout.cel / 2, layout.cel / 2), ok: () => !$('fim').hidden },
+  { id: 'estrelas', texto: 'Chegou no petisco! Menos dobras, mais estrelas.', alvo: () => $('btn-proxima'), ok: () => indice > 0 },
+]);
+
 // ─── Desenho ──────────────────────────────────────────────
 
 function desenhar(agora: number) {
@@ -69,27 +90,7 @@ function desenhar(agora: number) {
   desenharPecas(ctx, estado, layout);
   const tremor = cao.tremor ? Math.sin(agora / 18) * cao.tremor : 0;
   desenharCao(ctx, cao.px + tremor, cao.py, layout.cel, { pose: cao.pose, espelhar: cao.espelhar, squash: cao.squash });
-  desenharDica(agora);
   desenharConfete();
-}
-
-/** Fase 1: a mão toca o vinco até a primeira dobra — ensina sem texto. */
-function desenharDica(agora: number) {
-  if (indice !== 0 || dobrasFeitas > 0 || ocupado) return;
-  const k = estado.vincosV[0] ?? estado.vincosH[0];
-  if (k === undefined) return;
-  const vertical = estado.vincosV.length > 0;
-  const fase = (agora % 1400) / 1400;
-  const toque = fase > 0.45 && fase < 0.6;
-  const x = vertical ? layout.ox + k * layout.cel : layout.ox + layout.cel * estado.largura * 0.5;
-  const y = vertical ? layout.oy + layout.cel * estado.altura * 0.75 : layout.oy + k * layout.cel;
-  ctx.save();
-  ctx.globalAlpha = fase < 0.85 ? 1 : 1 - (fase - 0.85) / 0.15;
-  ctx.font = `${Math.round(layout.cel * 0.7)}px system-ui`;
-  ctx.textAlign = 'center';
-  ctx.fillText('👆', x + 4, y + layout.cel * (toque ? 0.42 : 0.55));
-  if (toque) { ctx.strokeStyle = '#ff4fa3'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, layout.cel * 0.25, 0, Math.PI * 2); ctx.stroke(); }
-  ctx.restore();
 }
 
 function desenharConfete() {
@@ -261,7 +262,12 @@ async function fazerDobra(eixo: Eixo, k: number) {
   } else {
     await reagir(c);
     // Sem vinco e sem petisco: não é derrota, é hora de desfazer.
-    $('btn-desfazer').classList.toggle('botao--pulsa', estado.vincosV.length + estado.vincosH.length === 0);
+    const semSaida = estado.vincosV.length + estado.vincosH.length === 0;
+    $('btn-desfazer').classList.toggle('botao--pulsa', semSaida);
+    if (semSaida || c.reacao === 'bateu') {
+      const antes = historico.length;
+      tutorial.dica({ id: 'desfazer', texto: 'Errou a ordem? Desfazer volta uma dobra — à vontade.', alvo: () => $('btn-desfazer'), ok: () => historico.length < antes, segundos: 6 });
+    }
   }
   ocupado = false;
 }
@@ -304,6 +310,12 @@ function jogarFase(i: number, faseLivre?: Fase) {
   atualizarHud();
   ultimaAcao = performance.now();
   evento(JOGO, 'fase_inicio', { fase: fase.id });
+  if (i === 0 && !faseLivre) tutorial.iniciar();
+  const almofada = fase.pecas.find((pc) => pc.tipo === 'almofada');
+  if (almofada && !faseLivre) {
+    tutorial.dica({ id: 'almofada', texto: 'Almofada: o Shar Pei para nela e vira à esquerda.', gesto: 'nenhum', luz: true, lugar: 'topo', segundos: 5,
+      alvo: () => naTela(layout.ox + (almofada.x + 0.5) * layout.cel, layout.oy + (almofada.y + 0.5) * layout.cel, layout.cel / 2), ok: () => dobrasFeitas > 0 });
+  }
 }
 
 function atualizarHud() {

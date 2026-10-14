@@ -11,6 +11,7 @@ import { compartilhar } from '../compartilhado/compartilhar';
 import { evento } from '../compartilhado/eventos';
 import { nota, arpejo, acorde, PENTATONICA, vibrar, destravarAudio, setMudo, estaMudo, ruido } from '../compartilhado/som';
 import { sharPeiCanvas } from '../compartilhado/sharpei';
+import { Tutorial } from '../compartilhado/tutorial';
 
 const JOGO = 'pixo';
 const VAZIO = 0, CHEIO = 1, MARCADO = 2;
@@ -32,7 +33,6 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 
 const hoje = diaEmBrasilia();
 const resolvidos = ler<Record<string, Resolvido>>(JOGO, 'resolvidos', {});
-const tutorialVisto = ler<boolean>(JOGO, 'tutorial', false);
 
 let desenho: Desenho;
 let solucao: boolean[][];
@@ -53,6 +53,19 @@ let pistasColunaEl: HTMLElement[] = [];
 
 setMudo(ler<boolean>(JOGO, 'mudo', false));
 destravarAudio();
+
+// ─── Tutorial jogado (o coração de boas-vindas) ───────────
+const linhaCheia = (r: number) => grade[r]?.every((e) => e === CHEIO) ?? false;
+const casa = (r: number, c: number) => () => celulas[r]?.[c] ?? null;
+const tutorial = new Tutorial(JOGO, [
+  { id: 'pista', texto: 'O número diz quantas casas seguidas pintar. 5 numa linha de 5: arraste e pinte a linha toda!',
+    gesto: 'arrastar', alvo: casa(1, 0), destino: casa(1, 4), lugar: 'topo', ok: () => linhaCheia(1) },
+  { id: 'outra', texto: 'Tem outro 5 logo abaixo.', gesto: 'arrastar', alvo: casa(2, 0), destino: casa(2, 4), lugar: 'topo', ok: () => linhaCheia(2) },
+  { id: 'x', texto: 'No topo, “1 1”: entre os dois tem casa vazia. Segure a casa (ou use ✕) para marcar.',
+    gesto: 'segurar', alvo: casa(0, 2), lugar: 'topo', ok: () => grade[0]?.[2] === MARCADO || grade.some((l) => l.includes(MARCADO)) },
+  { id: 'resto', texto: 'Agora termine o coração. A pista apaga quando a linha fecha.', gesto: 'nenhum', lugar: 'topo',
+    ok: () => terminado },
+]);
 
 // ─── Montagem ─────────────────────────────────────────────
 
@@ -119,13 +132,6 @@ function montarTabuleiro() {
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) pintarCelula(r, c);
   for (let i = 0; i < n; i++) { conferirLinha(i, false); conferirColuna(i, false); }
 
-  if (modoTutorial) {
-    const mao = document.createElement('div');
-    mao.className = 'mao';
-    mao.setAttribute('aria-hidden', 'true');
-    mao.textContent = '👆';
-    tab.appendChild(mao);
-  }
 }
 
 function pintarCelula(r: number, c: number) {
@@ -246,7 +252,6 @@ function somDaAcao(acao: Acao, passo: number) {
 }
 
 function posAcao() {
-  if (modoTutorial) document.querySelector('.mao')?.remove();
   for (let i = 0; i < n; i++) { conferirLinha(i, true); conferirColuna(i, true); }
   if (venceu()) terminar();
 }
@@ -370,8 +375,7 @@ function terminar() {
   vibrar(30);
 
   if (modoTutorial) {
-    gravar(JOGO, 'tutorial', true);
-    evento(JOGO, 'tutorial_concluido');
+    tutorial.concluir();
     setTimeout(() => { modoTutorial = false; iniciarDoDia(); }, 1600);
     return;
   }
@@ -526,9 +530,10 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { $('album').hidden = true; }
 });
 
-if (!tutorialVisto && !resolvidos[hoje]) {
+if (tutorial.ativo) {
   modoTutorial = true;
   carregar(TUTORIAL);
+  tutorial.iniciar();
 } else {
   iniciarDoDia();
 }

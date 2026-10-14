@@ -84,23 +84,8 @@
 .cel--revelada.cel--dica { box-shadow: none; }
 .tabuleiro--revelado { filter: drop-shadow(0 0 18px rgba(246, 196, 67, 0.25)); }
 
-/* Mão animada do primeiro desafio — ensina sem texto. */
+/* Primeiro desafio (tutorial jogado): pistas das linhas em destaque. */
 .tabuleiro--tutorial .pista--linha:nth-of-type(n) span { color: var(--amarelo); }
-.mao {
-  position: absolute;
-  font-size: calc(var(--cel) * 0.9);
-  pointer-events: none;
-  left: calc(var(--cel) * 1.4);
-  top: calc(var(--cel) * 2.6);
-  animation: arrasta 2.2s ease-in-out infinite;
-  filter: drop-shadow(0 3px 2px rgba(0,0,0,0.5));
-}
-@keyframes arrasta {
-  0%, 15% { transform: translateX(0) scale(1); opacity: 0; }
-  20% { opacity: 1; transform: translateX(0) scale(0.9); }
-  75% { transform: translateX(calc(var(--cel) * 4)) scale(0.9); opacity: 1; }
-  90%, 100% { transform: translateX(calc(var(--cel) * 4)) scale(1); opacity: 0; }
-}
 
 /* ─── Ferramentas ──────────────────────────────────── */
 .ferramentas {

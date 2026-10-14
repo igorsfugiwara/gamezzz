@@ -13,6 +13,7 @@ import { PALETA as P } from '../compartilhado/paleta';
 import { ler, gravar } from '../compartilhado/salvar';
 import { compartilhar } from '../compartilhado/compartilhar';
 import { evento } from '../compartilhado/eventos';
+import { Tutorial, ponto } from '../compartilhado/tutorial';
 import { nota, arpejo, acorde, ruido, vibrar, destravarAudio, setMudo, estaMudo } from '../compartilhado/som';
 
 const JOGO = 'roda';
@@ -59,6 +60,9 @@ let lento = 0;
 let invertido = 0;
 let pausaImpacto = 0;
 let camera = { x: 0, y: 0, zoom: 1 };
+/** Centro e zoom do último quadro desenhado (para achar coisas na tela). */
+let vista = { cx: 0, cy: 0, z: 1 };
+let inicioTutorial = { x: 0, y: 0 };
 let tremor = 0;
 let tempo = 0;
 let maiorRoda = 0;
@@ -183,7 +187,39 @@ function iniciarFase(i: number) {
   iniciarMusica();
   aviso(`Fase ${fase.numero} · ${fase.bairro}`, 1800);
   evento(JOGO, 'fase_inicio', { fase: fase.numero });
+  inicioTutorial = { x: jogador.x, y: jogador.y };
+  if (i === 0) tutorial.iniciar();
 }
+
+// ─── Tutorial jogado (fase 1) ─────────────────────────────
+/** Ponto do mundo na janela, pela câmera do último quadro. */
+function naTela(p: Ponto, raio = 14) {
+  const r = tela.getBoundingClientRect();
+  const k = r.width / W;
+  return ponto(r.left + ((p.x - vista.cx) * vista.z + W / 2) * k, r.top + ((p.y - vista.cy) * vista.z + H / 2) * k, raio);
+}
+function maisPerto<T extends Ponto>(lista: T[]): T | null {
+  let melhor: T | null = null;
+  let d = Infinity;
+  for (const it of lista) { const dd = dist2(it, jogador); if (dd < d) { d = dd; melhor = it; } }
+  return melhor;
+}
+const jogando = () => modo === 'jogando';
+const tutorial = new Tutorial(JOGO, [
+  { id: 'mover', texto: 'Arraste o dedo pela tela (ou use as setas) para guiar o Vocal.', gesto: 'arrastar', lugar: 'topo', quando: jogando,
+    alvo: () => naTela(jogador), ok: () => Math.hypot(jogador.x - inicioTutorial.x, jogador.y - inicioTutorial.y) > 90 },
+  { id: 'recrutar', texto: 'Passe encostado nas pessoas: elas entram na sua fila.', lugar: 'topo', quando: jogando,
+    alvo: () => { const p = maisPerto(povo.filter((q) => !q.pombo)); return p && naTela(p); }, ok: () => fila.length >= 6 },
+  { id: 'roda', texto: 'Agora dê uma volta e cruze o seu rastro: a roda fecha!', gesto: 'circulo', lugar: 'topo', quando: jogando,
+    alvo: () => naTela(jogador, 4), ok: () => rodasFechadas > 0 },
+  { id: 'alvo', texto: 'Feche a roda em volta da catraca para derrubar. Mais gente, mais dano.', gesto: 'circulo', lugar: 'topo', quando: jogando,
+    alvo: () => { const a = maisPerto(alvos.filter((x) => !x.caido)); return a && naTela(a, 4); }, ok: () => alvos.some((a) => a.vida < a.max) },
+  { id: 'seguranca', texto: 'Segurança corta sua fila! Fuja dele ou cerque numa roda.', lugar: 'topo',
+    quando: () => jogando() && segurancas.length > 0, alvo: () => { const g = maisPerto(segurancas); return g && naTela(g); }, segundos: 5 },
+  { id: 'latido', texto: 'Late! O Shar Pei atordoa quem estiver perto.', luz: true,
+    quando: () => jogando() && latidoPronto === 0 && segurancas.some((g) => !g.tonto && dist2(g, jogador) < 90 ** 2),
+    alvo: () => $('btn-latido'), ok: () => latidoAnim > 0, segundos: 8 },
+]);
 
 // ─── Entrada ──────────────────────────────────────────────
 const teclas = new Set<string>();
@@ -357,7 +393,7 @@ function atualizarPovo(dt: number) {
 function atualizarSegurancas(dt: number) {
   // Grupos de três, em formação de planilha, chegam pelas bordas.
   const maximo = chefe ? Math.floor(fase.segurancasMax * 0.6) : fase.segurancasMax;
-  if (segurancas.length < maximo && tempo > 6 && Math.random() < dt * 0.35) {
+  if (segurancas.length < maximo && tempo > 6 && tutorial.passou('alvo') && Math.random() < dt * 0.35) {
     const lado = Math.floor(Math.random() * 4);
     const bx = lado === 0 ? limites.x0 + 6 : lado === 1 ? limites.x1 - 6 : aleatorio(limites.x0 + 20, limites.x1 - 20);
     const by = lado === 2 ? limites.y0 + 8 : lado === 3 ? limites.y1 - 6 : aleatorio(limites.y0 + 20, limites.y1 - 20);
@@ -649,6 +685,7 @@ function desenhar() {
   let cy = Math.max(vh / 2, Math.min(fase.arena.h + 80 - vh / 2, camera.y));
   if (vw > fase.arena.w + 80) cx = (fase.arena.w + 80) / 2;
   if (vh > fase.arena.h + 80) cy = (fase.arena.h + 80) / 2;
+  vista = { cx, cy, z };
   const tr = tremor > 0 ? (Math.random() - 0.5) * tremor * 4 : 0;
   ctx.setTransform(z, 0, 0, z, Math.round(W / 2 - cx * z + tr), Math.round(H / 2 - cy * z + tr));
 

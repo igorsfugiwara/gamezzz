@@ -6,6 +6,7 @@ import { desenharZine, exportarZine } from './zine';
 import { ler, gravar } from '../compartilhado/salvar';
 import { compartilhar, urlDoJogo } from '../compartilhado/compartilhar';
 import { evento as registrar } from '../compartilhado/eventos';
+import { Tutorial } from '../compartilhado/tutorial';
 import { nota, acorde, arpejo, ruido, vibrar, destravarAudio, setMudo, estaMudo, PENTATONICA } from '../compartilhado/som';
 
 const JOGO = 'faca';
@@ -16,7 +17,6 @@ interface Registro { seed: string; fim: string; noite: number; shows: number; da
 let t: M.Turne | null = null;
 let show: M.Show | null = null;
 let anteriores: Partial<Record<M.Recurso, number>> = {};
-let tutorial = ler<Registro[]>(JOGO, 'caderno', []).length === 0;
 const cena = new Cena($<HTMLCanvasElement>('cena'));
 setMudo(ler(JOGO, 'mudo', false));
 
@@ -46,7 +46,7 @@ function mostrar(tela: Tela) {
   for (const id of TELAS) $(id).hidden = id !== tela;
   const comHud = tela === 'mapa' || tela === 'folha';
   $('hud').hidden = !comHud;
-  if (tela !== 'show') { cena.parar(); $('dica').hidden = true; }
+  if (tela !== 'show') cena.parar();
   if (comHud) requestAnimationFrame(() => document.documentElement.style.setProperty('--hud-h', `${$('hud').offsetHeight}px`));
   if (tela === 'titulo') animarTitulo(); else pararTitulo();
 }
@@ -136,6 +136,7 @@ function comecar(seed: string) {
   t = M.novaTurne(seed);
   anteriores = {};
   registrar(JOGO, 'turne_inicio', { seed, amigo: seed === seedDaUrl });
+  tutorial.iniciar();
   sons.van();
   seguir();
 }
@@ -146,6 +147,8 @@ $('btn-continuar').addEventListener('click', () => {
   destravarAudio();
   t = ler<M.Turne | null>(JOGO, 'turne', null);
   anteriores = {};
+  // Turnê começada no meio do tutorial: ele retoma de onde der.
+  tutorial.iniciar();
   seguir();
 });
 
@@ -370,6 +373,7 @@ function telaEvento() {
   const fase = t.fase;
   const ev = M.evento(fase.id);
   folha(onde(), ev.titulo, ev.texto);
+  tutorial.dica({ id: 'evento', texto: 'Toda escolha tem ganho e perda: o custo está embaixo de cada opção.', gesto: 'nenhum', alvo: () => document.querySelector('.escolha'), segundos: 6 });
   if (ev.momento === 'van') sons.van();
   ev.escolhas.forEach((e, i) => {
     const partes = [M.descreverEfeitos(e.efeitos)];
@@ -487,29 +491,38 @@ function renderShow() {
   const algumaJogavel = s.mao.some((_, i) => M.podeJogar(tt, s, i) === null);
   $('btn-bloco').classList.toggle('chamando', !algumaJogavel);
   $('btn-bloco').textContent = s.bloco >= M.BLOCOS ? 'Encerrar o show ■' : 'Próxima música ▶';
-  posicionarDica();
 }
 
-/** Tutorial sem texto: a mãozinha aponta para o que fazer no primeiro show. */
-function posicionarDica() {
-  const dica = $('dica');
-  if (!tutorial || !t || !show) { dica.hidden = true; return; }
-  // Aponta para a carta jogável que mais levanta o público.
+// ─── Tutorial jogado (primeira noite) ─────────────────────
+const visivel = (id: string) => !$(id).hidden;
+/** A carta jogável que mais levanta o público (ou null). */
+function melhorCarta(): HTMLElement | null {
+  if (!t || !show) return null;
   const cartas = [...$('mao').children] as HTMLElement[];
   const melhor = show.mao
     .map((m, i) => ({ i, e: M.carta(m.id).energia }))
     .filter(({ i, e }) => e > 0 && !('off' in (cartas[i]?.dataset ?? {})))
     .sort((a, b) => b.e - a.e)[0];
-  const alvo = melhor ? cartas[melhor.i] : $('btn-bloco');
-  if (!alvo) { dica.hidden = true; return; }
-  requestAnimationFrame(() => {
-    const r = alvo.getBoundingClientRect();
-    const base = $('app').getBoundingClientRect();
-    dica.style.left = `${r.left - base.left + r.width / 2}px`;
-    dica.style.top = `${r.top - base.top - 44}px`;
-    dica.hidden = false;
-  });
+  return melhor ? cartas[melhor.i] : null;
 }
+const tutorial = new Tutorial(JOGO, [
+  { id: 'mapa', texto: 'Este é o mapa da turnê. Toque na primeira parada: hoje tem show.', quando: () => visivel('mapa'),
+    alvo: () => document.querySelector('.no--livre'), ok: () => !!t && t.noite >= 1 },
+  { id: 'carta', texto: 'Toque numa carta para tocar. O número azul é o fôlego que ela gasta.', lugar: 'topo', quando: () => visivel('show') && !!melhorCarta(),
+    alvo: melhorCarta, ok: () => !!show && show.energia > 0 },
+  { id: 'vu', texto: 'Encha o medidor até o ALVO e o público pede mais.', lugar: 'topo', gesto: 'nenhum', luz: true, quando: () => visivel('show'),
+    alvo: () => $('vu'), segundos: 4 },
+  { id: 'combo', texto: 'Dica: Breakdown dobra a próxima música. Breakdown + Mosh abre a roda!', lugar: 'topo', gesto: 'nenhum', quando: () => visivel('show'),
+    alvo: () => $('mao'), segundos: 5 },
+  { id: 'bloco', texto: 'Acabou o fôlego? “Próxima música” traz mão nova e fôlego cheio.', lugar: 'topo', quando: () => visivel('show') && !melhorCarta(),
+    alvo: () => $('btn-bloco'), ok: () => !show || show.bloco >= 2 },
+  { id: 'recompensa', texto: 'Show tocado! Escolha uma música nova pro repertório.', quando: () => visivel('resultado'),
+    alvo: () => document.querySelector('#recompensas .carta') ?? $('btn-pular'), ok: () => !visivel('resultado') },
+  { id: 'recursos', texto: 'Grana, gasolina, clima, voz e hype. Se o clima zerar, alguém sai da banda.', gesto: 'nenhum', luz: true,
+    quando: () => visivel('mapa') && !$('hud').hidden, alvo: () => $('recursos'), segundos: 6 },
+  { id: 'caminho', texto: 'Cada noite: show, cidade, estrada ou folga. O caminho é seu.', quando: () => visivel('mapa'),
+    alvo: () => document.querySelector('.no--livre'), ok: () => !!t && t.noite >= 2 },
+]);
 
 function pop(texto: string, classe = '') {
   const el = document.createElement('span');
@@ -595,7 +608,6 @@ function finalizarShow() {
   const s = show;
   show = null;
   const r = M.encerrarShow(t, s);
-  tutorial = false;
   registrar(JOGO, 'show_fim', { noite: t.noite, sucesso: r.sucesso, energia: r.energia, alvo: r.alvo });
   if (r.sucesso) sons.acertou(); else sons.microfonia();
   cena.razao = r.sucesso ? 1.4 : 0.1;

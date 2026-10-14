@@ -224,8 +224,6 @@
 /* ─── Aviso e tutorial ───────────────────────── */
 .aviso { position: absolute; z-index: 20; left: 50%; top: 18%; transform: translateX(-50%); width: max-content; max-width: 88%; padding: 10px 14px; background: var(--papel-zine); color: var(--tinta); border: 2px solid var(--tinta); box-shadow: 4px 4px 0 var(--neon-rosa); font-family: var(--fonte-zine); font-weight: 800; font-size: 16px; text-align: center; opacity: 0; pointer-events: none; transition: opacity 180ms; }
 .aviso--ver { opacity: 1; }
-.mao-tutorial { position: absolute; z-index: 15; font-size: 34px; pointer-events: none; transform: translate(-50%, 0); animation: aponta 900ms ease-in-out infinite; filter: drop-shadow(2px 2px 0 var(--preto)); }
-@keyframes aponta { 50% { translate: 0 -10px; } }
 
 @media (min-width: 720px) {
   .carta__efeito { -webkit-line-clamp: 4; }
