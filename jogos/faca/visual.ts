@@ -3,7 +3,7 @@
  * instrumentos desenhados por cima do boneco antes do contorno.
  */
 import { PALETA as P } from '../compartilhado/paleta';
-import { boneco, px, ret, TONS, type Boneco, type Grade, type Tom } from '../compartilhado/boneco';
+import { boneco, hd, px, ret, TONS, type Boneco, type Grade, type Tom } from '../compartilhado/boneco';
 import type { Integrante } from './motor';
 
 const OY = 4; // mesma folga do boneco
@@ -48,4 +48,9 @@ export const VISUAL: Record<Integrante, Boneco> = {
 /** Boneco do integrante; `palco` liga a pose de show (microfone, grito, headbang). */
 export function integrante(quem: Integrante, opcoes: Partial<Boneco> = {}): Grade {
   return boneco({ ...VISUAL[quem], ...opcoes });
+}
+
+/** Integrante com acabamento HD (56×118). */
+export function integranteHD(quem: Integrante, opcoes: Partial<Boneco> = {}): Grade {
+  return hd(integrante(quem, opcoes));
 }

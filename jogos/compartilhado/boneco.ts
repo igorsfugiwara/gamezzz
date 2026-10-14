@@ -72,8 +72,16 @@ export interface Boneco {
   oculos?: boolean;
   gravata?: string;
   pose?: Pose;
-  /** 1 = quadro do headbang: cabeça desce e o cabelo cai na cara. */
-  quadro?: 0 | 1;
+  /** Headbang em 4 quadros: 0 cabeça em pé, 1 descendo, 2 cabelo na cara, 3 subindo. */
+  quadro?: 0 | 1 | 2 | 3;
+  /** Caminhada em 4 quadros: 0 e 2 parado, 1 pé esquerdo no ar, 3 pé direito no ar. */
+  passo?: 0 | 1 | 2 | 3;
+  /** Camisa: lisa, listrada de time (com `listra`) ou canarinho. */
+  camisa?: 'lisa' | 'listrada' | 'canarinho';
+  listra?: string;
+  bermuda?: boolean;
+  /** Chinelo de dedo no lugar da bota. */
+  chinelo?: boolean;
   grito?: boolean;
   tonto?: boolean;
   /** Desenha por cima antes do contorno (instrumentos). */
@@ -200,8 +208,10 @@ const CAVEIRA = ['..WWWW..', '.WWWWWW.', '.WKWWKW.', '..WWWW..', '..W.W.W.'];
 /** Boneco de frente, 28×59: magrelo, pernudo, cabeça comprida, pés no fundo. */
 export function boneco(b: Boneco): Grade {
   const g = novaGrade(BONECO_L, BONECO_A);
-  const p = (x: number, y: number, c: Cor) => px(g, x, y + OY, c);
-  const r = (x: number, y: number, w: number, h: number, c: Cor) => ret(g, x, y + OY, w, h, c);
+  /** Deslocamento vertical do corpo (balanço da caminhada); pernas não usam. */
+  let yo = 0;
+  const p = (x: number, y: number, c: Cor) => px(g, x, y + OY + yo, c);
+  const r = (x: number, y: number, w: number, h: number, c: Cor) => ret(g, x, y + OY + yo, w, h, c);
   /** Volume: luz na esquerda, base no meio, sombra na direita. */
   const vol = (x: number, y: number, w: number, h: number, [l, m, s]: Tom, luz = 1, sombra = 1) => {
     r(x, y, w, h, m);
@@ -212,7 +222,12 @@ export function boneco(b: Boneco): Grade {
   const [hl, hb, hs] = b.cabelo;
   const [rl, rb, rs] = b.roupa;
   const calca = b.calca;
-  const bang = b.quadro === 1 ? 2 : 0;
+  const q = b.quadro ?? 0;
+  const bang = [0, 1, 2, 1][q];
+  const passo = b.passo ?? 0;
+  const pernaNoAr = passo === 1 ? 'esq' : passo === 3 ? 'dir' : null;
+  /** Balanço das pontas do cabelo na caminhada / no headbang. */
+  const balanco = passo === 1 ? 1 : passo === 3 ? -1 : q === 1 ? 1 : q === 3 ? -1 : 0;
   const pose = b.pose ?? 'parado';
   const ox = b.largo ? 2 : 0;
 
@@ -224,20 +239,42 @@ export function boneco(b: Boneco): Grade {
     r(20, 25, 4, 3, bl); p(21, 26, bb); p(22, 26, bs);
   }
 
-  // ── Botas: cano, cadarço, biqueira, solado grosso.
+  // ── Pés e pernas (não balançam com o corpo; o pé no ar sobe 2 px).
+  const lado = (x0: number) => (x0 < 14 ? 'esq' : 'dir');
   for (const x0 of [8, 14]) {
-    vol(x0, 47, 6, 5, [P.asfalto, P.noite, P.preto], 1, 1);
-    p(x0 + 1, 47, P.concreto); p(x0 + 1, 50, P.concreto); p(x0 + 2, 51, P.concreto);
-    p(x0 + 3, 48, P.neblina); p(x0 + 2, 49, P.neblina); p(x0 + 3, 50, P.cimento);
-    r(x0 - (x0 === 8 ? 1 : 0), 52, 7, 2, P.preto);
-    r(x0 - (x0 === 8 ? 1 : 0), 52, 7, 1, P.noite);
+    const sobe = pernaNoAr === lado(x0) ? 2 : 0;
+    if (b.chinelo) {
+      // Pé de chinelo: dedos de fora, tira em V e solado colorido.
+      r(x0, 49 - sobe, 6, 3, b.pele[1]); r(x0, 49 - sobe, 1, 3, b.pele[0]); r(x0 + 5, 49 - sobe, 1, 3, b.pele[2]);
+      for (let i = 0; i < 3; i++) p(x0 + 1 + i * 2, 51 - sobe, b.pele[0]);
+      p(x0 + 2, 49 - sobe, b.listra ?? P.azul); p(x0 + 3, 50 - sobe, b.listra ?? P.azul); p(x0 + 4, 49 - sobe, b.listra ?? P.azul);
+      r(x0 - (x0 === 8 ? 1 : 0), 52 - sobe, 7, 2, P.amarelo); r(x0 - (x0 === 8 ? 1 : 0), 53 - sobe, 7, 1, P.mostarda);
+    } else {
+      vol(x0, 47 - sobe, 6, 5, [P.asfalto, P.noite, P.preto], 1, 1);
+      p(x0 + 1, 47 - sobe, P.concreto); p(x0 + 1, 50 - sobe, P.concreto); p(x0 + 2, 51 - sobe, P.concreto);
+      p(x0 + 3, 48 - sobe, P.neblina); p(x0 + 2, 49 - sobe, P.neblina); p(x0 + 3, 50 - sobe, P.cimento);
+      r(x0 - (x0 === 8 ? 1 : 0), 52 - sobe, 7, 2, P.preto);
+      r(x0 - (x0 === 8 ? 1 : 0), 52 - sobe, 7, 1, P.noite);
+    }
   }
-  // ── Pernas: jeans com costura, rasgo no joelho.
-  vol(9, 36, 4, 11, calca, 1, 1); vol(15, 36, 4, 11, calca, 1, 1);
+  for (const x0 of [9, 15]) {
+    const sobe = pernaNoAr === lado(x0) ? 2 : 0;
+    const fim = (b.chinelo ? 49 : 47) - sobe;
+    if (b.bermuda) {
+      // Bermuda até o joelho, canela de fora.
+      vol(x0, 36, 4, 6, calca, 1, 1);
+      r(x0, 41, 4, 1, calca[2]);
+      vol(x0, 42, 4, fim - 42, b.pele, 1, 1);
+      p(x0 + 1, 44, b.pele[0]);
+    } else {
+      vol(x0, 36, 4, fim - 36, calca, 1, 1);
+      r(x0 + 2, 38, 1, fim - 38, calca[2]); // costura
+    }
+  }
   r(9, 36, 10, 2, calca[1]); r(9, 36, 1, 2, calca[0]);
-  r(11, 38, 1, 9, calca[2]); r(17, 38, 1, 9, calca[2]); // costura
-  r(10, 41, 2, 1, P.papel); p(10, 42, pb); // rasgo
-  p(16, 44, calca[2]); p(15, 40, calca[0]);
+  if (!b.bermuda) { r(10, 41, 2, 1, P.papel); p(10, 42, pb); p(16, 44, calca[2]); p(15, 40, calca[0]); } // rasgo e dobras
+
+  yo = passo === 1 || passo === 3 ? -1 : 0;
 
   // ── Tronco.
   const t0 = 8 - ox, tw = 12 + ox * 2;
@@ -245,11 +282,22 @@ export function boneco(b: Boneco): Grade {
   r(t0 + 1, 19, tw - 4, 1, rl);
   r(12, 19, 4, 1, rs); p(12, 20, rs); p(15, 20, rs); // gola
   p(t0 + 3, 30, rs); p(t0 + 4, 31, rs); p(t0 + tw - 5, 29, rs); p(t0 + tw - 6, 32, rs); // dobras
+  if (b.camisa === 'listrada') {
+    // Camisa de time: listras horizontais, gola na cor da listra.
+    const lt = b.listra ?? P.preto;
+    for (let y = 22; y < 34; y += 4) { r(t0 + 1, y, tw - 2, 2, lt); r(t0 + tw - 3, y, 2, 2, escurecer(lt)); }
+    r(12, 19, 4, 1, lt);
+  } else if (b.camisa === 'canarinho') {
+    // Amarelinha: gola e punho verdes, escudinho azul.
+    r(11, 19, 6, 2, P.folha); p(12, 20, P.musgo); p(15, 20, P.musgo);
+    r(16, 23, 2, 2, P.azul); p(16, 23, P.ceu);
+    r(t0 + 2, 27, 2, 2, P.folha); // número
+  }
   if (b.gravata) {
     r(12, 19, 4, 5, P.branco); p(12, 19, P.papel);
     r(13, 20, 2, 11, b.gravata); p(14, 20, escurecer(b.gravata)); r(13, 31, 2, 1, escurecer(b.gravata));
   }
-  if (b.estampa) {
+  if (b.estampa && (b.camisa ?? 'lisa') === 'lisa') {
     CAVEIRA.forEach((l, j) => { for (let i = 0; i < 8; i++) if (l[i] !== '.') p(10 + i, 22 + j, l[i] === 'W' ? P.papel : rb); });
     p(16, 23, P.neblina); p(16, 25, P.neblina);
   }
@@ -274,17 +322,22 @@ export function boneco(b: Boneco): Grade {
   const tomBraco = (escuro: boolean): Tom => (escuro ? [pb, ps, ps] : [pl, pb, ps]);
   const tomManga = (escuro: boolean): Tom => (b.jaqueta ? [P.asfalto, P.noite, P.preto] : escuro ? [rb, rs, rs] : [rl, rb, rs]);
   const bracoBaixo = (x: number, escuro: boolean) => {
+    // Na caminhada o braço vai pra frente (mão sobe) do lado contrário ao pé no ar.
+    const frente = (pernaNoAr === 'dir' && x < 14) || (pernaNoAr === 'esq' && x > 14) ? 2 : 0;
     vol(x, 20, 3, manga, tomManga(escuro));
-    vol(x, 20 + manga, 3, 13 - manga, tomBraco(escuro));
-    vol(x, 33, 3, 3, tomBraco(escuro)); p(x + 1, 35, ps); // mão fechada
-    p(x, 33, pl);
+    vol(x, 20 + manga, 3, 13 - manga - frente, tomBraco(escuro));
+    vol(x, 33 - frente, 3, 3, tomBraco(escuro)); p(x + 1, 35 - frente, ps); // mão fechada
+    p(x, 33 - frente, pl);
+    if (b.camisa === 'canarinho' && !b.jaqueta) r(x, 19 + manga, 3, 1, P.folha); // punho verde
   };
   const bracoErguido = (x: number, escuro: boolean, chifre: boolean) => {
+    // Nos quadros ímpares o braço "soca" o ar (desce 2 px).
+    const soco = q % 2 === 1 ? 2 : 0;
     vol(x, 17, 3, 5, tomManga(escuro));
-    vol(x, 8, 3, 9, tomBraco(escuro));
-    vol(x, 5, 3, 3, tomBraco(escuro));
-    if (chifre) { r(x, 2, 1, 3, pl); r(x + 2, 2, 1, 3, escuro ? ps : pb); p(x + 1, 5, ps); } // chifres: indicador e mindinho
-    else r(x, 3, 3, 2, pl);
+    vol(x, 8 + soco, 3, 9 - soco, tomBraco(escuro));
+    vol(x, 5 + soco, 3, 3, tomBraco(escuro));
+    if (chifre) { r(x, 2 + soco, 1, 3, pl); r(x + 2, 2 + soco, 1, 3, escuro ? ps : pb); p(x + 1, 5 + soco, ps); } // chifres
+    else r(x, 3 + soco, 3, 2, pl);
   };
   if (pose === 'maos') { bracoErguido(be, false, true); bracoErguido(bd, true, true); }
   else if (pose === 'chifres') { bracoBaixo(be, false); bracoErguido(bd, true, true); }
@@ -325,9 +378,17 @@ export function boneco(b: Boneco): Grade {
     r(7, hy - 1, 1, 23, hl); r(9, hy - 2, 1, 6, hl); r(11, hy - 3, 1, 2, hl);
     r(20, hy, 1, 22, P.preto); r(19, hy + 2, 1, 18, hb); r(8, hy + 4, 1, 16, hs);
     r(13, hy - 4, 2, 3, hs); // risca do meio
-    // Pontas desfiadas.
-    p(6, hy + 22, hb); p(7, hy + 25, hb); p(9, hy + 24, hs); p(19, hy + 25, hs); p(21, hy + 22, hs); p(20, hy + 24, P.preto);
-    if (bang) {
+    // Pontas desfiadas, balançando.
+    const bx = balanco;
+    r(6, hy + 18, 4, 4, null); r(18, hy + 18, 4, 4, null);
+    r(6 + bx, hy + 18, 4, 4, hb); r(18 + bx, hy + 18, 4, 4, hs); r(7 + bx, hy + 18, 1, 4, hl); r(20 + bx, hy + 18, 1, 4, P.preto);
+    r(7 + bx, hy + 22, 3, 3, hb); r(18 + bx, hy + 22, 3, 3, hs);
+    p(6 + bx, hy + 22, hb); p(7 + bx * 2, hy + 25, hb); p(9 + bx, hy + 24, hs); p(19 + bx * 2, hy + 25, hs); p(21 + bx, hy + 22, hs); p(20 + bx, hy + 24, P.preto);
+    if (q === 1 || q === 3) {
+      // Meio do headbang: as cortinas de cabelo fecham nos cantos do rosto.
+      r(9, hy, 3, 10, hb); r(16, hy, 3, 10, hs); r(10, hy + 1, 1, 9, hl);
+    }
+    if (q === 2) {
       // Headbang: o cabelo despenca na cara.
       r(9, hy, 10, 14, hb); r(10, hy + 14, 8, 4, hs);
       for (const x of [10, 13, 16]) r(x, hy + 1, 1, 15, hl);
@@ -401,12 +462,77 @@ export function bonecoDoPovo(semente: number, tipo: 'povo' | 'motoboy' | 'tia' =
   if (base.estilo === 'moicano') base.cabelo = de([TONS.cabelo.verde, TONS.cabelo.rosa, TONS.cabelo.ruivo]);
   if (base.estilo === 'careca') base.barba = r() < 0.7;
   if (base.estilo === 'bone') base.cobertura = de([TONS.roupa.vermelha, TONS.roupa.marinho, TONS.roupa.amarela, TONS.roupa.preta]);
-  base.jaqueta = r() < 0.25;
+  base.jaqueta = r() < 0.22;
   base.estampa = !base.jaqueta && base.roupa === TONS.roupa.preta && r() < 0.8;
+  // Brasil: camisa de time listrada, amarelinha, bermuda e chinelo de dedo.
+  const sorteioCamisa = r();
+  if (!base.jaqueta && sorteioCamisa < 0.18) {
+    const [roupa, listra] = de([
+      [TONS.roupa.vermelha, P.preto], [TONS.roupa.preta, P.branco], [TONS.roupa.musgo, P.branco],
+      [TONS.roupa.marinho, P.branco], [TONS.roupa.vinho, P.ceu], [TONS.roupa.branca, P.vermelho],
+    ] as const);
+    Object.assign(base, { camisa: 'listrada', roupa, listra });
+  } else if (!base.jaqueta && sorteioCamisa < 0.28) {
+    Object.assign(base, { camisa: 'canarinho', roupa: TONS.roupa.amarela, listra: P.folha });
+  }
+  base.bermuda = r() < (base.camisa ? 0.6 : 0.25);
+  base.chinelo = base.bermuda && r() < 0.6;
   if (tipo === 'motoboy') {
-    Object.assign(base, { estilo: 'capacete', cobertura: de([TONS.roupa.vermelha, TONS.roupa.preta, TONS.roupa.amarela]), bau: TONS.roupa.musgo, jaqueta: false, roupa: TONS.roupa.preta, estampa: false });
+    Object.assign(base, { estilo: 'capacete', cobertura: de([TONS.roupa.vermelha, TONS.roupa.preta, TONS.roupa.amarela]), bau: TONS.roupa.musgo, jaqueta: false, roupa: TONS.roupa.preta, estampa: false, camisa: 'lisa', bermuda: false, chinelo: false });
   } else if (tipo === 'tia') {
-    Object.assign(base, { estilo: 'lenco', cobertura: de([TONS.cabelo.rosa, TONS.roupa.amarela, TONS.roupa.musgo, TONS.roupa.laranja]), avental: true, jaqueta: false, estampa: false, barba: false, roupa: de([TONS.roupa.vinho, TONS.roupa.marinho, TONS.roupa.laranja]) });
+    Object.assign(base, { estilo: 'lenco', cobertura: de([TONS.cabelo.rosa, TONS.roupa.amarela, TONS.roupa.musgo, TONS.roupa.laranja]), avental: true, jaqueta: false, estampa: false, barba: false, camisa: 'lisa', roupa: de([TONS.roupa.vinho, TONS.roupa.marinho, TONS.roupa.laranja]) });
   }
   return { ...base, ...extra };
+}
+
+// ─── Acabamento HD ────────────────────────────────────────
+
+/**
+ * Contorno seletivo (sel-out): onde a luz bate (topo e esquerda), a linha
+ * preta vira um tom escuro da cor de dentro; na sombra continua preta.
+ */
+export function contornoSeletivo(g: Grade): Grade {
+  const out = { ...g, cor: g.cor.slice() };
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    if (ler(g, x, y) !== P.preto) continue;
+    const vazioCima = !ler(g, x, y - 1), vazioEsq = !ler(g, x - 1, y);
+    const vazioBaixo = !ler(g, x, y + 1), vazioDir = !ler(g, x + 1, y);
+    // Só a borda de fora, do lado iluminado.
+    if (!(vazioCima || vazioEsq) || vazioBaixo && !vazioCima || vazioDir && !vazioEsq) continue;
+    const dentro = [ler(g, x, y + 1), ler(g, x + 1, y), ler(g, x - 1, y), ler(g, x, y - 1)].find((c) => c && c !== P.preto);
+    if (!dentro) continue;
+    const linha = escurecer(escurecer(dentro));
+    out.cor[y * g.w + x] = linha === dentro ? P.preto : linha;
+  }
+  return out;
+}
+
+/**
+ * Scale2x (EPX): dobra a resolução sem borrar — cada pixel vira 2×2 e as
+ * diagonais ganham degrau de meio pixel. É o que deixa o traço "HD".
+ */
+export function scale2x(g: Grade): Grade {
+  const out = novaGrade(g.w * 2, g.h * 2);
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    const P0 = ler(g, x, y);
+    const A = ler(g, x, y - 1), B = ler(g, x + 1, y), C = ler(g, x - 1, y), D = ler(g, x, y + 1);
+    let e1 = P0, e2 = P0, e3 = P0, e4 = P0;
+    if (C === A && C !== D && A !== B) e1 = A;
+    if (A === B && A !== C && B !== D) e2 = B;
+    if (D === C && D !== B && C !== A) e3 = C;
+    if (B === D && B !== A && D !== C) e4 = D;
+    const i = (y * 2) * out.w + x * 2;
+    out.cor[i] = e1; out.cor[i + 1] = e2; out.cor[i + out.w] = e3; out.cor[i + out.w + 1] = e4;
+  }
+  return out;
+}
+
+/** Acabamento final dos sprites: contorno seletivo e o dobro de resolução. */
+export function hd(g: Grade): Grade {
+  return scale2x(contornoSeletivo(g));
+}
+
+/** Boneco já com o acabamento HD (56×118). */
+export function bonecoHD(b: Boneco): Grade {
+  return hd(boneco(b));
 }

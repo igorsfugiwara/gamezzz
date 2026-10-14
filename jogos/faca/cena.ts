@@ -2,13 +2,14 @@
  * Cena lateral do show em pixel art detalhado: palco com paredão de
  * amplificador, bateria, banner com o nome da banda e a banda tocando;
  * público na frente reagindo à energia (headbang, chifres, mãos pro alto,
- * mosh). Tela interna de 480×240, ampliada para caber.
+ * mosh). Coordenadas em 480×240; tudo é desenhado em 960×480 (sprites HD,
+ * fundo ampliado com Scale2x) e então ampliado para caber.
  */
 import { PALETA as P } from '../compartilhado/paleta';
-import { bonecoDoPovo, boneco, BONECO_L, BONECO_A } from '../compartilhado/boneco';
-import { emCache } from '../compartilhado/canvas';
+import { bonecoDoPovo, bonecoHD, BONECO_L, BONECO_A } from '../compartilhado/boneco';
+import { emCache, ampliarCanvas, desenharHD } from '../compartilhado/canvas';
 import { desenharSharPei } from '../compartilhado/sharpei';
-import { integrante } from './visual';
+import { integranteHD } from './visual';
 import type { Integrante } from './motor';
 
 export const LARGURA = 480;
@@ -16,21 +17,43 @@ export const ALTURA = 240;
 const PALCO_Y = 150; // topo do tablado
 const CHAO_Y = 172;
 
-/** Integrante no palco, por estado (cache). */
-function spriteBanda(quem: Integrante, estado: 'parado' | 'bang' | 'grito'): HTMLCanvasElement {
-  return emCache(`banda-${quem}-${estado}`, () => {
-    if (quem === 'vocal') return integrante(quem, { pose: 'microfone', grito: estado !== 'parado', quadro: estado === 'bang' ? 1 : 0 });
-    return integrante(quem, { quadro: estado === 'parado' ? 0 : 1 });
-  });
+type Quadro = 0 | 1 | 2 | 3;
+
+/** Integrante no palco: headbang em 4 quadros; o vocal grita no microfone. */
+function spriteBanda(quem: Integrante, quadro: Quadro, grito: boolean): HTMLCanvasElement {
+  return emCache(`banda-${quem}-${quadro}-${grito}`, () =>
+    integranteHD(quem, quem === 'vocal' ? { pose: 'microfone', grito, quadro } : { quadro }));
 }
 
 type Reacao = 'parado' | 'bang' | 'chifres' | 'maos';
-function spritePublico(semente: number, reacao: Reacao): HTMLCanvasElement {
-  return emCache(`povo-${semente}-${reacao}`, () => boneco(bonecoDoPovo(semente, 'povo', {
-    quadro: reacao === 'bang' ? 1 : 0,
+function spritePublico(semente: number, reacao: Reacao, quadro: Quadro): HTMLCanvasElement {
+  const q = reacao === 'parado' ? 0 : quadro;
+  return emCache(`povo-${semente}-${reacao}-${q}`, () => bonecoHD(bonecoDoPovo(semente, 'povo', {
+    quadro: reacao === 'bang' ? q : ((q % 2) as Quadro),
     pose: reacao === 'chifres' ? 'chifres' : reacao === 'maos' ? 'maos' : 'parado',
     grito: reacao === 'maos',
   })));
+}
+
+/** Bandeirinha de festa junina: triângulo pendurado no barbante. */
+function bandeirinhas(b: CanvasRenderingContext2D, t: number, y0: number, curva: number, forte: number) {
+  const cores = [P.vermelho, P.amarelo, P.folha, P.azul, P.neon_rosa, P.laranja, P.branco];
+  b.strokeStyle = P.papel;
+  b.lineWidth = 0.5;
+  b.beginPath();
+  for (let x = 0; x <= LARGURA; x += 4) {
+    const y = y0 + Math.sin((x / LARGURA) * Math.PI) * curva;
+    if (x === 0) b.moveTo(x, y); else b.lineTo(x, y);
+  }
+  b.stroke();
+  for (let i = 0, x = 6; x < LARGURA; x += 11, i++) {
+    const y = y0 + Math.sin((x / LARGURA) * Math.PI) * curva;
+    const vento = Math.sin(t * 3 + i) * forte;
+    b.fillStyle = cores[i % cores.length];
+    b.beginPath(); b.moveTo(x - 3.5, y); b.lineTo(x + 3.5, y); b.lineTo(x + vento, y + 8); b.closePath(); b.fill();
+    b.fillStyle = 'rgba(0,0,0,0.25)';
+    b.beginPath(); b.moveTo(x + 1, y); b.lineTo(x + 3.5, y); b.lineTo(x + vento, y + 8); b.closePath(); b.fill();
+  }
 }
 
 /** Iniciais da banda para o bumbo. */
@@ -39,7 +62,7 @@ export function sigla(nome: string): string {
 }
 
 /** Fundo fixo (parede de tijolo, lambe-lambe, banner, paredão): uma vez por show. */
-function desenharFundo(b: CanvasRenderingContext2D, nomeBanda: string) {
+function desenharFundo(b: CanvasRenderingContext2D) {
   b.fillStyle = P.noite;
   b.fillRect(0, 0, LARGURA, CHAO_Y);
   for (let y = 0; y < CHAO_Y; y += 6) {
@@ -49,8 +72,19 @@ function desenharFundo(b: CanvasRenderingContext2D, nomeBanda: string) {
       b.fillRect(x + 1, y + 1, 12, 4);
     }
   }
+  // Barrado de azulejo português na parede do público.
+  for (let x = 270; x < LARGURA; x += 8) for (let y = 128; y < CHAO_Y; y += 8) {
+    b.fillStyle = P.branco; b.fillRect(x, y, 8, 8);
+    b.fillStyle = P.azul; b.fillRect(x + 1, y + 1, 6, 6);
+    b.fillStyle = P.branco; b.fillRect(x + 3, y + 1, 2, 6); b.fillRect(x + 1, y + 3, 6, 2);
+    b.fillStyle = P.ceu; b.fillRect(x + 3, y + 3, 2, 2);
+  }
+  b.fillStyle = P.marinho; b.fillRect(270, 126, LARGURA - 270, 2);
+  // Plaquinha pintada à mão.
+  b.fillStyle = P.preto; b.fillRect(392, 66, 76, 22);
+  b.fillStyle = P.amarelo; b.fillRect(393, 67, 74, 20);
   // Lambe-lambe na parede do público.
-  const cartazes: [number, number, string, string][] = [[290, 26, P.pastel_rosa, P.preto], [318, 18, P.amarelo, P.vinho], [352, 30, P.papel, P.preto], [382, 20, P.neon_verde, P.preto], [414, 28, P.pastel_azul, P.marinho], [446, 16, P.laranja, P.preto]];
+  const cartazes: [number, number, string, string][] = [[284, 34, P.pastel_rosa, P.preto], [312, 26, P.amarelo, P.vinho], [342, 38, P.papel, P.preto], [370, 30, P.neon_verde, P.preto], [402, 98, P.pastel_azul, P.marinho], [436, 96, P.laranja, P.preto]];
   for (const [x, y, fundo, tinta] of cartazes) {
     b.fillStyle = 'rgba(0,0,0,0.35)'; b.fillRect(x + 2, y + 2, 24, 32);
     b.fillStyle = fundo; b.fillRect(x, y, 24, 32);
@@ -62,15 +96,6 @@ function desenharFundo(b: CanvasRenderingContext2D, nomeBanda: string) {
   b.fillStyle = P.preto; b.fillRect(36, 18, 220, 38);
   b.fillStyle = P.vinho; b.fillRect(38, 20, 216, 34);
   b.fillStyle = P.preto; b.fillRect(42, 24, 208, 26);
-  b.font = '12px "Press Start 2P", monospace';
-  b.textAlign = 'center';
-  b.textBaseline = 'middle';
-  const nome = nomeBanda.toUpperCase();
-  const esc = Math.min(1, 196 / Math.max(1, b.measureText(nome).width));
-  b.save(); b.translate(146, 38); b.scale(esc, 1);
-  b.fillStyle = P.vermelho; b.fillText(nome, 1, 1);
-  b.fillStyle = P.branco; b.fillText(nome, 0, 0);
-  b.restore();
   b.fillStyle = P.neblina; b.fillRect(40, 14, 2, 6); b.fillRect(250, 14, 2, 6);
 
   // Paredão de amplificador (esquerda).
@@ -86,6 +111,22 @@ function desenharFundo(b: CanvasRenderingContext2D, nomeBanda: string) {
   b.fillStyle = P.concreto; b.fillRect(5, PALCO_Y - 91, 49, 12);
   for (let k = 0; k < 6; k++) { b.fillStyle = P.preto; b.fillRect(9 + k * 7, PALCO_Y - 87, 3, 3); b.fillStyle = P.neblina; b.fillRect(10 + k * 7, PALCO_Y - 87, 1, 1); }
   b.fillStyle = P.amarelo; b.fillRect(8, PALCO_Y - 90, 10, 2);
+}
+
+/** Letras do fundo: desenhadas depois do Scale2x, que deformaria a fonte. */
+function textosDoFundo(b: CanvasRenderingContext2D, nomeBanda: string) {
+  b.font = '12px "Press Start 2P", monospace';
+  b.textAlign = 'center';
+  b.textBaseline = 'middle';
+  const nome = nomeBanda.toUpperCase();
+  const esc = Math.min(1, 196 / Math.max(1, b.measureText(nome).width));
+  b.save(); b.translate(146, 38); b.scale(esc, 1);
+  b.fillStyle = P.vermelho; b.fillText(nome, 1, 1);
+  b.fillStyle = P.branco; b.fillText(nome, 0, 0);
+  b.restore();
+  b.font = '7px "Press Start 2P", monospace';
+  b.fillStyle = P.vermelho; b.fillText('SEM RODA', 430, 73);
+  b.fillStyle = P.preto; b.fillText('NO BAR!', 430, 81);
 }
 
 /** Tablado (inclina quando desaba) e retornos na beira. */
@@ -139,7 +180,7 @@ export class Cena {
   private ctx: CanvasRenderingContext2D;
   private buffer = document.createElement('canvas');
   private b: CanvasRenderingContext2D;
-  private fundo = document.createElement('canvas');
+  private fundo: HTMLCanvasElement = document.createElement('canvas');
   private publico: Pessoa[] = [];
   private tempo = 0;
   private tremor = 0;
@@ -159,7 +200,7 @@ export class Cena {
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
-    for (const c of [this.buffer, this.fundo]) { c.width = LARGURA; c.height = ALTURA; }
+    this.buffer.width = LARGURA * 2; this.buffer.height = ALTURA * 2;
     this.b = this.buffer.getContext('2d')!;
   }
 
@@ -181,9 +222,14 @@ export class Cena {
     this.quedaPalco = 0;
     this.moshAte = 0;
     this.poeira = [];
+    // Fundo desenhado na resolução base e ampliado uma vez com Scale2x.
+    const base = document.createElement('canvas');
+    base.width = LARGURA; base.height = ALTURA;
+    desenharFundo(base.getContext('2d')!);
+    this.fundo = ampliarCanvas(base);
     const f = this.fundo.getContext('2d')!;
-    f.clearRect(0, 0, LARGURA, ALTURA);
-    desenharFundo(f, this.nomeBanda || 'DIY');
+    f.setTransform(2, 0, 0, 2, 0, 0);
+    textosDoFundo(f, this.nomeBanda || 'DIY');
   }
 
   momento(tipo: string) {
@@ -238,18 +284,15 @@ export class Cena {
     const t = this.tempo;
     const r = this.razao;
     b.save();
+    b.setTransform(2, 0, 0, 2, 0, 0);
+    b.imageSmoothingEnabled = false;
     b.clearRect(0, 0, LARGURA, ALTURA);
     if (this.tremor > 0) b.translate(Math.round((Math.random() - 0.5) * this.tremor * 3), Math.round((Math.random() - 0.5) * this.tremor * 3));
-    b.drawImage(this.fundo, 0, 0);
+    b.drawImage(this.fundo, 0, 0, LARGURA, ALTURA);
 
-    // Varal de luz piscando com a energia.
-    for (let x = 4; x < LARGURA; x += 10) {
-      const aceso = (Math.floor(t * 5 + x / 10) % 3 !== 0) || r > 0.8;
-      const y = 6 + Math.round(Math.sin(x / 30) * 3);
-      b.fillStyle = P.preto; b.fillRect(x - 1, y - 1, 5, 5);
-      b.fillStyle = aceso ? [P.neon_rosa, P.amarelo, P.neon_ciano][(x / 10) % 3 | 0] : P.concreto;
-      b.fillRect(x, y, 3, 3);
-    }
+    // Bandeirinhas de festa junina balançando (mais vento com mais energia).
+    bandeirinhas(b, t, 4, 10, 1 + r * 2);
+    bandeirinhas(b, t + 1.7, 62, 6, 0.6 + r * 1.5);
     // Canhões de luz: os fachos abrem com a energia.
     if (r > 0.3) {
       b.globalAlpha = Math.min(0.22, (r - 0.3) * 0.3);
@@ -270,8 +313,10 @@ export class Cena {
     const batida = Math.floor(t * vel) % 2 === 1;
 
     // Baterista num praticável atrás do kit.
+    // Ciclo de 4 quadros no ritmo da música (mais rápido com mais energia).
+    const ciclo = (desloc: number): Quadro => (r > 0.3 ? (Math.floor(t * vel + desloc) % 4) as Quadro : 0);
     if (this.banda.includes('bateria')) {
-      b.drawImage(spriteBanda('bateria', r > 0.4 && batida ? 'bang' : 'parado'), 92, PALCO_Y - BONECO_A + 4 - 22 + queda(92));
+      desenharHD(b, spriteBanda('bateria', ciclo(0.5), false), 92, PALCO_Y - BONECO_A + 4 - 22 + queda(92));
     }
     desenharBateria(b, 84, PALCO_Y - 20 + queda(84), t, vel, sigla(this.nomeBanda));
     if (this.mascote) desenharSharPei(b, 140, PALCO_Y - 34 + queda(140), 2, { pose: r > 0.7 ? 'feliz' : 'sentado' });
@@ -281,8 +326,8 @@ export class Cena {
     for (const [quem, x] of frente) {
       if (!this.banda.includes(quem)) continue;
       const pulando = r > 1 && Math.sin(t * 5 + x) > 0.7 ? -6 : 0;
-      const estado = quem === 'vocal' ? (r > 0.25 ? 'grito' : 'parado') : r > 0.35 && (batida !== (x > 100)) ? 'bang' : 'parado';
-      b.drawImage(spriteBanda(quem, estado), x, PALCO_Y - BONECO_A + 4 + pulando + queda(x));
+      const quadro = quem === 'vocal' ? (r > 0.8 ? ciclo(1) : 0) : ciclo(x / 40);
+      desenharHD(b, spriteBanda(quem, quadro, quem === 'vocal' && r > 0.25 && batida), x, PALCO_Y - BONECO_A + 4 + pulando + queda(x));
     }
 
     // Público.
@@ -306,7 +351,7 @@ export class Cena {
       else if (r > 0.7) reacao = p.gosto > 0.6 ? 'chifres' : Math.sin(t * vel + p.fase) > 0 ? 'bang' : 'parado';
       else if (r > 0.35) reacao = Math.sin(t * vel + p.fase) > 0.3 ? 'bang' : 'parado';
       const pulo = r > 0.8 ? Math.max(0, Math.sin(t * (4 + r * 4) + p.fase)) * 4 : 0;
-      b.drawImage(spritePublico(p.semente, reacao), Math.round(x - BONECO_L / 2), Math.round(y - BONECO_A - pulo));
+      desenharHD(b, spritePublico(p.semente % 64, reacao, (Math.floor(t * vel * 0.8 + p.fase) % 4) as Quadro), x - BONECO_L / 2, y - BONECO_A - pulo);
     }
 
     for (const d of this.poeira) {
@@ -320,7 +365,7 @@ export class Cena {
     if (this.flash > 0) {
       b.fillStyle = this.corFlash;
       b.globalAlpha = this.flash * 1.2;
-      b.fillRect(0, 0, LARGURA, ALTURA);
+      b.fillRect(0, 0, this.buffer.width, this.buffer.height);
       b.globalAlpha = 1;
     }
 
@@ -330,12 +375,13 @@ export class Cena {
     const h = Math.round(c.clientHeight * devicePixelRatio);
     if (!w || !h) return;
     if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
-    const exato = Math.min(w / LARGURA, h / ALTURA);
+    const bw = this.buffer.width, bh = this.buffer.height;
+    const exato = Math.min(w / bw, h / bh);
     const k = exato >= 2 ? Math.floor(exato) : exato;
     const ctx = this.ctx;
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = P.preto;
     ctx.fillRect(0, 0, w, h);
-    ctx.drawImage(this.buffer, Math.floor((w - LARGURA * k) / 2), Math.floor(h - ALTURA * k), Math.round(LARGURA * k), Math.round(ALTURA * k));
+    ctx.drawImage(this.buffer, Math.floor((w - bw * k) / 2), Math.floor(h - bh * k), Math.round(bw * k), Math.round(bh * k));
   }
 }

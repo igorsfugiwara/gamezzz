@@ -1,21 +1,22 @@
 /**
- * Sprites do RODA no traço metal do portal: bonecos de compartilhado/boneco
- * (28×59, contorno grosso, 3 tons) e cenário antigo ampliado 3× com luz,
- * sombra e contorno. Tudo em "pixel de arte": 3 por unidade do mundo.
+ * Sprites do RODA no traço metal do portal: bonecos HD de compartilhado/boneco
+ * (56×118: contorno seletivo + Scale2x) e cenário antigo ampliado 3× com luz,
+ * sombra e contorno, depois 2× em Scale2x. Tudo em "pixel de arte": 6 por
+ * unidade do mundo.
  * Cada sprite vira canvas uma vez só (cache).
  */
 import { PALETA as P } from '../compartilhado/paleta';
-import { boneco, bonecoDoPovo, contornar, deTexto, novaGrade, px, refinar, ret, TONS, type Grade } from '../compartilhado/boneco';
+import { bonecoDoPovo, bonecoHD, contornar, deTexto, hd, novaGrade, px, refinar, ret, TONS, type Boneco, type Grade } from '../compartilhado/boneco';
 import { emCache, gradeParaCanvas } from '../compartilhado/canvas';
 
 export type Sprite = HTMLCanvasElement;
 
 /** Pixels de arte por unidade do mundo. */
-export const ESC_ARTE = 3;
+export const ESC_ARTE = 6;
 
 /** Arte antiga em texto → ampliada 3× com acabamento. */
 export function arteParaSprite(arte: readonly string[], cores: Record<string, string>): Sprite {
-  return gradeParaCanvas(refinar(deTexto(arte, cores), ESC_ARTE));
+  return gradeParaCanvas(hd(refinar(deTexto(arte, cores), 3)));
 }
 
 /** Desenha um sprite com o pé (base, centro) em (x, yPe), em unidades do mundo. */
@@ -33,23 +34,27 @@ export function desenharSprite(ctx: CanvasRenderingContext2D, s: Sprite, x: numb
 
 export type TipoPessoa = 'povo' | 'motoboy' | 'tia';
 
-/** Gente do povo; `semente` escolhe o visual, `quadro` 1 = headbang. */
-export function spritePessoa(tipo: TipoPessoa, semente: number, quadro: 0 | 1 = 0): Sprite {
-  const s = semente % 97;
-  return emCache(`roda-${tipo}-${s}-${quadro}`, () => boneco(bonecoDoPovo(s + (tipo === 'povo' ? 0 : tipo === 'tia' ? 500 : 900), tipo, { quadro })));
+type Q = 0 | 1 | 2 | 3;
+
+/** Gente do povo; `semente` escolhe o visual, `quadro` o headbang e `passo` a caminhada (4 quadros cada). */
+export function spritePessoa(tipo: TipoPessoa, semente: number, quadro: Q = 0, passo: Q = 0): Sprite {
+  const s = semente % 48;
+  return emCache(`roda-${tipo}-${s}-${quadro}-${passo}`, () => bonecoHD(bonecoDoPovo(s + (tipo === 'povo' ? 0 : tipo === 'tia' ? 500 : 900), tipo, { quadro, passo })));
 }
 
 /** O Vocal: entregador de app e vocalista — boné neon, moletom vermelho, mochila térmica, microfone. */
-export function spriteVocal(grito: boolean, quadro: 0 | 1, oculos: boolean): Sprite {
-  return emCache(`roda-vocal-${grito}-${quadro}-${oculos}`, () => boneco({
+export function spriteVocal(grito: boolean, quadro: Q, oculos: boolean, passo: Q = 0): Sprite {
+  return emCache(`roda-vocal-${grito}-${quadro}-${oculos}-${passo}`, () => bonecoHD({
     pele: TONS.pele.morena, cabelo: TONS.cabelo.preto, roupa: TONS.roupa.vermelha, calca: TONS.calca.preta,
-    estilo: 'bone', cobertura: TONS.cabelo.verde, bau: TONS.roupa.laranja, pose: 'microfone', grito, quadro, oculos,
+    estilo: 'bone', cobertura: TONS.cabelo.verde, bau: TONS.roupa.laranja, pose: 'microfone', grito, quadro, oculos, passo,
   }));
 }
 
-const segurancaBase = { pele: TONS.pele.parda, cabelo: TONS.cabelo.preto, roupa: TONS.roupa.preta, calca: TONS.calca.preta, estilo: 'careca', largo: true, gravata: P.vermelho } as const;
-export const SEGURANCA = gradeParaCanvas(boneco({ ...segurancaBase, oculos: true }));
-export const SEGURANCA_TONTO = gradeParaCanvas(boneco({ ...segurancaBase, tonto: true }));
+const segurancaBase: Boneco = { pele: TONS.pele.parda, cabelo: TONS.cabelo.preto, roupa: TONS.roupa.preta, calca: TONS.calca.preta, estilo: 'careca', largo: true, gravata: P.vermelho };
+/** Segurança marchando (4 quadros); tonto fica parado com estrelinha. */
+export function spriteSeguranca(passo: Q, tonto: boolean): Sprite {
+  return emCache(`roda-seg-${tonto ? 't' : passo}`, () => bonecoHD(tonto ? { ...segurancaBase, tonto: true } : { ...segurancaBase, oculos: true, passo }));
+}
 
 export const PREDIO = arteParaSprite([
   '....nnnnnnnnnnnnnnnn....',
@@ -187,9 +192,9 @@ function algoritmo(copia: boolean): Grade {
   return contornar(g);
 }
 
-export const PROPRIETARIO = gradeParaCanvas(proprietario());
-export const ALGORITMO = gradeParaCanvas(algoritmo(false));
-export const ALGORITMO_COPIA = gradeParaCanvas(algoritmo(true));
+export const PROPRIETARIO = gradeParaCanvas(hd(proprietario()));
+export const ALGORITMO = gradeParaCanvas(hd(algoritmo(false)));
+export const ALGORITMO_COPIA = gradeParaCanvas(hd(algoritmo(true)));
 
 /** Ocupação: o prédio caído remontado, com varal colorido. */
 export const OCUPACAO = arteParaSprite([

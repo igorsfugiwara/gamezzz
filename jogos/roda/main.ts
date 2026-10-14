@@ -3,7 +3,7 @@ import './estilo.css';
 import { detectarRoda, pontoNoPoligono, dist2, type Ponto } from './geometria';
 import { FASES_RODA, VIDA_ALVO, type FaseRoda, type TipoAlvo } from './fases';
 import {
-  spritePessoa, spriteVocal, desenharSprite, ESC_ARTE, SEGURANCA, SEGURANCA_TONTO, PREDIO, CATRACA, VIATURA, PLACA, BOLETO,
+  spritePessoa, spriteVocal, spriteSeguranca, desenharSprite, ESC_ARTE, PREDIO, CATRACA, VIATURA, PLACA, BOLETO,
   PROPRIETARIO, ALGORITMO, ALGORITMO_COPIA, OCUPACAO, arteParaSprite, type Sprite, type TipoPessoa,
 } from './sprites';
 import { nomeDoRecruta } from './nomes';
@@ -114,33 +114,95 @@ window.addEventListener('resize', ajustarTela);
 // ─── Chão pré-desenhado por fase ──────────────────────────
 let chao: HTMLCanvasElement | null = null;
 
+/** Escala do chão pré-desenhado (pixels por unidade): mais detalhe na calçada. */
+const ESC_CHAO = 3;
+
 function desenharChao(f: FaseRoda) {
+  const L = f.arena.w + 80, A = f.arena.h + 80;
   const c = document.createElement('canvas');
-  c.width = f.arena.w + 80; c.height = f.arena.h + 80;
+  c.width = L * ESC_CHAO; c.height = A * ESC_CHAO;
   const g = c.getContext('2d')!;
-  g.fillStyle = f.cores.calcada;
-  g.fillRect(0, 0, c.width, c.height);
-  // Prédios ao redor (só cenário), com janelas acesas.
-  for (let x = 0; x < c.width; x += 26) {
+  g.scale(ESC_CHAO, ESC_CHAO);
+  const fino = 1 / ESC_CHAO;
+  let semente = f.numero * 977;
+  const r = () => ((semente = (semente * 16807) % 2147483647) / 2147483647);
+
+  // Calçada de pedra portuguesa: ondas pretas no fundo branco (Copacabana, centro de SP).
+  g.fillStyle = P.papel; g.fillRect(0, 0, L, A);
+  g.fillStyle = P.asfalto;
+  for (let y = 0; y < A; y += 10) for (let x = 0; x < L; x += fino * 2) {
+    const yy = y + Math.sin((x + y) / 7) * 2.5;
+    g.fillRect(x, yy, fino * 2, 1.4);
+  }
+  // Pedrinhas (textura).
+  g.fillStyle = 'rgba(0,0,0,0.08)';
+  for (let i = 0; i < L * A / 6; i++) g.fillRect(r() * L, r() * A, fino, fino);
+
+  // Prédios no entorno, com pichação no térreo e janelas acesas.
+  for (let x = 0; x < L; x += 26) {
     const h = 20 + ((x * 37) % 23);
-    for (const y of [0, c.height - h]) {
-      g.fillStyle = P.noite; g.fillRect(x, y, 24, h);
-      for (let j = 3; j < h - 3; j += 6) for (let i = 3; i < 21; i += 6) {
-        g.fillStyle = (x + i + j) % 5 === 0 ? P.amarelo : P.asfalto;
+    for (const y of [0, A - h]) {
+      g.fillStyle = [P.noite, P.marinho, P.asfalto, P.vinho][(x / 26) % 4 | 0]; g.fillRect(x, y, 24, h);
+      g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(x, y, 1, h);
+      for (let j = 3; j < h - 5; j += 6) for (let i = 3; i < 21; i += 6) {
+        g.fillStyle = (x + i + j) % 5 === 0 ? P.amarelo : P.preto;
         g.fillRect(x + i, y + j, 3, 3);
+        g.fillStyle = P.cimento; g.fillRect(x + i + 1, y + j, fino, 3); // grade
       }
+      // Pichação: assinatura serrilhada de rua.
+      g.strokeStyle = [P.preto, P.vermelho, P.neon_verde][(x / 26) % 3 | 0]; g.lineWidth = fino * 2;
+      const py = y === 0 ? h - 4 : y + 3;
+      g.beginPath(); g.moveTo(x + 2, py);
+      for (let k = 1; k < 7; k++) g.lineTo(x + 2 + k * 3, py + (k % 2 ? -2.5 : 0));
+      g.stroke();
     }
   }
-  // Asfalto da arena com faixas.
+
+  // Asfalto da arena: remendos, bueiros e faixa de pedestre.
   g.fillStyle = f.cores.asfalto;
   g.fillRect(40, 40, f.arena.w, f.arena.h);
+  g.fillStyle = 'rgba(0,0,0,0.18)';
+  for (let i = 0; i < 26; i++) g.fillRect(40 + r() * (f.arena.w - 20), 40 + r() * (f.arena.h - 14), 8 + r() * 14, 5 + r() * 6);
+  g.fillStyle = 'rgba(255,255,255,0.05)';
+  for (let i = 0; i < 400; i++) g.fillRect(40 + r() * f.arena.w, 40 + r() * f.arena.h, fino, fino);
   g.fillStyle = f.cores.faixa;
   for (let x = 50; x < f.arena.w + 30; x += 24) g.fillRect(x, 40 + f.arena.h / 2 - 1, 12, 2);
   for (let y = 60; y < f.arena.h + 20; y += 60) for (let x = 0; x < 6; x++) g.fillRect(40 + f.arena.w / 3 + x * 5, y, 3, 18);
-  // Bueiros e manchas.
-  g.fillStyle = 'rgba(0,0,0,0.25)';
-  for (let i = 0; i < 40; i++) g.fillRect(40 + ((i * 97) % f.arena.w), 40 + ((i * 53) % f.arena.h), 4 + (i % 3), 2);
-  // Neon de bar nas bordas.
+  for (let i = 0; i < 8; i++) {
+    const bx = 40 + r() * (f.arena.w - 10), by = 40 + r() * (f.arena.h - 6);
+    g.fillStyle = P.preto; g.fillRect(bx, by, 6, 3);
+    g.fillStyle = P.concreto; for (let k = 0; k < 6; k += 1.5) g.fillRect(bx + k, by, fino, 3);
+  }
+
+  // Calçada lateral: ipês amarelos, orelhões e banca de jornal.
+  const ipe = (x: number, y: number) => {
+    g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(x + 2, y + 2, 13, 6, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = P.chocolate; g.fillRect(x - 1, y - 6, 2, 8);
+    for (let i = 0; i < 90; i++) {
+      const a = r() * Math.PI * 2, d = r() * 11;
+      g.fillStyle = r() < 0.65 ? P.amarelo : r() < 0.5 ? P.mostarda : P.laranja;
+      g.fillRect(x + Math.cos(a) * d, y - 12 + Math.sin(a) * d * 0.7, fino * 3, fino * 3);
+    }
+  };
+  const orelhao = (x: number, y: number) => {
+    g.fillStyle = P.cimento; g.fillRect(x - 0.5, y - 10, 1, 10);
+    g.fillStyle = P.preto; g.beginPath(); g.ellipse(x, y - 11, 5, 6, 0, Math.PI, 0); g.fill();
+    g.fillStyle = P.azul; g.beginPath(); g.ellipse(x, y - 11, 4.4, 5.4, 0, Math.PI, 0); g.fill();
+    g.fillStyle = P.ceu; g.fillRect(x - 3, y - 14, 1, 3);
+    g.fillStyle = P.neblina; g.fillRect(x - 1.5, y - 11, 3, 4);
+  };
+  const banca = (x: number, y: number) => {
+    g.fillStyle = P.preto; g.fillRect(x - 9, y - 12, 18, 13);
+    g.fillStyle = P.musgo; g.fillRect(x - 8, y - 11, 16, 11);
+    g.fillStyle = P.folha; g.fillRect(x - 9, y - 13, 18, 2);
+    for (let i = 0; i < 5; i++) { g.fillStyle = [P.vermelho, P.amarelo, P.branco, P.ceu, P.neon_rosa][i]; g.fillRect(x - 7 + i * 3, y - 9, 2, 3); }
+    g.fillStyle = P.papel; g.fillRect(x - 7, y - 5, 14, 3);
+  };
+  for (let y = 70; y < A - 50; y += 70) { ipe(14, y); ipe(L - 16, y + 30); }
+  orelhao(28, 60); orelhao(L - 26, A - 64);
+  banca(24, A - 52); banca(L - 22, 70);
+
+  // Neon de bar nas bordas da arena.
   g.fillStyle = f.cores.neon;
   g.fillRect(40, 40, f.arena.w, 1);
   g.fillRect(40, 40 + f.arena.h - 1, f.arena.w, 1);
@@ -690,7 +752,7 @@ function desenhar() {
   const k = z * ESC;
   ctx.setTransform(k, 0, 0, k, Math.round((W / 2 - cx * z + tr) * ESC), Math.round((H / 2 - cy * z + tr) * ESC));
 
-  ctx.drawImage(chao, 0, 0);
+  ctx.drawImage(chao, 0, 0, chao.width / ESC_CHAO, chao.height / ESC_CHAO);
   // Bordas que fecham (aluguel subindo).
   if (limites.x0 > 40 || limites.y0 > 40) {
     ctx.fillStyle = 'rgba(214, 53, 63, 0.35)';
@@ -732,7 +794,9 @@ function desenhar() {
   // Povo
   for (const p of povo) {
     if (p.pombo) { desenharSprite(ctx, POMBO, p.x, p.y + Math.sin(tempo * 8) * 0.5); continue; }
-    desenharSprite(ctx, spritePessoa(p.tipo, p.semente), p.x, p.y, p.vx < 0);
+    // Caminhada em 4 quadros, cada um no seu passo.
+    const passo = (Math.floor(tempo * 7 + p.semente) % 4) as 0 | 1 | 2 | 3;
+    desenharSprite(ctx, spritePessoa(p.tipo, p.semente, 0, passo), p.x, p.y, p.vx < 0);
   }
   // Pessoa mais perto pisca nos primeiros segundos (ensina a recrutar).
   if (fila.length < 3 && tempo < 20) {
@@ -759,12 +823,12 @@ function desenhar() {
     const pulo = Math.abs(Math.sin(tempo * 10 + i * 0.7)) * 1.5;
     const r = fila[i];
     // Na fila todo mundo bate cabeça, cada um no seu tempo.
-    const bang = (Math.floor(tempo * 6 + i * 1.7) % 2) as 0 | 1;
+    const bang = (Math.floor(tempo * 9 + i * 1.7) % 4) as 0 | 1 | 2 | 3;
     desenharSprite(ctx, r.tipo === 'pombo' ? POMBO : spritePessoa(r.tipo, r.semente, bang), pos.x, pos.y - pulo);
   }
 
   // Seguranças
-  for (const s of segurancas) desenharSprite(ctx, s.tonto > 0 ? SEGURANCA_TONTO : SEGURANCA, s.x, s.y, s.x > jogador.x);
+  for (const s of segurancas) desenharSprite(ctx, spriteSeguranca((Math.floor(tempo * 8 + s.grupo) % 4) as 0 | 1 | 2 | 3, s.tonto > 0), s.x, s.y, s.x > jogador.x);
 
   // Chefe
   if (chefe) {
@@ -804,8 +868,9 @@ function desenhar() {
   // O Vocal (headbang quando a roda tá grande; grita no berro).
   const pisca = invulneravel > 0 && Math.floor(tempo * 16) % 2 === 0;
   if (!pisca) {
-    const bang = (fila.length > 10 && Math.floor(tempo * 6) % 2 === 1 ? 1 : 0) as 0 | 1;
-    desenharSprite(ctx, spriteVocal(gritoAnim > 0 || fila.length > 30, bang, oculosDoVocal), jogador.x, jogador.y, Math.cos(jogador.ang) < 0);
+    const passo = (Math.floor(tempo * 9) % 4) as 0 | 1 | 2 | 3;
+    const bang = (fila.length > 10 ? Math.floor(tempo * 9) % 4 : 0) as 0 | 1 | 2 | 3;
+    desenharSprite(ctx, spriteVocal(gritoAnim > 0 || fila.length > 30, bang, oculosDoVocal, passo), jogador.x, jogador.y, Math.cos(jogador.ang) < 0);
   }
 
   for (const p of particulas) { ctx.fillStyle = p.cor; ctx.fillRect(Math.round(p.x), Math.round(p.y), p.tam, p.tam); }
@@ -938,11 +1003,11 @@ function abrirTitulo() {
 /** Arte do título: a fila girando em volta do prédio espelhado (em pixel de arte, 3×). */
 function desenharArteTitulo() {
   const cv = $('titulo-arte') as HTMLCanvasElement;
-  cv.width = 480; cv.height = 210;
+  cv.width = 960; cv.height = 420;
   const c = cv.getContext('2d')!;
   c.imageSmoothingEnabled = false;
   let t = 0;
-  const pessoa = (i: number) => spritePessoa(i % 5 === 0 ? 'motoboy' : i % 4 === 0 ? 'tia' : 'povo', i * 13, (Math.floor(t * 4 + i) % 2) as 0 | 1);
+  const pessoa = (i: number) => spritePessoa(i % 5 === 0 ? 'motoboy' : i % 4 === 0 ? 'tia' : 'povo', i * 13, (Math.floor(t * 30 + i) % 4) as 0 | 1 | 2 | 3);
   const pinta = () => {
     if (modo !== 'titulo') return;
     c.clearRect(0, 0, cv.width, cv.height);
@@ -951,11 +1016,11 @@ function desenharArteTitulo() {
         const a = t + (i / 16) * Math.PI * 2;
         if ((Math.sin(a) >= 0) !== frente) continue;
         const s = pessoa(i);
-        c.drawImage(s, Math.round(240 + Math.cos(a) * 190 - s.width / 2), Math.round(150 + Math.sin(a) * 40 - s.height));
+        c.drawImage(s, Math.round(480 + Math.cos(a) * 380 - s.width / 2), Math.round(300 + Math.sin(a) * 80 - s.height));
       }
     };
     anel(false);
-    c.drawImage(PREDIO, 240 - PREDIO.width / 2, 130 - PREDIO.height);
+    c.drawImage(PREDIO, 480 - PREDIO.width / 2, 260 - PREDIO.height);
     anel(true);
     t += 0.012;
     requestAnimationFrame(pinta);
@@ -971,7 +1036,7 @@ function abrirCreditos() {
   const nomes = recrutados.length ? recrutados : Array.from({ length: 40 }, (_, i) => nomeDoRecruta(i));
   $('creditos-nomes').innerHTML = ['O Vocal, entregador e vocalista', ...nomes].map((n) => `<div>${n}</div>`).join('') + '<div><br/>Fases 3 a 5 chegam na versão 1.0</div>';
   const cv = $('creditos-tela') as HTMLCanvasElement;
-  cv.width = 720; cv.height = 420;
+  cv.width = 1440; cv.height = 840;
   const c = cv.getContext('2d')!;
   c.imageSmoothingEnabled = false;
   const total = Math.min(90, Math.max(36, recrutados.length));
@@ -985,13 +1050,13 @@ function abrirCreditos() {
       for (let i = 0; i < n; i++) {
         const a = t * (1 + anel * 0.2) + (i / n) * Math.PI * 2;
         gente.push({
-          x: 360 + Math.cos(a) * (120 + anel * 90), y: 250 + Math.sin(a) * (50 + anel * 36),
-          s: spritePessoa(i % 6 === 0 ? 'motoboy' : i % 5 === 0 ? 'tia' : 'povo', i * 7 + anel, (Math.floor(t * 8 + i) % 2) as 0 | 1),
+          x: 720 + Math.cos(a) * (240 + anel * 180), y: 500 + Math.sin(a) * (100 + anel * 72),
+          s: spritePessoa(i % 6 === 0 ? 'motoboy' : i % 5 === 0 ? 'tia' : 'povo', i * 7 + anel, (Math.floor(t * 60 + i) % 4) as 0 | 1 | 2 | 3),
         });
       }
     }
-    gente.push({ x: 360, y: 236, s: OCUPACAO });
-    gente.push({ x: 360, y: 300, s: spriteVocal(true, (Math.floor(t * 8) % 2) as 0 | 1, true) });
+    gente.push({ x: 720, y: 472, s: OCUPACAO });
+    gente.push({ x: 720, y: 600, s: spriteVocal(true, (Math.floor(t * 60) % 4) as 0 | 1 | 2 | 3, true) });
     gente.sort((a, b) => a.y - b.y);
     for (const g of gente) c.drawImage(g.s, Math.round(g.x - g.s.width / 2), Math.round(g.y - g.s.height));
     t += 0.01;
@@ -1036,10 +1101,10 @@ $('btn-compartilhar').addEventListener('click', async () => {
   // Botão do grito: a cara do Vocal berrando.
   const gc = $('grito-vocal') as HTMLCanvasElement;
   const v = spriteVocal(true, 0, oculosDoVocal);
-  gc.width = 22; gc.height = 22;
+  gc.width = 44; gc.height = 44;
   const g2 = gc.getContext('2d')!;
   g2.imageSmoothingEnabled = false;
-  g2.drawImage(v, 3, 2, 22, 22, 0, 0, 22, 22);
+  g2.drawImage(v, 6, 4, 44, 44, 0, 0, 44, 44);
 }
 
 // Gancho de teste (só com #teste na URL): dá recrutas e expõe contadores.

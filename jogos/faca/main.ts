@@ -4,11 +4,10 @@ import * as M from './motor';
 import { Cena } from './cena';
 import { desenharZine, exportarZine } from './zine';
 import { desenharParada, type Parada } from './paisagem';
-import { integrante } from './visual';
+import { integranteHD } from './visual';
 import { trilha } from './trilha';
 import { t as tr, lista, idiomaAtual, definirIdioma } from './i18n';
 import { emCache } from '../compartilhado/canvas';
-import { BONECO_A } from '../compartilhado/boneco';
 import { ler, gravar } from '../compartilhado/salvar';
 import { compartilhar, urlDoJogo } from '../compartilhado/compartilhar';
 import { evento as registrar } from '../compartilhado/eventos';
@@ -123,13 +122,13 @@ function seguir() {
 
 /** Retrato (meio corpo) de um integrante num canvas. */
 function retrato(quem: M.Integrante, alturaPx = 34): HTMLCanvasElement {
-  const s = emCache(`hud-${quem}`, () => integrante(quem, { extra: undefined, pose: 'parado' }));
+  const s = emCache(`hud-${quem}`, () => integranteHD(quem, { extra: undefined, pose: 'parado' }));
   const c = document.createElement('canvas');
   c.width = s.width;
-  c.height = 32;
+  c.height = 64;
   c.className = 'pixel retrato';
   c.style.height = `${alturaPx}px`;
-  c.getContext('2d')!.drawImage(s, 0, 0, s.width, 32, 0, 0, s.width, 32);
+  c.getContext('2d')!.drawImage(s, 0, 0, s.width, 64, 0, 0, s.width, 64);
   return c;
 }
 
@@ -141,16 +140,18 @@ function animarTitulo() {
   let quadro = 0;
   const desenhar = () => {
     ctx.clearRect(0, 0, c.width, c.height);
+    ctx.imageSmoothingEnabled = false;
     M.ORDEM_BANDA.forEach((quem, i) => {
-      const bang = (quadro + i) % 4 < 2;
-      const s = emCache(`titulo-${quem}-${bang}`, () => integrante(quem, quem === 'vocal' ? { pose: 'chifres', grito: bang } : { quadro: bang ? 1 : 0 }));
-      ctx.drawImage(s, 4 + i * 30, c.height - BONECO_A);
+      // Headbang em 4 quadros, cada um defasado.
+      const q = ((quadro + i) % 4) as 0 | 1 | 2 | 3;
+      const s = emCache(`titulo-${quem}-${q}`, () => integranteHD(quem, quem === 'vocal' ? { pose: 'chifres', grito: q % 2 === 1, quadro: q } : { quadro: q }));
+      ctx.drawImage(s, 8 + i * 60, c.height - s.height);
     });
     quadro++;
   };
   desenhar();
   clearInterval(tituloTimer);
-  tituloTimer = window.setInterval(desenhar, 260);
+  tituloTimer = window.setInterval(desenhar, 150);
 }
 function pararTitulo() { clearInterval(tituloTimer); }
 
@@ -186,7 +187,7 @@ function telaBanda(seed: string) {
   for (const quem of M.ORDEM_BANDA) {
     const card = document.createElement('div');
     card.className = 'membro-card';
-    const fig = emCache(`banda-tela-${quem}`, () => integrante(quem));
+    const fig = emCache(`banda-tela-${quem}`, () => integranteHD(quem));
     const c = document.createElement('canvas');
     c.width = fig.width; c.height = fig.height; c.className = 'pixel';
     c.getContext('2d')!.drawImage(fig, 0, 0);

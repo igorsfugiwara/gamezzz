@@ -222,9 +222,9 @@ def roda():
         pessoas.append((math.sin(a), cx + math.cos(a) * rx, cy + math.sin(a) * ry, i))
     for z, x, y, i in sorted(pessoas):
         g = povo[i % len(povo)]
-        colar_grade(img, g, int(x - g['w']), int(y - g['h'] * 2), 2)
+        colar_grade(img, g, int(x - g['w'] / 2), int(y - g['h']), 1)
     v = sp['roda']['vocal']
-    colar_grade(img, v, 60, 400 - v['h'] * 3, 3)
+    colar_grade(img, v, 60, 400 - v['h'] * 2, 2)
     titulo(d, 'RODA', 40, 40, 12, PAL['neon_rosa'], sombra=PAL['neon_ciano'])
     return img
 
@@ -246,9 +246,13 @@ def faca():
     sp = sprites()
     img = fundo('#1a1426', PAL['preto'])
     d = ImageDraw.Draw(img)
-    # Varal de luz e fachos.
-    for x in range(10, 800, 22):
-        d.rectangle([x, 12 + (x // 22 % 2) * 4, x + 6, 18 + (x // 22 % 2) * 4], fill=rgb([PAL['neon_rosa'], PAL['amarelo'], PAL['neon_ciano']][x // 22 % 3]))
+    # Bandeirinhas de festa junina.
+    import math
+    cores = [PAL['vermelho'], PAL['amarelo'], PAL['folha'], PAL['azul'], PAL['neon_rosa'], PAL['laranja'], PAL['branco']]
+    d.line([(x, 8 + math.sin(x / 800 * math.pi) * 14) for x in range(0, 801, 10)], fill=rgb(PAL['papel']), width=1)
+    for i, x in enumerate(range(8, 800, 20)):
+        y = 8 + math.sin(x / 800 * math.pi) * 14
+        d.polygon([(x - 7, y), (x + 7, y), (x, y + 15)], fill=rgb(cores[i % len(cores)]))
     # Palco.
     d.rectangle([360, 330, 800, 450], fill=rgb(PAL['chocolate']))
     d.rectangle([360, 330, 800, 336], fill=rgb(PAL['ruga']))
@@ -257,10 +261,10 @@ def faca():
     # Banda (3×) em cima do palco.
     for i, q in enumerate(['guitarra', 'vocal', 'baixo', 'bateria']):
         g = sp['banda'][q]
-        colar_grade(img, g, 372 + i * 104, 336 - g['h'] * 3 + 12, 3)
+        colar_grade(img, g, 372 + i * 104, 336 - g['h'] * 2 + 12, 2)
     # Público na frente com chifres e mãos pro alto (cortado embaixo).
     for i, g in enumerate(sp['publico'][:9]):
-        colar_grade(img, g, -10 + i * 92, 300 + (i % 2) * 24, 3)
+        colar_grade(img, g, -10 + i * 92, 300 + (i % 2) * 24, 2)
     # Logo: DIY grande + faixa.
     d.rectangle([40 + 10, 40 + 10, 330 + 10, 190 + 10], fill=rgb(PAL['neon_rosa']))
     d.rectangle([40, 40, 330, 190], fill=rgb('#ebe5d6'))

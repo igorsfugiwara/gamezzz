@@ -1,5 +1,6 @@
 /**
  * Trilha do DIY: death metal e hardcore metalizado sintetizados na hora,
+ * com tempero brasileiro (alfaia e agogô de maracatu, à la Roots do Sepultura),
  * sem arquivo de áudio. Guitarra = duas serras desafinadas numa distorção
  * pesada; bateria = bumbo de seno caindo, caixa e pratos de ruído.
  *
@@ -39,12 +40,19 @@ const RIFFS: Record<string, Riff[]> = {
   ],
 };
 
-/** Bateria por padrão: k = bumbo, s = caixa, h = chimbal, c = prato. Uma string por instrumento, 16 passos. */
-const BATERIAS: Record<string, Record<'k' | 's' | 'h' | 'c', string>> = {
-  estrada: { k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', c: 'x...............' },
+/**
+ * Bateria por padrão: k = bumbo, s = caixa, h = chimbal, c = prato e,
+ * do lado brasileiro, f = alfaia/surdo (maracatu, baque virado) e g = agogô.
+ * Uma string por instrumento, 16 passos.
+ */
+type Linha = 'k' | 's' | 'h' | 'c' | 'f' | 'g';
+const BATERIAS: Record<string, Partial<Record<Linha, string>>> = {
+  // Estrada: groove de maracatu metalizado, na linha do Roots do Sepultura.
+  estrada: { k: 'x.....x.x.......', s: '....x.......x...', f: 'x..x..x...x.x...', g: 'x.x..x.x..x..x.x', c: 'x...............' },
   dbeat: { k: 'x.x.x.x.x.x.x.x.', s: '..x...x...x...x.', h: 'xxxxxxxxxxxxxxxx', c: 'x.......x.......' },
   blast: { k: 'xxxxxxxxxxxxxxxx', s: '.x.x.x.x.x.x.x.x', h: '................', c: 'x.x.x.x.x.x.x.x.' },
-  breakdown: { k: 'x..xx..x..x.....', s: '........x.......', h: '................', c: 'x.......x.......' },
+  // Breakdown com alfaia batendo junto: o chão treme.
+  breakdown: { k: 'x..xx..x..x.....', s: '........x.......', f: 'x..x..x.x..x..x.', c: 'x.......x.......' },
 };
 
 const BPM: Record<string, number> = { estrada: 96, dbeat: 168, blast: 196, breakdown: 140 };
@@ -149,6 +157,36 @@ function ruidinho(c: AudioContext, t: number, dur: number, vol: number, tipo: Bi
   s.stop(t + dur + 0.02);
 }
 
+/** Alfaia / surdo: tambor grave de pele, com pitch caindo e um tapa por cima. */
+function surdo(c: AudioContext, t: number, forte: boolean) {
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(forte ? 95 : 120, t);
+  o.frequency.exponentialRampToValueAtTime(forte ? 58 : 75, t + 0.25);
+  g.gain.setValueAtTime(forte ? 0.75 : 0.45, t);
+  g.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
+  o.connect(g).connect(mestre!);
+  o.start(t);
+  o.stop(t + 0.4);
+  ruidinho(c, t, 0.03, 0.18, 'lowpass', 900);
+}
+
+/** Agogô: duas campanas metálicas (aguda e grave). */
+function agogo(c: AudioContext, t: number, aguda: boolean) {
+  for (const mult of [1, 2.76]) {
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = 'square';
+    o.frequency.value = (aguda ? 880 : 660) * mult;
+    g.gain.setValueAtTime(0.025 / mult, t);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + 0.12);
+    o.connect(g).connect(mestre!);
+    o.start(t);
+    o.stop(t + 0.14);
+  }
+}
+
 function caixa(c: AudioContext, t: number) {
   ruidinho(c, t, 0.14, 0.55, 'bandpass', 1800);
   const o = c.createOscillator();
@@ -197,10 +235,12 @@ function agendar() {
       guitarra(c, proximo, abafado ? 0 : nota, abafado, dur);
     }
     const bat = BATERIAS[nome];
-    if (bat.k[passo] === 'x') bumbo(c, proximo);
-    if (bat.s[passo] === 'x') caixa(c, proximo);
-    if (bat.h[passo] === 'x') ruidinho(c, proximo, 0.03, 0.12, 'highpass', 7000);
-    if (bat.c[passo] === 'x') ruidinho(c, proximo, nome === 'blast' ? 0.12 : 0.6, 0.18, 'highpass', 5000);
+    if (bat.k?.[passo] === 'x') bumbo(c, proximo);
+    if (bat.s?.[passo] === 'x') caixa(c, proximo);
+    if (bat.h?.[passo] === 'x') ruidinho(c, proximo, 0.03, 0.12, 'highpass', 7000);
+    if (bat.c?.[passo] === 'x') ruidinho(c, proximo, nome === 'blast' ? 0.12 : 0.6, 0.18, 'highpass', 5000);
+    if (bat.f?.[passo] === 'x') surdo(c, proximo, passo % 4 === 0);
+    if (bat.g?.[passo] === 'x') agogo(c, proximo, passo % 3 === 0);
     proximo += semi;
     passo = (passo + 1) % 16;
     if (passo === 0) compasso++;
