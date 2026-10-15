@@ -8,7 +8,7 @@
  * (giro 1,05), virados para a direita; o jogo espelha para a esquerda.
  */
 import { PALETA as P } from '../compartilhado/paleta';
-import { bonecoHD, TONS, type Boneco, type Grade, type Tom } from '../compartilhado/boneco';
+import { bonecoHD, TONS, type Boneco, type Grade, type Pose, type Tom } from '../compartilhado/boneco';
 import { Estudio, mat, rampa, rampaDe, type V3 } from '../compartilhado/figura';
 import { emCache } from '../compartilhado/canvas';
 import type { Quem, TipoInimigo, TipoItem, TipoQuebravel } from './regras';
@@ -45,14 +45,19 @@ export const VISUAL: Record<Quem, Boneco> = {
     pele: TONS.pele.morena, cabelo: TONS.cabelo.preto, roupa: PRETO, calca: PRETO, estilo: 'boneCurto', cobertura: PRETO,
     barba: true, gordo: true, largo: true, tatuagem: true, tatuagemPerna: true, bermuda: true, tenis: true, escala: 1.08,
   },
-  // Secreto: guitarra com outra paleta.
+  // Duxxo (secreto): careca, branco, da altura do Lingão e maior que o Renato.
   duxxo: {
-    pele: TONS.pele.parda, cabelo: TONS.cabelo.castanho, roupa: TONS.roupa.vinho, calca: TONS.calca.jeans, estilo: 'cabelao',
-    barba: true, tatuagem: true, estampa: true,
+    pele: TONS.pele.clara, cabelo: TONS.cabelo.castanho, roupa: PRETO, calca: PRETO, estilo: 'careca',
+    tatuagem: true, tenis: true,
   },
 };
 
-export type PoseLuta = 'guarda' | 'soco' | 'soco2' | 'chute' | 'pulo' | 'apanha' | 'especial';
+/**
+ * Golpes de roda punk (crowdkill): gancho, moinho de braço, chute giratório,
+ * two-step para andar, pulo de pé alto e voadora; mais apanhar, especial e a
+ * dança da vitória.
+ */
+export type PoseLuta = 'guarda' | 'twostep' | 'soco' | 'soco2' | 'moinho' | 'giro' | 'chute' | 'pulo' | 'apanha' | 'especial' | 'danca';
 
 /** Jazz Bass sunburst no Igor, Telecaster butterscotch no Renato. */
 const INSTRUMENTO: Partial<Record<Quem, Boneco['instrumento']>> = {
@@ -67,11 +72,21 @@ function poseDoEspecial(quem: Quem): Partial<Boneco> {
   return { instrumento: INSTRUMENTO[quem], pose: 'tocando', quadro: 2 };
 }
 
-/** Integrante numa pose de luta; `passo` 0–3 anda, `respiro` alterna no parado. */
-export function spriteIntegrante(quem: Quem, pose: PoseLuta, passo: 0 | 1 | 2 | 3 = 0, respiro = false): Sprite {
-  return emCache(`esc-${quem}-${pose}-${passo}-${respiro}`, () => bonecoHD({
+/** Pose de luta → pose do boneco (para inimigos e chefes, que não dançam nem têm especial). */
+const poseFigura = (p: PoseLuta): Pose => (p === 'danca' ? 'maos' : p === 'especial' ? 'guarda' : p);
+
+/** Giro do corpo em cada quadro do chute giratório: de costas, de lado e o chute de frente. */
+const GIRO_CHUTE = [Math.PI, Math.PI * 1.5, 0];
+
+/** Integrante numa pose; `f` é o quadro (passo do two-step, fase do moinho, do giro, da dança). */
+export function spriteIntegrante(quem: Quem, pose: PoseLuta, f: 0 | 1 | 2 | 3 = 0, respiro = false): Sprite {
+  return emCache(`esc-${quem}-${pose}-${f}-${respiro}`, () => bonecoHD({
     ...VISUAL[quem], giro: GIRO_LUTA, respiro,
-    ...(pose === 'especial' ? poseDoEspecial(quem) : { pose, passo, grito: pose === 'apanha' }),
+    ...(pose === 'especial' ? poseDoEspecial(quem)
+      : pose === 'danca' ? { pose: 'maos', quadro: f, passo: f % 2 ? 1 : 3, grito: f % 2 === 1 }
+        : pose === 'moinho' ? { pose, golpe: Math.min(2, f) as 0 | 1 | 2 }
+          : pose === 'giro' ? { pose, giro: GIRO_LUTA + GIRO_CHUTE[Math.min(2, f)] }
+            : { pose, passo: f, grito: pose === 'apanha' }),
   }));
 }
 
@@ -118,7 +133,7 @@ export function spriteInimigo(tipo: TipoInimigo, semente: number, pose: PoseLuta
   const s = semente % 6;
   return emCache(`esc-ini-${tipo}-${s}-${pose}-${passo}`, () => bonecoHD({
     ...visualInimigo(tipo, s), giro: GIRO_LUTA,
-    ...(pose === 'tonto' ? { pose: 'apanha', tonto: true } : pose === 'especial' ? { pose: 'guarda' } : { pose, passo }),
+    ...(pose === 'tonto' ? { pose: 'apanha', tonto: true } : { pose: poseFigura(pose), passo }),
   }));
 }
 
@@ -154,7 +169,7 @@ export function spriteTecnico(pose: PoseLuta | 'tonto' | 'microfone', passo: 0 |
     pele: bravo ? [P.pessego, P.caramelo, P.vermelho] : TONS.pele.clara, cabelo: TONS.cabelo.loiro,
     roupa: bravo ? TONS.roupa.vermelha : [P.pastel_rosa, P.neon_rosa, P.vinho], calca: [P.pastel_creme, P.caramelo_claro, P.caramelo],
     estilo: 'topete', fones: true, oculos: !bravo, tenis: true, escala: 1.45, giro: GIRO_LUTA, grito: bravo,
-    ...(pose === 'tonto' ? { pose: 'apanha', tonto: true } : pose === 'microfone' ? { pose: 'microfone', grito: true } : pose === 'especial' ? { pose: 'chute' } : { pose, passo }),
+    ...(pose === 'tonto' ? { pose: 'apanha', tonto: true } : pose === 'microfone' ? { pose: 'microfone', grito: true } : { pose: poseFigura(pose), passo }),
   }));
 }
 
@@ -281,32 +296,23 @@ export function spriteCaramelo(quadro: 0 | 1 | 2 | 3, morde = false): Sprite {
 export function spriteItem(item: TipoItem): Sprite {
   if (item === 'caramelo') return spriteCaramelo(0);
   return emCache(`esc-item-${item}`, () => {
-    const e = new Estudio(0.7, 26, 26, 13);
-    const chao = 24;
-    if (item === 'coxinha') {
-      const massa = mat(rampa([P.amarelo, P.mostarda, P.ruga]), 0.5);
-      e.bola([0, chao - 6, 0], 7, 6.5, 7, massa, 1);
-      e.capsula([0, chao - 9, 0], [0, chao - 18, 0], 5.5, 1.5, massa, 1);
-      e.dobrar((X, y) => ((Math.round(X * 2) + y) % 3 === 0 ? 1 : 0)); // farinha de rosca
-    } else if (item === 'pastel') {
-      const massa = mat(rampa([P.pastel_creme, P.amarelo, P.mostarda]), 0.6);
-      e.bola([0, chao - 4, 0], 11, 4.5, 7, massa, 1, 2.4);
-      e.dobrar((X, y) => (y === chao - 1 && Math.round(X) % 2 === 0 ? 1 : 0));
-    } else if (item === 'caldo') {
+    const e = new Estudio(0.6, 26, 30, 13);
+    const chao = 28;
+    if (item === 'cafe') {
+      // Cafezinho de padaria: copinho de plástico branco, café preto e fumaça.
       const copo = mat(rampa([P.branco, P.papel, P.neblina]), 0.8);
-      e.capsula([0, chao - 3, 0], [0, chao - 15, 0], 4.5, 5.5, copo, 1);
-      e.recolorir((_X, y) => (y < chao - 13 ? mat(rampa([P.pastel_verde, P.menta, P.folha]), 0.4) : null));
-      e.capsula([2, chao - 16, 0], [4, chao - 22, 0], 0.7, 0.7, mat(rampaDe(P.vermelho)), 2);
-    } else if (item === 'acai') {
-      e.bola([0, chao - 4, 0], 8, 4.5, 8, mat(rampa([P.branco, P.papel, P.neblina]), 0.6), 1, 2.6);
-      e.bola([0, chao - 9, 0], 7, 3, 7, mat(rampa([P.neon_roxo, '#5b2a7a', '#2a1238']), 0.6), 2);
-      e.dobrar((X, y, p) => (p === 2 && (Math.round(X * 3) + y) % 4 === 0 ? -2 : 0)); // granola
+      e.capsula([0, chao - 2, 0], [0, chao - 11, 0], 3.6, 4.6, copo, 1);
+      e.bola([0, chao - 11, 0], 4.3, 1, 4.3, mat(rampa([P.ruga, P.chocolate, P.noite]), 0.9), 2, 2);
+      e.dobrar((_X, y, p) => (p === 1 && y % 3 === 0 ? 1 : 0)); // frisos do copinho
     } else {
-      const lata = mat(rampa([P.neon_verde, P.folha, P.musgo]), 1);
-      e.capsula([0, chao - 3, 0], [0, chao - 17, 0], 4.5, 4.5, lata, 1);
-      e.recolorir((_X, y) => (y >= chao - 12 && y <= chao - 9 ? mat(rampaDe(P.vermelho), 1) : null));
+      // Energético: lata preta alta com risco verde-neon.
+      const lata = mat(rampa([P.concreto, P.asfalto, P.preto]), 1.3);
+      e.capsula([0, chao - 2, 0], [0, chao - 21, 0], 4.6, 4.6, lata, 1);
+      e.recolorir((_X, y) => (y <= chao - 21 || y >= chao - 3 ? mat(rampa([P.branco, P.neblina, P.cimento]), 1.2) : null));
     }
     e.revelar();
+    if (item === 'cafe') { e.pinta(11, chao - 16, P.papel); e.pinta(13, chao - 18, P.papel); e.pinta(12, chao - 20, P.neblina); e.pinta(14, chao - 22, P.neblina); }
+    else e.pintar((X, y, p, Z) => (p === 1 && Z > 1 && y > chao - 19 && y < chao - 5 && Math.abs(X - Math.sin(y * 0.9) * 1.6) < 0.8 ? P.neon_verde : null));
     return e.grade();
   });
 }

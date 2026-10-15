@@ -27,6 +27,10 @@ import {
 } from './sprites';
 import { montarPalco, desenharFundo, desenharCamada, desenharClima, LARG, ALT, type Palco } from './cenario';
 import { chip, sfx } from './chip';
+import { tocarFaixa, carregarFaixa, abrirFiltro, abaixar, ajustarVolume, type Faixa } from './musica';
+
+/** Música (lo-fi) de cada fase; menus tocam Cicatrizes. */
+const FAIXA_DA_FASE: Faixa[] = ['cicatrizes', 'rasgando', 'sofrer', 'vidaVazia'];
 
 const JOGO = 'escombro';
 /** Link da banda no fim do jogo (vazio = botão escondido até a banda definir). */
@@ -148,7 +152,7 @@ function lerControles() {
 type Modo = 'titulo' | 'selecao' | 'mapa' | 'carregando' | 'jogo' | 'pausa' | 'continue' | 'resultado' | 'fim' | 'arquivo';
 let modo: Modo = 'titulo';
 
-type Estado = 'parado' | 'anda' | 'golpe' | 'pulo' | 'voadora' | 'apanha' | 'voa' | 'caido' | 'levanta' | 'especial' | 'prepara' | 'tonto' | 'morto';
+type Estado = 'parado' | 'anda' | 'golpe' | 'pulo' | 'voadora' | 'apanha' | 'voa' | 'caido' | 'levanta' | 'especial' | 'prepara' | 'tonto' | 'morto' | 'danca';
 
 interface Corpo {
   x: number; y: number; z: number; vx: number; vy: number; vz: number;
@@ -245,7 +249,7 @@ function iniciarFase(n: number) {
   modo = 'jogo';
   mostrar(null);
   ajustarTela();
-  chip.tocar(fase.cenario === 'ensaio' ? 'ensaio' : fase.cenario);
+  void tocarFaixa(FAIXA_DA_FASE[n] ?? 'cicatrizes');
   avisar(n === 0 ? tri(fase.nome) : `${t('jogo.round', { n })} · ${fase.ano}`, 2.2, true);
   evento(JOGO, 'fase_inicio', { fase: n, quem: jog.quem });
   if (n === 0) tutorial.iniciar();
@@ -322,7 +326,10 @@ function atualizarCamera(dt: number) {
 }
 
 // ─── Jogador ──────────────────────────────────────────────
-const DUR_GOLPE = [0.22, 0.24, 0.36];
+/** Combo de roda punk: gancho (crowdkill), moinho de braço e chute giratório. */
+const DUR_GOLPE = [0.22, 0.34, 0.46];
+/** Janela em que cada golpe pega (fração da duração). */
+const ATIVO = [[0.35, 0.75], [0.5, 0.85], [0.62, 0.92]];
 
 function atualizarJogador(dt: number) {
   const j = jog;
@@ -340,7 +347,7 @@ function atualizarJogador(dt: number) {
       j.x += vx * dt; j.y += vy * dt;
       if (ctrl.x) j.dir = ctrl.x > 0 ? 1 : -1;
       j.estado = ctrl.x || ctrl.y ? 'anda' : 'parado';
-      if (aperto.pulo) { j.estado = 'pulo'; j.vz = 255; j.vx = ctrl.x * 96 * ficha.vel; j.t = 0; pulou = true; sfx.pulo(); }
+      if (aperto.pulo) { j.estado = 'pulo'; j.vz = 290; j.vx = ctrl.x * 96 * ficha.vel; j.t = 0; pulou = true; sfx.pulo(); }
       else if (aperto.soco) golpe(j.janela > 0 ? (j.combo + 1) % 3 : 0);
       else if (aperto.esp && j.mosh >= 100) iniciarEspecial();
       break;
@@ -348,8 +355,8 @@ function atualizarJogador(dt: number) {
     case 'golpe': {
       if (aperto.esp && j.mosh >= 100) { iniciarEspecial(); break; } // o especial corta o combo
       const dur = DUR_GOLPE[j.combo] / ficha.vel ** 0.35;
-      const ativo = j.t > dur * 0.35 && j.t < dur * 0.75;
-      if (ativo) aplicarGolpeDoJogador(danoDoGolpe(ficha.forca, j.combo, false), j.combo === 2, 34 * ficha.alcance + (j.combo === 2 ? 8 : 0));
+      const [a0, a1] = ATIVO[j.combo];
+      if (j.t > dur * a0 && j.t < dur * a1) aplicarGolpeDoJogador(danoDoGolpe(ficha.forca, j.combo, false), j.combo === 2, 34 * ficha.alcance + (j.combo === 2 ? 12 : j.combo === 1 ? 4 : 0));
       if (aperto.soco && j.t > dur * 0.45) j.janela = 0.3; // guarda o próximo aperto
       if (j.t >= dur) {
         if (j.janela > 0 && j.combo < 2) golpe(j.combo + 1);
@@ -376,7 +383,11 @@ function atualizarJogador(dt: number) {
       break;
     case 'apanha':
       j.x += j.vx * dt; j.vx *= 0.85;
-      if (j.t > 0.32) j.estado = 'parado';
+      // Apanhou no ar: cai, em vez de ficar flutuando.
+      if (j.z > 0) { j.vz -= 900 * dt; j.z = Math.max(0, j.z + j.vz * dt); }
+      if (j.t > 0.32 && j.z <= 0) j.estado = 'parado';
+      break;
+    case 'danca':
       break;
     case 'voa':
       j.x += j.vx * dt;
@@ -499,7 +510,7 @@ function ferirJogador(dano: number, derruba: boolean, dir: 1 | -1) {
   tremor = Math.max(tremor, 0.12);
   const agora = tempoFase;
   j.golpesSofridos = j.golpesSofridos.filter((x) => agora - x < 1.6).concat(agora);
-  if (derruba || j.vida <= 0 || j.golpesSofridos.length >= 3) {
+  if (derruba || j.vida <= 0 || j.golpesSofridos.length >= 3 || j.z > 0) {
     j.estado = 'voa'; j.t = 0; j.vx = dir * 120; j.vz = 160; j.dir = (-dir) as 1 | -1; j.golpesSofridos = [];
   } else { j.estado = 'apanha'; j.t = 0; j.vx = dir * 50; }
 }
@@ -569,7 +580,7 @@ function atualizarInimigos(dt: number) {
         e.z = Math.max(0, e.z + e.vz * dt);
         if (e.z <= 0 && e.vz < 0) {
           e.z = 0; poeira(e.x, e.y, 6);
-          if (e.vida <= 0) { e.estado = 'morto'; e.t = 0; sfx.ko(); if (Math.random() < 0.18) itens.push({ x: e.x, y: e.y, tipo: Math.random() < 0.5 ? 'coxinha' : 'pastel', vz: 100, z: 8 }); }
+          if (e.vida <= 0) { e.estado = 'morto'; e.t = 0; sfx.ko(); if (Math.random() < 0.18) itens.push({ x: e.x, y: e.y, tipo: Math.random() < 0.65 ? 'cafe' : 'energetico', vz: 100, z: 8 }); }
           else { e.estado = 'caido'; e.t = 0; }
         }
         break;
@@ -599,7 +610,7 @@ function criarChefe() {
     tipo, x: camX + LARG - 90, y: 222, z: tipo === 'mao' ? 90 : 0, vx: 0, vy: 0, vz: 0, dir: -1, vida, max: vida,
     estado: 'parado', t: 0, pisca: 0, acao: 'entra', timer: 1.6, alvo: null, fase2: false, chamou: 0, quadro: 0, golpeou: false,
   };
-  chip.tocar('chefe');
+  abrirFiltro(true); // no chefão a banda entra de verdade
   if (tipo === 'pato') sfx.pato(); else sfx.motor();
   avisar(nomeDoChefe(tipo), 2.4, true);
 }
@@ -625,7 +636,7 @@ function acertaChefe(alcance: number): boolean {
 
 function ferirChefe(dano: number) {
   const c = chefe!;
-  if (c.acao === 'entra' || c.acao === 'cai') return;
+  if (c.acao === 'entra' || c.acao === 'cai' || c.acao === 'derrotado') return;
   c.vida -= dano;
   c.pisca = 0.12;
   contarAcerto(20);
@@ -635,7 +646,7 @@ function ferirChefe(dano: number) {
   if (c.tipo === 'tecnico' && !c.fase2 && c.vida < c.max / 2) {
     c.fase2 = true; c.acao = 'raiva'; c.timer = 1.4; avisar('!!!', 1.2, true); sfx.ko();
   }
-  if (c.vida <= 0) { c.vida = 0; c.acao = 'cai'; c.timer = 2.4; c.z = 0; sfx.ko(); tremor = 0.6; pausaImpacto = 0.25; avisar(t('jogo.ko'), 2.4, true); }
+  if (c.vida <= 0) { c.vida = 0; c.acao = 'cai'; c.timer = 2.4; sfx.ko(); tremor = 0.6; pausaImpacto = 0.25; avisar(t('jogo.ko'), 2.4, true); }
 }
 
 function atualizarChefe(dt: number) {
@@ -646,9 +657,11 @@ function atualizarChefe(dt: number) {
   c.pisca = Math.max(0, c.pisca - dt);
   const j = jog;
   const naArena = (x: number) => clamp(x, camX + 50, camX + LARG - 50);
+  if (c.acao === 'derrotado') return; // fica estirado no chão
   if (c.acao === 'cai') {
-    if (Math.floor(c.t * 10) % 3 === 0) poeira(c.x + aleatorio(-40, 40), c.y, 2, P.amarelo);
-    if (c.timer <= 0) { chefe = null; pontos += 2000; vencerFase(); }
+    c.z = Math.max(0, c.z - 300 * dt);
+    if (c.timer > 1.6 && Math.floor(c.t * 10) % 3 === 0) poeira(c.x + aleatorio(-40, 40), c.y, 2, P.amarelo);
+    if (c.timer <= 0) { c.acao = 'derrotado'; pontos += 2000; vencerFase(); }
     return;
   }
   if (c.acao === 'tonto') { if (c.timer <= 0) { c.acao = c.tipo === 'mao' ? 'sobe' : 'pensa'; c.timer = 0.5; } return; }
@@ -854,13 +867,17 @@ function atualizarMundo(dt: number) {
 function vencerFase() {
   if (terminou) return;
   terminou = true;
+  abaixar();
   chip.tocar('vitoria');
+  // Dança da vitória: o integrante comemora em cima do chefão caído.
+  jog.estado = 'danca'; jog.t = 0; jog.z = 0; jog.invul = 99;
+  for (const e of inimigos) if (e.estado !== 'morto') { e.vida = 0; e.estado = 'voa'; e.vz = 160; e.vx = (e.x > jog.x ? 1 : -1) * 120; }
   const n = fase.n;
   if (n === 0) {
     progresso = concluirFase(progresso, 0, { nota: 'A', tempo: tempoFase, pontos });
     salvarProgresso();
     tutorial.concluir();
-    setTimeout(() => abrirMapa(1), 1200);
+    setTimeout(() => abrirMapa(1), 2200);
     return;
   }
   const nt = notaDaFase(danoSofrido, tempoFase, fase.par, comboMax, continues);
@@ -869,7 +886,7 @@ function vencerFase() {
   progresso = concluirFase(progresso, n, { nota: nt, tempo: tempoFase, pontos });
   salvarProgresso();
   evento(JOGO, 'fase_fim', { fase: n, nota: nt, tempo: Math.round(tempoFase), quem: jog.quem });
-  setTimeout(() => abrirResultado(nt, !!novoArquivo, !jaZerou && progresso.zerou), 1600);
+  setTimeout(() => abrirResultado(nt, !!novoArquivo, !jaZerou && progresso.zerou), 3400);
 }
 
 // ─── Laço principal ───────────────────────────────────────
@@ -900,7 +917,7 @@ function quadro(agora: number) {
 }
 /** `?relogio` troca o requestAnimationFrame por timer: dá para testar com a aba escondida. */
 const RELOGIO_TIMER = new URLSearchParams(location.search).has('relogio');
-if (RELOGIO_TIMER) Object.assign(window, { __esc: () => ({ modo, camX, ondaIdx, inimigos: inimigos.length, alvos: inimigos.map((e) => ({ x: Math.round(e.x), y: Math.round(e.y), vida: e.vida, estado: e.estado })), quebraveis: quebraveis.length, itens: itens.length, chefe: chefe && { vida: chefe.vida, acao: chefe.acao }, jog: { x: jog.x, y: jog.y, z: jog.z, vida: jog.vida, mosh: jog.mosh, estado: jog.estado, invul: jog.invul, pisca: jog.pisca } }) });
+if (RELOGIO_TIMER) Object.assign(window, { __escNocaute: () => { if (chefe) { chefe.vida = 1; ferirChefe(5); } }, __esc: () => ({ modo, camX, ondaIdx, inimigos: inimigos.length, alvos: inimigos.map((e) => ({ x: Math.round(e.x), y: Math.round(e.y), vida: e.vida, estado: e.estado })), quebraveis: quebraveis.length, itens: itens.length, chefe: chefe && { vida: chefe.vida, acao: chefe.acao }, jog: { x: jog.x, y: jog.y, z: jog.z, vida: jog.vida, mosh: jog.mosh, estado: jog.estado, invul: jog.invul, pisca: jog.pisca } }) });
 const proximoQuadro = () => (RELOGIO_TIMER ? setTimeout(() => quadro(performance.now()), 16) : requestAnimationFrame(quadro));
 
 function passo(dt: number) {
@@ -935,8 +952,15 @@ function poseDoJogador(): { s: Sprite; caido: boolean } {
   let pose: PoseLuta = 'guarda';
   let p: 0 | 1 | 2 | 3 = 0;
   switch (j.estado) {
-    case 'anda': p = passoAnim; break;
-    case 'golpe': pose = j.t < (DUR_GOLPE[j.combo] / integrante(j.quem).vel ** 0.35) * 0.8 ? (['soco', 'soco2', 'chute'] as const)[j.combo] : 'guarda'; break;
+    case 'anda': pose = 'twostep'; p = passoAnim; break;
+    case 'golpe': {
+      const u = j.t / (DUR_GOLPE[j.combo] / integrante(j.quem).vel ** 0.35);
+      pose = (['soco', 'moinho', 'giro'] as const)[j.combo];
+      if (j.combo === 0 && u > 0.85) pose = 'guarda';
+      else if (j.combo > 0) p = (u < 0.3 ? 0 : u < 0.6 ? 1 : 2) as 0 | 1 | 2;
+      break;
+    }
+    case 'danca': pose = 'danca'; p = (Math.floor(j.t * 6) % 4) as 0 | 1 | 2 | 3; break;
     case 'pulo': pose = 'pulo'; break;
     case 'voadora': pose = 'chute'; break;
     case 'especial': pose = 'especial'; break;
@@ -1040,12 +1064,14 @@ function desenhar() {
 }
 
 function desenharChefe(c: Chefe) {
-  if (c.acao === 'cai' && Math.floor(c.t * 14) % 2 === 1) return;
   const pisca = c.pisca;
+  const nocaute = c.acao === 'derrotado' || (c.acao === 'cai' && c.timer < 1.8);
   if (c.tipo === 'pato') {
-    const s = spritePato(c.quadro as 0 | 1 | 2 | 3);
+    const s = spritePato(nocaute ? 0 : c.quadro as 0 | 1 | 2 | 3);
     const img = pisca > 0 ? piscada(s) : s;
-    ctx.save(); ctx.translate(Math.round(c.x - camX), Math.round(c.y - c.z)); ctx.scale(c.dir, 1);
+    ctx.save(); ctx.translate(Math.round(c.x - camX), Math.round(c.y - c.z));
+    if (nocaute) { ctx.translate(0, -48); ctx.rotate(-c.dir * Math.PI / 2); } // estirado de lado no asfalto
+    ctx.scale(c.dir, 1);
     ctx.drawImage(img, -72, -img.height + 4); ctx.restore();
     // Laser do olho: aviso piscando, depois o raio na faixa do jogador.
     if ((c.acao === 'carrega' || c.acao === 'laser') && c.alvo) {
@@ -1059,12 +1085,12 @@ function desenharChefe(c: Chefe) {
       }
     }
   } else if (c.tipo === 'mao') {
-    const pose = c.acao === 'bate' || c.acao === 'no_chao' ? 1 : c.acao === 'varre' || c.acao === 'prepara' ? 0 : 2;
+    const pose = nocaute || c.acao === 'varre' || c.acao === 'prepara' ? 0 : c.acao === 'bate' || c.acao === 'no_chao' ? 1 : 2;
     const s = spriteMao(pose);
     const img = pisca > 0 ? piscada(s) : s;
     ctx.save();
     // Invisível: translúcida, tremulando como miragem.
-    ctx.globalAlpha = c.z < 24 ? 0.9 : 0.45 + 0.25 * Math.sin(relogio * 5) ** 2;
+    ctx.globalAlpha = nocaute || c.z < 24 ? 0.9 : 0.45 + 0.25 * Math.sin(relogio * 5) ** 2;
     ctx.translate(Math.round(c.x - camX), Math.round(c.y - c.z));
     ctx.scale(c.dir < 0 ? 1 : -1, 1);
     ctx.drawImage(img, -70, -img.height + 14);
@@ -1074,7 +1100,7 @@ function desenharChefe(c: Chefe) {
     const pose: PoseLuta | 'tonto' | 'microfone' = c.acao === 'tonto' ? 'tonto' : c.acao === 'cabo' ? 'soco' : c.acao === 'investe' ? 'soco2'
       : c.acao === 'micro_prep' || c.acao === 'raiva' ? 'microfone' : c.acao === 'cai' ? 'apanha' : 'guarda';
     const s = spriteTecnico(pose, c.acao === 'pensa' ? passoAnim : 0, c.fase2);
-    desenharLutador(s, c.x, c.y, c.z, c.dir, c.acao === 'cai' && c.timer < 1.6, pisca, 1.45);
+    desenharLutador(s, c.x, c.y, c.z, c.dir, nocaute, pisca, 1.45);
     if ((c.acao === 'cabo_prep' || c.acao === 'micro_prep') && Math.floor(relogio * 12) % 2 === 0) desenharAviso(c.x, c.y - 180);
     if (c.acao === 'cabo') {
       // Cabo XLR estalando como chicote, com o plugue na ponta.
@@ -1151,7 +1177,7 @@ function desenharHud() {
   texto(`x${j.vidas}`, 168, 16, P.branco);
   if (fase.n > 0) {
     texto(formatarTempo(tempoFase), LARG / 2, 8, P.branco, 8, 'center');
-    texto(`${t('hud.fita')} ${pedacosDaFita(progresso) + (terminou && fase.fita ? 0 : 0)}/4`, LARG - 8, 8, P.neon_ciano, 8, 'right');
+    texto(`${t('hud.fita')} ${pedacosDaFita(progresso)}/3`, LARG - 8, 8, P.neon_ciano, 8, 'right');
     texto(String(pontos).padStart(7, '0'), LARG - 8, 20, P.branco, 8, 'right');
   }
   if (combo >= 2) texto(`${combo} HITS`, 8, 44, combo >= 10 ? P.neon_rosa : P.amarelo, 10);
@@ -1198,14 +1224,14 @@ document.querySelectorAll<HTMLButtonElement>('#idiomas button').forEach((b) => b
 function apertouStart() {
   if (!$('menu-titulo').hidden) return;
   sfx.confirma();
-  chip.tocar('titulo');
+  void tocarFaixa('cicatrizes');
   $('b-start').hidden = true;
   $('menu-titulo').hidden = false;
   $('b-continuar').hidden = progresso.liberada === 0 && !Object.keys(progresso.melhores).length;
   (($('b-continuar').hidden ? $('b-novo') : $('b-continuar')) as HTMLButtonElement).focus();
 }
 $('b-start').addEventListener('click', apertouStart);
-$('b-novo').addEventListener('click', () => { sfx.confirma(); abrirSelecao(); });
+$('b-novo').addEventListener('click', () => { sfx.confirma(); abrirMapa(0); });
 $('b-continuar').addEventListener('click', () => { sfx.confirma(); abrirMapa(progresso.liberada); });
 $('b-arquivo').addEventListener('click', () => abrirArquivo());
 
@@ -1225,7 +1251,11 @@ function segredo(k: string) {
 
 // Seleção
 let escolhido: Quem = progresso.quem;
-function abrirSelecao() {
+/** Fase que começa depois de escolher (a seleção vem antes de toda fase). */
+let faseEscolhida = 0;
+function abrirSelecao(n = progresso.liberada) {
+  faseEscolhida = n;
+  escolhido = progresso.quem;
   modo = 'selecao';
   mostrar('selecao');
   const fileira = $('fileira');
@@ -1282,20 +1312,21 @@ function escolher() {
   progresso = { ...progresso, quem: escolhido };
   salvarProgresso();
   sfx.confirma();
-  abrirMapa(progresso.liberada);
+  carregar(faseEscolhida);
 }
 $('b-escolher').addEventListener('click', escolher);
 
 // Mapa Game Boy
 const GB = ['#0f380f', '#306230', '#8bac0f', '#9bbc0f'];
-const PONTOS_MAPA = [{ x: 22, y: 112 }, { x: 46, y: 84 }, { x: 74, y: 100 }, { x: 98, y: 70 }, { x: 118, y: 92 }, { x: 132, y: 58 }, { x: 146, y: 30 }];
+/** As quatro paradas pela cidade: sala de ensaio, periferia, canteiro e a casa de show. */
+const PONTOS_MAPA = [{ x: 24, y: 112 }, { x: 58, y: 78 }, { x: 98, y: 100 }, { x: 136, y: 52 }];
 let noMapa = 0;
 let kombi = { x: 22, y: 112 };
 function abrirMapa(n: number) {
   modo = 'mapa';
   noMapa = clamp(n, 0, progresso.liberada);
   kombi = { ...PONTOS_MAPA[noMapa] };
-  chip.tocar('titulo');
+  void tocarFaixa('cicatrizes');
   mostrar('mapa');
   atualizarLegenda();
 }
@@ -1331,13 +1362,13 @@ function desenharMapa() {
     for (let s = 0; s < 1; s += 0.08) { g.fillStyle = i < progresso.liberada ? GB[0] : GB[1]; g.fillRect(Math.round(a.x + (b.x - a.x) * s), Math.round(a.y + (b.y - a.y) * s), 2, 2); }
   }
   PONTOS_MAPA.forEach((p, i) => {
-    const liberado = i <= progresso.liberada && i < FASES.length;
+    const liberado = i <= progresso.liberada;
     g.fillStyle = GB[0]; g.fillRect(p.x - 5, p.y - 5, 10, 10);
     g.fillStyle = liberado ? (progresso.melhores[i] ? GB[1] : GB[2]) : GB[3]; g.fillRect(p.x - 4, p.y - 4, 8, 8);
-    g.fillStyle = GB[0]; g.font = '6px monospace'; g.fillText(i >= FASES.length ? '27' : String(i), p.x - 3, p.y + 2);
+    g.fillStyle = GB[0]; g.font = '6px monospace'; g.fillText(String(i), p.x - 2, p.y + 2);
   });
   g.fillStyle = GB[0]; g.font = '7px monospace';
-  g.fillText('SP', 8, 138); g.fillText('GÖTTINGEN', 104, 12);
+  g.fillText('SÃO PAULO', 6, 138);
   // Kombi vista de cima andando até o ponto escolhido.
   const alvo = PONTOS_MAPA[noMapa];
   kombi.x += (alvo.x - kombi.x) * 0.15; kombi.y += (alvo.y - kombi.y) * 0.15;
@@ -1350,12 +1381,13 @@ function desenharMapa() {
 function bora() {
   if (modo !== 'mapa') return;
   sfx.confirma();
-  carregar(noMapa);
+  abrirSelecao(noMapa);
 }
 
 // Carregamento: gera os sprites da fase aos poucos, com dica da banda.
 const DICAS = [
-  { pt: 'Coxinha cura. Caldo de cana cura mais.', en: 'Coxinha heals. Sugarcane juice heals more.', de: 'Coxinha heilt. Zuckerrohrsaft heilt mehr.' },
+  { pt: 'Café cura. Energético cura mais e enche o MOSH.', en: 'Coffee heals. Energy drinks heal more and fill MOSH.', de: 'Kaffee heilt. Energy-Drinks heilen mehr und füllen MOSH.' },
+  { pt: 'O combo é de roda: gancho, moinho e chute giratório.', en: 'The combo is pure pit: hook, windmill and spin kick.', de: 'Die Kombo ist reiner Pit: Haken, Windmühle, Drehkick.' },
   { pt: 'O vira-lata caramelo morde por 14 segundos. Respeita.', en: 'The caramel mutt bites for 14 seconds. Respect.', de: 'Der Karamell-Straßenhund beißt 14 Sekunden lang.' },
   { pt: 'Inimigo piscando "!" vai bater. Sai da frente.', en: 'An enemy flashing "!" is about to hit. Move.', de: 'Gegner mit "!" schlägt gleich zu. Ausweichen.' },
   { pt: 'Ninguém solta a mão de ninguém.', en: 'Nobody lets go of anyone’s hand.', de: 'Niemand lässt jemandes Hand los.' },
@@ -1367,10 +1399,12 @@ function carregar(n: number) {
   $('dica').textContent = tri(DICAS[Math.floor(Math.random() * DICAS.length)]);
   const f = FASES[n];
   const tarefas: (() => void)[] = [];
-  const poses: PoseLuta[] = ['guarda', 'soco', 'soco2', 'chute', 'pulo', 'apanha', 'especial'];
-  for (const p of poses) tarefas.push(() => spriteIntegrante(progresso.quem, p));
-  for (let k = 0; k < 4; k++) tarefas.push(() => spriteIntegrante(progresso.quem, 'guarda', k as 0 | 1 | 2 | 3));
-  tarefas.push(() => spriteIntegrante(progresso.quem, 'guarda', 0, true));
+  const quem = progresso.quem;
+  for (const p of ['guarda', 'soco', 'chute', 'pulo', 'apanha', 'especial'] as const) tarefas.push(() => spriteIntegrante(quem, p));
+  for (let k = 0; k < 4; k++) { const f = k as 0 | 1 | 2 | 3; tarefas.push(() => spriteIntegrante(quem, 'twostep', f)); tarefas.push(() => spriteIntegrante(quem, 'danca', f)); }
+  for (let k = 0; k < 3; k++) { const f = k as 0 | 1 | 2; tarefas.push(() => spriteIntegrante(quem, 'moinho', f)); tarefas.push(() => spriteIntegrante(quem, 'giro', f)); }
+  tarefas.push(() => spriteIntegrante(quem, 'guarda', 0, true));
+  const musica = carregarFaixa(FAIXA_DA_FASE[n] ?? 'cicatrizes');
   const tipos = [...new Set(f.ondas.flatMap((o) => o.inimigos))];
   for (const tp of tipos) for (let s = 0; s < (tp === 'papelao' ? 1 : 3); s++) {
     for (const p of ['guarda', 'soco', 'apanha'] as const) tarefas.push(() => spriteInimigo(tp, s, p));
@@ -1386,7 +1420,7 @@ function carregar(n: number) {
     while (tarefas.length && performance.now() < ate) tarefas.shift()!();
     $('carga').style.width = `${Math.round((1 - tarefas.length / total) * 100)}%`;
     if (tarefas.length) setTimeout(passoCarga, 0);
-    else setTimeout(() => iniciarFase(n), 250);
+    else void musica.then(() => setTimeout(() => iniciarFase(n), 150));
   };
   setTimeout(passoCarga, 30);
 }
@@ -1397,7 +1431,7 @@ function alternarPausa() {
   else if (modo === 'pausa') { modo = 'jogo'; mostrar(null); tutorial.retomar?.(); }
 }
 $('b-voltar').addEventListener('click', alternarPausa);
-$('b-som').addEventListener('click', () => { setMudo(!estaMudo()); gravar(JOGO, 'mudo', estaMudo()); traduzir(); });
+$('b-som').addEventListener('click', () => { setMudo(!estaMudo()); gravar(JOGO, 'mudo', estaMudo()); ajustarVolume(); traduzir(); });
 $('b-flash').addEventListener('click', () => { reduzirFlash = !reduzirFlash; gravar(JOGO, 'flash', reduzirFlash); traduzir(); });
 $('b-sair').addEventListener('click', () => { chip.parar(); tutorial.pausar?.(); abrirMapa(fase.n); });
 

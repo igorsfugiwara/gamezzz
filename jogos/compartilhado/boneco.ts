@@ -52,7 +52,9 @@ export const TONS = {
 export type Estilo = 'cabelao' | 'moicano' | 'careca' | 'bone' | 'lenco' | 'capacete' | 'coque' | 'obra' | 'boneCurto' | 'topete';
 export type Pose = 'parado' | 'chifres' | 'maos' | 'microfone' | 'baqueta' | 'tocando'
   // Luta (boneco HD): guarda, soco de frente e de trás, chute, pulo, apanhando.
-  | 'guarda' | 'soco' | 'soco2' | 'chute' | 'pulo' | 'apanha';
+  | 'guarda' | 'soco' | 'soco2' | 'chute' | 'pulo' | 'apanha'
+  // Roda punk: moinho de braço, chute giratório (braços abertos) e o two-step.
+  | 'moinho' | 'giro' | 'twostep';
 
 export interface Boneco {
   pele: Tom;
@@ -99,6 +101,8 @@ export interface Boneco {
   respiro?: boolean;
   /** Cor da viseira do capacete (robô). */
   viseira?: string;
+  /** Quadro do golpe animado (moinho: 0 em cima, 1 na frente, 2 embaixo). */
+  golpe?: 0 | 1 | 2 | 3;
   /** Crachá no peito. */
   cracha?: boolean;
   /** Corpo grande (barriga, braço e perna grossos). */

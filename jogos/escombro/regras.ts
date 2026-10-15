@@ -25,7 +25,7 @@ export interface Integrante {
 
 export const INTEGRANTES: Integrante[] = [
   {
-    id: 'igor', nome: 'IGOR', instrumento: { pt: 'Baixo', en: 'Bass', de: 'Bass' },
+    id: 'igor', nome: 'LINGÃO', instrumento: { pt: 'Baixo', en: 'Bass', de: 'Bass' },
     forca: 1.35, vel: 0.82, alcance: 0.9, especial: 'grave',
     especialNome: { pt: 'Onda de grave', en: 'Bass wave', de: 'Basswelle' },
     especialTexto: { pt: 'Derruba todos na tela.', en: 'Knocks down everyone on screen.', de: 'Wirft alle auf dem Bildschirm um.' },
@@ -87,7 +87,7 @@ export const INIMIGOS: Record<TipoInimigo, FichaInimigo> = {
 export type Cenario = 'ensaio' | 'garoa' | 'canteiro' | 'show';
 export type Chefe = 'pato' | 'mao' | 'tecnico';
 export type TipoQuebravel = 'orelhao' | 'lixeira' | 'banca' | 'amp' | 'cone' | 'caixa';
-export type TipoItem = 'coxinha' | 'pastel' | 'caldo' | 'acai' | 'guarana' | 'caramelo';
+export type TipoItem = 'cafe' | 'energetico' | 'caramelo';
 
 export interface Onda {
   /** Onde a câmera trava (borda esquerda da tela, em px do mundo). */
@@ -115,7 +115,7 @@ export const FASES: Fase[] = [
   {
     n: 0, ano: '2016', nome: { pt: 'Sala de ensaio', en: 'Rehearsal room', de: 'Proberaum' }, cenario: 'ensaio',
     comprimento: 480, ondas: [{ x: 0, inimigos: ['papelao', 'papelao'] }],
-    quebraveis: [{ x: 380, y: 212, tipo: 'amp', item: 'coxinha' }], chefe: null, par: 60, fita: false, arquivo: null,
+    quebraveis: [{ x: 380, y: 212, tipo: 'amp', item: 'cafe' }], chefe: null, par: 60, fita: false, arquivo: null,
   },
   {
     n: 1, ano: '2016', nome: { pt: 'O Começo', en: 'The Beginning', de: 'Der Anfang' }, cenario: 'garoa',
@@ -127,10 +127,10 @@ export const FASES: Fase[] = [
       { x: 1520, inimigos: ['pm', 'gcm', 'pm', 'gcm', 'pm'] },
     ],
     quebraveis: [
-      { x: 430, y: 186, tipo: 'orelhao', item: 'coxinha' },
+      { x: 430, y: 186, tipo: 'orelhao', item: 'cafe' },
       { x: 980, y: 250, tipo: 'lixeira', item: 'caramelo' },
-      { x: 1460, y: 190, tipo: 'banca', item: 'pastel' },
-      { x: 1880, y: 240, tipo: 'lixeira', item: 'caldo' },
+      { x: 1460, y: 190, tipo: 'banca', item: 'cafe' },
+      { x: 1880, y: 240, tipo: 'lixeira', item: 'energetico' },
     ],
     chefe: 'pato', par: 210, fita: true,
     arquivo: {
@@ -148,10 +148,10 @@ export const FASES: Fase[] = [
       { x: 1680, inimigos: ['choque', 'pm', 'choque', 'gcm', 'pm'] },
     ],
     quebraveis: [
-      { x: 470, y: 238, tipo: 'cone', item: 'coxinha' },
-      { x: 1050, y: 192, tipo: 'caixa', item: 'acai' },
+      { x: 470, y: 238, tipo: 'cone', item: 'cafe' },
+      { x: 1050, y: 192, tipo: 'caixa', item: 'energetico' },
       { x: 1600, y: 244, tipo: 'cone', item: 'caramelo' },
-      { x: 2080, y: 196, tipo: 'caixa', item: 'caldo' },
+      { x: 2080, y: 196, tipo: 'caixa', item: 'energetico' },
     ],
     chefe: 'mao', par: 240, fita: true,
     arquivo: {
@@ -169,10 +169,10 @@ export const FASES: Fase[] = [
       { x: 1620, inimigos: ['choque', 'choque', 'pm', 'pm', 'gcm'] },
     ],
     quebraveis: [
-      { x: 500, y: 240, tipo: 'caixa', item: 'guarana' },
-      { x: 1110, y: 196, tipo: 'amp', item: 'pastel' },
+      { x: 500, y: 240, tipo: 'caixa', item: 'energetico' },
+      { x: 1110, y: 196, tipo: 'amp', item: 'cafe' },
       { x: 1700, y: 246, tipo: 'caixa', item: 'caramelo' },
-      { x: 2000, y: 200, tipo: 'amp', item: 'acai' },
+      { x: 2000, y: 200, tipo: 'amp', item: 'energetico' },
     ],
     chefe: 'tecnico', par: 240, fita: true,
     arquivo: {
@@ -183,11 +183,8 @@ export const FASES: Fase[] = [
 ];
 
 export const ITENS: Record<TipoItem, { vida: number; mosh: number }> = {
-  coxinha: { vida: 18, mosh: 0 },
-  pastel: { vida: 22, mosh: 0 },
-  caldo: { vida: 32, mosh: 0 },
-  acai: { vida: 40, mosh: 20 },
-  guarana: { vida: 8, mosh: 45 },
+  cafe: { vida: 22, mosh: 10 },
+  energetico: { vida: 38, mosh: 35 },
   caramelo: { vida: 0, mosh: 0 },
 };
 

@@ -72,6 +72,13 @@
 .tela-menu[hidden] { display: none; }
 .tela-menu--titulo { background: linear-gradient(rgba(7, 6, 11, 0.55), rgba(7, 6, 11, 0.15) 45%, rgba(7, 6, 11, 0.7)); }
 .tela-menu--sobre { background: rgba(7, 6, 11, 0.86); }
+/* Na capa o texto fica por cima da cena animada: contorno preto para ler em qualquer fundo. */
+.tela-menu--titulo .premissa, .tela-menu--titulo .rodape, .tela-menu--titulo .aviso-flash, .tela-menu--titulo .start {
+  color: var(--branco);
+  text-shadow: -2px 0 0 #000, 2px 0 0 #000, 0 -2px 0 #000, 0 2px 0 #000, 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+}
+.tela-menu--titulo .rodape, .tela-menu--titulo .aviso-flash { color: var(--papel); }
+.tela-menu--titulo .premissa { font-weight: 700; }
 
 .logo { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .logo__nome {
@@ -124,7 +131,7 @@
 
 /* Seleção */
 .sel { display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap; justify-content: center; }
-.retrato { width: 112px; height: 236px; image-rendering: pixelated; }
+.retrato { width: 200px; height: 262px; image-rendering: pixelated; }
 .sel__info { text-align: left; display: flex; flex-direction: column; gap: 8px; width: min(260px, 90vw); }
 .sel__nome { margin: 0; font-size: 22px; color: var(--branco); text-shadow: 3px 3px 0 var(--sangue); }
 .sel__inst { margin: 0; font-size: 10px; color: var(--obra); }

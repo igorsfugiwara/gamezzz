@@ -16,14 +16,14 @@ export const games: Game[] = [
   {
     slug: 'escombro',
     title: 'ESCOMBRO: A FITA',
-    description: 'Beat \'em up de 16 bits da banda Escombro HC: atravesse a periferia de SP na garoa, encare PM e GCM e derrube o Pato-Algoritmo para recuperar a fita master do disco novo. Em português, inglês e alemão.',
-    longDescription: 'ESCOMBRO: A FITA é um beat \'em up lateral com cara de cartucho de Super Nintendo e acabamento de pixel art HD. A master do disco novo da Escombro HC foi destruída e os pedaços ficaram espalhados em dez anos de estrada. Você escolhe um integrante da banda, cada um com tamanho, força, velocidade, alcance e especial próprios: Igor no baixo (onda de grave), Pucci na bateria (blast beat), Renato na guitarra (microfonia) ou Jota no vocal (grito). São três fases e um tutorial na sala de ensaio. Na periferia de São Paulo na garoa, PM e GCM fecham a rua e o Pato-Algoritmo, um pato gigante biotech, dispara laser do olho de LED. No canteiro de demolição chega a tropa de choque e a Mão Invisível do Mercado, que só apanha quando encosta no chão e chama fantasmas de gravata. Na casa de show lotada, o Técnico de Som folgado chicoteia com o cabo e solta microfonia. Coxinha, pastel e caldo de cana recuperam a vida, e o vira-lata caramelo morde por 14 segundos. Cada fase dá nota de S a C e libera conteúdo da banda no Arquivo. Dá para jogar no teclado, no controle ou no celular, em português, inglês ou alemão.',
+    description: 'Beat \'em up de 16 bits da banda Escombro HC: atravesse a periferia de SP na garoa, encare PM e GCM na base da roda punk e derrube o Pato-Algoritmo para recuperar a fita master do disco novo. Em português, inglês e alemão.',
+    longDescription: 'ESCOMBRO: A FITA é um beat \'em up lateral com cara de cartucho de Super Nintendo e acabamento de pixel art HD. A master do disco novo da Escombro HC foi destruída e os pedaços ficaram espalhados pela cidade. Antes de cada fase você escolhe um integrante da banda, cada um com tamanho, força, velocidade, alcance e especial próprios, tocando o próprio instrumento: Lingão no Jazz Bass (onda de grave), Pucci na bateria (blast beat), Renato na Telecaster (microfonia) ou Jota no vocal (grito). A briga é de roda punk: gancho de crowdkill, moinho de braço, chute giratório, two-step e pulo de pé alto. Na periferia de São Paulo na garoa, PM e GCM fecham a rua e o Pato-Algoritmo, um pato gigante biotech, dispara laser do olho de LED. No canteiro de demolição chega a tropa de choque e a Mão Invisível do Mercado, que só apanha quando encosta no chão e chama fantasmas de gravata. Na casa de show lotada, o Técnico de Som folgado chicoteia com o cabo e solta microfonia. Café e energético recuperam a vida, o vira-lata caramelo morde por 14 segundos e a trilha é a própria Escombro em versão lo-fi de fita. Cada fase dá nota de S a C e libera conteúdo da banda no Arquivo. Dá para jogar no teclado, no controle ou no celular, em português, inglês ou alemão.',
     howToPlay: [
       'Ande com as setas ou WASD (no celular, use o direcional na tela)',
-      'J ou Z dá soco; aperte em sequência para fazer o combo de três golpes',
+      'J ou Z ataca; em sequência sai o combo de roda: gancho, moinho de braço e chute giratório',
       'K, X ou espaço pula; soco no ar vira voadora',
       'Cada golpe enche a barra de MOSH; cheia, L ou C solta o especial do integrante',
-      'Inimigo piscando "!" vai bater: saia da frente. Quebre orelhão, lixeira e banca para achar comida',
+      'Inimigo piscando "!" vai bater: saia da frente. Quebre orelhão, lixeira e banca para achar café e energético',
     ],
     category: 'ação',
     tags: ['beat em up', 'briga de rua', '16 bits', 'pixel art', 'hardcore', 'banda', 'escombro', 'ação'],
