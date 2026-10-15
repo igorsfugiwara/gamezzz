@@ -7,6 +7,7 @@
  * para as miniaturas e só no fim virar canvas (`gradeParaCanvas`).
  */
 import { PALETA as P } from './paleta';
+import { figura } from './figura';
 
 export type Cor = string | null;
 /** [luz, base, sombra] */
@@ -49,7 +50,7 @@ export const TONS = {
 } as const satisfies Record<string, Record<string, Tom>>;
 
 export type Estilo = 'cabelao' | 'moicano' | 'careca' | 'bone' | 'lenco' | 'capacete' | 'coque';
-export type Pose = 'parado' | 'chifres' | 'maos' | 'microfone' | 'baqueta';
+export type Pose = 'parado' | 'chifres' | 'maos' | 'microfone' | 'baqueta' | 'tocando';
 
 export interface Boneco {
   pele: Tom;
@@ -84,8 +85,12 @@ export interface Boneco {
   chinelo?: boolean;
   grito?: boolean;
   tonto?: boolean;
-  /** Desenha por cima antes do contorno (instrumentos). */
+  /** Desenha por cima antes do contorno (instrumentos, só no boneco pequeno). */
   extra?: (g: Grade) => void;
+  /** Guitarra (Flying V) ou baixo na frente do corpo, no boneco HD. */
+  instrumento?: { tipo: 'guitarra' | 'baixo'; cor: Tom };
+  /** Giro do corpo no boneco HD, em radianos (0 = de frente; padrão: três-quartos virado para a direita). */
+  giro?: number;
 }
 
 export const BONECO_L = 28;
@@ -478,7 +483,7 @@ export function bonecoDoPovo(semente: number, tipo: 'povo' | 'motoboy' | 'tia' =
   base.bermuda = r() < (base.camisa ? 0.6 : 0.25);
   base.chinelo = base.bermuda && r() < 0.6;
   if (tipo === 'motoboy') {
-    Object.assign(base, { estilo: 'capacete', cobertura: de([TONS.roupa.vermelha, TONS.roupa.preta, TONS.roupa.amarela]), bau: TONS.roupa.musgo, jaqueta: false, roupa: TONS.roupa.preta, estampa: false, camisa: 'lisa', bermuda: false, chinelo: false });
+    Object.assign(base, { estilo: 'capacete', cobertura: de([TONS.roupa.vermelha, TONS.roupa.preta, TONS.roupa.amarela]), bau: de([TONS.roupa.vermelha, TONS.roupa.vermelha, TONS.roupa.laranja, TONS.roupa.amarela]), jaqueta: false, roupa: TONS.roupa.preta, estampa: false, camisa: 'lisa', bermuda: false, chinelo: false });
   } else if (tipo === 'tia') {
     Object.assign(base, { estilo: 'lenco', cobertura: de([TONS.cabelo.rosa, TONS.roupa.amarela, TONS.roupa.musgo, TONS.roupa.laranja]), avental: true, jaqueta: false, estampa: false, barba: false, camisa: 'lisa', roupa: de([TONS.roupa.vinho, TONS.roupa.marinho, TONS.roupa.laranja]) });
   }
@@ -532,7 +537,7 @@ export function hd(g: Grade): Grade {
   return scale2x(contornoSeletivo(g));
 }
 
-/** Boneco já com o acabamento HD (56×118). */
+/** Boneco HD (56×118), desenhado em volume direto na resolução final (figura.ts). */
 export function bonecoHD(b: Boneco): Grade {
-  return hd(boneco(b));
+  return figura(b);
 }

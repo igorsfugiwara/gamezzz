@@ -314,12 +314,12 @@ export function desenharParada(canvas: HTMLCanvasElement, tipo: Parada, opcoes: 
   c.setTransform(2, 0, 0, 2, 0, 0);
   for (const t of textos) t(c);
   gente.forEach(([x, chao], i) => {
-    const s = emCache(`pais-povo-${(h + i * 7) % 64}`, () => bonecoHD(bonecoDoPovo((h + i * 7) % 64, i === 1 ? 'tia' : 'povo', { passo: (i % 4) as 0 | 1 | 2 | 3 })));
+    const s = emCache(`pais-povo-${(h + i * 7) % 64}`, () => bonecoHD(bonecoDoPovo((h + i * 7) % 64, i === 1 ? 'tia' : 'povo', { passo: (i % 4) as 0 | 1 | 2 | 3, giro: i % 2 ? -0.55 : 0.55 })));
     desenharHD(c, s, x - BONECO_L / 2, chao - BONECO_A + 4);
   });
   if (tipo === 'pousada') {
     opcoes.banda.slice(0, 3).forEach((quem, i) => {
-      const s = emCache(`pais-${quem}`, () => integranteHD(quem, { extra: undefined, pose: quem === 'bateria' ? 'parado' : undefined }));
+      const s = emCache(`pais-${quem}`, () => integranteHD(quem, { extra: undefined, instrumento: undefined, pose: quem === 'bateria' ? 'parado' : undefined }));
       desenharHD(c, s, 244 + i * 34 - BONECO_L / 2, 176 - BONECO_A + 4);
     });
   }

@@ -1,6 +1,6 @@
 /**
- * Sprites do RODA no traço metal do portal: bonecos HD de compartilhado/boneco
- * (56×118: contorno seletivo + Scale2x) e cenário antigo ampliado 3× com luz,
+ * Sprites do RODA no traço metal do portal: bonecos HD de compartilhado/figura
+ * (56×118, em volume, três-quartos) e cenário antigo ampliado 3× com luz,
  * sombra e contorno, depois 2× em Scale2x. Tudo em "pixel de arte": 6 por
  * unidade do mundo.
  * Cada sprite vira canvas uma vez só (cache).
@@ -23,6 +23,10 @@ export function arteParaSprite(arte: readonly string[], cores: Record<string, st
 export function desenharSprite(ctx: CanvasRenderingContext2D, s: Sprite, x: number, yPe: number, espelhar = false) {
   const w = s.width / ESC_ARTE;
   const h = s.height / ESC_ARTE;
+  // Tela menor que a arte: reduzir sem suavizar some com pixel (olho, tacha,
+  // contorno); suavizado, o detalhe vira meio-tom em vez de sumir.
+  const reduz = ctx.getTransform().a / ESC_ARTE < 0.98;
+  if (reduz) { ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; }
   if (espelhar) {
     ctx.save();
     ctx.translate(x, 0);
@@ -30,6 +34,7 @@ export function desenharSprite(ctx: CanvasRenderingContext2D, s: Sprite, x: numb
     ctx.drawImage(s, -w / 2, yPe - h, w, h);
     ctx.restore();
   } else ctx.drawImage(s, x - w / 2, yPe - h, w, h);
+  if (reduz) ctx.imageSmoothingEnabled = false;
 }
 
 export type TipoPessoa = 'povo' | 'motoboy' | 'tia';

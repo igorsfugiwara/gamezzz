@@ -122,7 +122,7 @@ function seguir() {
 
 /** Retrato (meio corpo) de um integrante num canvas. */
 function retrato(quem: M.Integrante, alturaPx = 34): HTMLCanvasElement {
-  const s = emCache(`hud-${quem}`, () => integranteHD(quem, { extra: undefined, pose: 'parado' }));
+  const s = emCache(`hud-${quem}`, () => integranteHD(quem, { extra: undefined, instrumento: undefined, pose: 'parado' }));
   const c = document.createElement('canvas');
   c.width = s.width;
   c.height = 64;

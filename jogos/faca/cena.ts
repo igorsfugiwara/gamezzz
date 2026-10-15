@@ -32,6 +32,7 @@ function spritePublico(semente: number, reacao: Reacao, quadro: Quadro): HTMLCan
     quadro: reacao === 'bang' ? q : ((q % 2) as Quadro),
     pose: reacao === 'chifres' ? 'chifres' : reacao === 'maos' ? 'maos' : 'parado',
     grito: reacao === 'maos',
+    giro: -0.55, // de frente para o palco
   })));
 }
 

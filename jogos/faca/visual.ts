@@ -3,7 +3,7 @@
  * instrumentos desenhados por cima do boneco antes do contorno.
  */
 import { PALETA as P } from '../compartilhado/paleta';
-import { boneco, hd, px, ret, TONS, type Boneco, type Grade, type Tom } from '../compartilhado/boneco';
+import { boneco, bonecoHD, px, ret, TONS, type Boneco, type Grade, type Tom } from '../compartilhado/boneco';
 import type { Integrante } from './motor';
 
 const OY = 4; // mesma folga do boneco
@@ -39,9 +39,9 @@ function instrumento(cor: Tom, baixo: boolean) {
 export const VISUAL: Record<Integrante, Boneco> = {
   vocal: { pele: TONS.pele.morena, cabelo: TONS.cabelo.rosa, roupa: TONS.roupa.preta, calca: TONS.calca.preta, estilo: 'cabelao', jaqueta: true },
   guitarra: { pele: TONS.pele.clara, cabelo: TONS.cabelo.castanho, roupa: TONS.roupa.preta, calca: TONS.calca.jeans, estilo: 'cabelao', estampa: true,
-    extra: instrumento(TONS.roupa.vermelha, false) },
+    extra: instrumento(TONS.roupa.vermelha, false), instrumento: { tipo: 'guitarra', cor: TONS.roupa.vermelha } },
   baixo: { pele: TONS.pele.escura, cabelo: TONS.cabelo.verde, roupa: TONS.roupa.vinho, calca: TONS.calca.preta, estilo: 'moicano', jaqueta: true,
-    extra: instrumento([P.ceu, P.azul, P.marinho], true) },
+    extra: instrumento([P.ceu, P.azul, P.marinho], true), instrumento: { tipo: 'baixo', cor: [P.ceu, P.azul, P.marinho] } },
   bateria: { pele: TONS.pele.parda, cabelo: TONS.cabelo.loiro, roupa: TONS.roupa.laranja, calca: TONS.calca.jeans, estilo: 'careca', barba: true, pose: 'baqueta' },
 };
 
@@ -50,7 +50,7 @@ export function integrante(quem: Integrante, opcoes: Partial<Boneco> = {}): Grad
   return boneco({ ...VISUAL[quem], ...opcoes });
 }
 
-/** Integrante com acabamento HD (56×118). */
+/** Integrante HD (56×118), em volume. */
 export function integranteHD(quem: Integrante, opcoes: Partial<Boneco> = {}): Grade {
-  return hd(integrante(quem, opcoes));
+  return bonecoHD({ ...VISUAL[quem], ...opcoes });
 }
