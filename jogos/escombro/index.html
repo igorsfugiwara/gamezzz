@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ESCOMBRO: A FITA</title>
+  <meta name="description" content="Beat 'em up de 16 bits da banda Escombro HC: atravesse dez anos de estrada, derrube o Pato Amarelo e recupere a fita master do disco novo." />
+</head>
+<body>
+  <div id="app" class="esc">
+    <div class="palco" id="palco">
+      <canvas id="tela" class="pixel tela" width="480" height="270"></canvas>
+    </div>
+
+    <!-- Controles de toque -->
+    <div class="controles" id="controles" hidden>
+      <div class="direcional" id="direcional" aria-label="Direcional"><i id="pino"></i></div>
+      <div class="botoes-acao">
+        <button class="acao acao--esp" id="b-esp" data-t="controles.esp"></button>
+        <button class="acao acao--pulo" id="b-pulo" data-t="controles.pulo"></button>
+        <button class="acao acao--soco" id="b-soco" data-t="controles.soco"></button>
+      </div>
+      <button class="mini" id="b-pausa" aria-label="Pausa">II</button>
+    </div>
+
+    <!-- Título -->
+    <section class="tela-menu tela-menu--titulo" id="titulo">
+      <div class="idiomas" id="idiomas">
+        <button data-idioma="pt">PT</button><button data-idioma="en">EN</button><button data-idioma="de">DE</button>
+      </div>
+      <h1 class="logo"><span class="logo__nome">ESCOMBRO</span><span class="logo__sub" data-t="titulo.sub"></span></h1>
+      <p class="premissa" data-t="titulo.premissa"></p>
+      <button class="start" id="b-start" data-t="titulo.start"></button>
+      <div class="menu-titulo" id="menu-titulo" hidden>
+        <button class="botao" id="b-continuar" data-t="titulo.continuar"></button>
+        <button class="botao" id="b-novo" data-t="titulo.novo"></button>
+        <button class="botao botao--leve" id="b-arquivo" data-t="titulo.arquivo"></button>
+      </div>
+      <p class="rodape" data-t="titulo.rodape"></p>
+      <p class="aviso-flash" data-t="aviso.flash"></p>
+    </section>
+
+    <!-- Seleção de integrante -->
+    <section class="tela-menu tela-menu--sel" id="selecao" hidden>
+      <h2 class="titulo-menu" data-t="sel.titulo"></h2>
+      <div class="sel">
+        <canvas id="retrato" class="pixel retrato" width="112" height="236"></canvas>
+        <div class="sel__info">
+          <h3 class="sel__nome" id="sel-nome"></h3>
+          <p class="sel__inst" id="sel-inst"></p>
+          <div class="stat"><span data-t="sel.forca"></span><i id="st-forca"></i></div>
+          <div class="stat"><span data-t="sel.vel"></span><i id="st-vel"></i></div>
+          <div class="stat"><span data-t="sel.alcance"></span><i id="st-alc"></i></div>
+          <p class="sel__esp"><b id="sel-esp"></b><br /><span id="sel-esp-txt"></span></p>
+        </div>
+      </div>
+      <div class="fileira" id="fileira"></div>
+      <button class="botao botao--forte" id="b-escolher" data-t="sel.ok"></button>
+    </section>
+
+    <!-- Mapa (Game Boy) -->
+    <section class="tela-menu tela-menu--gb" id="mapa" hidden>
+      <canvas id="mapa-tela" class="pixel gb" width="160" height="144"></canvas>
+      <p class="gb-legenda" id="mapa-legenda"></p>
+      <div class="linha-botoes">
+        <button class="botao botao--gb" id="b-mapa-esq">◀</button>
+        <button class="botao botao--gb botao--forte" id="b-bora" data-t="mapa.ir"></button>
+        <button class="botao botao--gb" id="b-mapa-dir">▶</button>
+      </div>
+    </section>
+
+    <!-- Carregando (Game Boy) -->
+    <section class="tela-menu tela-menu--gb" id="carregando" hidden>
+      <p class="gb-titulo" data-t="carregando"></p>
+      <div class="gb-barra"><i id="carga"></i></div>
+      <p class="gb-dica" id="dica"></p>
+    </section>
+
+    <!-- Pausa -->
+    <section class="tela-menu tela-menu--sobre" id="pausa" hidden>
+      <h2 class="titulo-menu" data-t="jogo.pausa"></h2>
+      <button class="botao botao--forte" id="b-voltar" data-t="jogo.voltar"></button>
+      <button class="botao" id="b-som"></button>
+      <button class="botao" id="b-flash"></button>
+      <button class="botao botao--leve" id="b-sair" data-t="jogo.sair"></button>
+    </section>
+
+    <!-- Continue -->
+    <section class="tela-menu tela-menu--sobre" id="continue" hidden>
+      <h2 class="continue" data-t="jogo.continue"></h2>
+      <p class="contagem" id="contagem">9</p>
+      <button class="start" id="b-cont" data-t="jogo.continueToque"></button>
+    </section>
+
+    <!-- Resultado -->
+    <section class="tela-menu tela-menu--res" id="resultado" hidden>
+      <h2 class="titulo-menu" id="res-titulo"></h2>
+      <div class="res">
+        <p class="nota" id="res-nota">S</p>
+        <dl class="res__numeros" id="res-numeros"></dl>
+      </div>
+      <p class="res__fita" id="res-fita"></p>
+      <div class="res__arquivo" id="res-arquivo" hidden><b data-t="res.liberou"></b><span id="res-arq-txt"></span></div>
+      <p class="retorno" id="res-retorno" aria-live="polite"></p>
+      <div class="linha-botoes">
+        <button class="botao" id="b-compartilhar" data-t="res.compartilhar"></button>
+        <button class="botao botao--forte" id="b-proxima" data-t="res.proxima"></button>
+      </div>
+    </section>
+
+    <!-- Fim (fita 3/4) -->
+    <section class="tela-menu tela-menu--res" id="fim" hidden>
+      <h2 class="logo__nome logo__nome--fim" id="fim-titulo"></h2>
+      <p class="premissa" data-t="fim.texto"></p>
+      <p class="fim-duxxo" data-t="fim.duxxo"></p>
+      <a class="botao botao--forte" id="b-seguir" target="_blank" rel="noopener" data-t="fim.seguir" hidden></a>
+      <button class="botao" id="b-fim-menu" data-t="fim.menu"></button>
+    </section>
+
+    <!-- Arquivo -->
+    <section class="tela-menu tela-menu--sobre" id="arquivo" hidden>
+      <h2 class="titulo-menu" data-t="arq.titulo"></h2>
+      <ul class="arquivo" id="arquivo-lista"></ul>
+      <button class="botao" id="b-arq-fechar" data-t="arq.fechar"></button>
+    </section>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -28,12 +28,12 @@ const CX = 27;
 
 // ─── Cor ──────────────────────────────────────────────────
 
-type Rampa = readonly [string, string, string, string, string];
+export type Rampa = readonly [string, string, string, string, string];
 
 function rgb(c: string): [number, number, number] {
   return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
 }
-function mistura(a: string, b: string, t: number): string {
+export function mistura(a: string, b: string, t: number): string {
   const x = rgb(a), y = rgb(b);
   return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('');
 }
@@ -43,22 +43,22 @@ const FRIO = '#160f2a';
 const SANGUE = '#4a1426';
 
 /** Escada de 5 tons a partir do [luz, base, sombra] da paleta. */
-function rampa([l, m, s]: Tom, funda = FRIO): Rampa {
+export function rampa([l, m, s]: Tom, funda = FRIO): Rampa {
   return [mistura(l, QUENTE, 0.5), l, m, s, mistura(s, funda, 0.5)];
 }
 /** Escada a partir de uma cor só (listra, gravata, chinelo). */
-function rampaDe(c: string): Rampa {
+export function rampaDe(c: string): Rampa {
   return [mistura(c, QUENTE, 0.55), mistura(c, QUENTE, 0.22), c, mistura(c, FRIO, 0.35), mistura(c, FRIO, 0.62)];
 }
 
-interface Material {
+export interface Material {
   rampa: Rampa;
   /** Força do reflexo especular (0 = fosco, 1 = couro/capacete). */
   brilho: number;
   /** Mechas de cabelo: listras de luz e sombra seguindo o fio. */
   fios?: boolean;
 }
-const mat = (r: Rampa, brilho = 0.15, fios = false): Material => ({ rampa: r, brilho, fios });
+export const mat = (r: Rampa, brilho = 0.15, fios = false): Material => ({ rampa: r, brilho, fios });
 
 // ─── Luz (de cima, da frente, um pouco da direita) ────────
 
@@ -87,47 +87,65 @@ function tonalizar(nx: number, ny: number, nz: number, m: Material, x: number, y
 const PARTE = {
   cabeca: 1, cabelo: 2, pescoco: 3, tronco: 4, bracoE: 5, bracoD: 6, maoE: 7, maoD: 8,
   pernaE: 9, pernaD: 10, peE: 11, peD: 12, quadril: 13, acessorio: 14, instrumento: 15,
-  bau: 16, barba: 17, orelha: 18, dedos: 19, frente: 20, nariz: 21,
+  bau: 16, barba: 17, orelha: 18, dedos: 19, frente: 20, nariz: 21, braco: 22, mao_inst: 23,
 } as const;
 
-type V3 = [number, number, number];
-const lerp = (a: V3, b: V3, t: number): V3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+export type V3 = [number, number, number];
+export const lerp = (a: V3, b: V3, t: number): V3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 /** Região do corpo: X lateral, y da tela, parte, Z frente/trás e o material do pixel. */
 type Regiao<T> = (X: number, y: number, parte: number, Z: number, m: Material) => T;
 
-class Estudio {
-  z = new Float32Array(W * H).fill(-1e9);
-  tom = new Int8Array(W * H);
-  mat: (Material | null)[] = new Array(W * H).fill(null);
-  parte = new Int16Array(W * H);
+export class Estudio {
+  readonly w: number;
+  readonly h: number;
+  z: Float32Array;
+  tom: Int8Array;
+  mat: (Material | null)[];
+  parte: Int16Array;
   /** Coordenadas do corpo (antes do giro) do ponto visível em cada pixel. */
-  lx = new Float32Array(W * H);
-  lz = new Float32Array(W * H);
-  final: (string | null)[] = new Array(W * H).fill(null);
+  lx: Float32Array;
+  lz: Float32Array;
+  final: (string | null)[];
   private c: number;
   private s: number;
+  private cx: number;
+  /** Pixels de tela por unidade do corpo (chefão grande = 1,6). */
+  readonly k: number;
 
-  constructor(giro: number) {
+  constructor(giro: number, w = W, h = H, cx = CX, k = 1) {
+    this.w = w;
+    this.h = h;
+    this.cx = cx;
+    this.k = k;
     this.c = Math.cos(giro);
     this.s = Math.sin(giro);
+    const n = w * h;
+    this.z = new Float32Array(n).fill(-1e9);
+    this.tom = new Int8Array(n);
+    this.mat = new Array(n).fill(null);
+    this.parte = new Int16Array(n);
+    this.lx = new Float32Array(n);
+    this.lz = new Float32Array(n);
+    this.final = new Array(n).fill(null);
   }
 
   /** Corpo → tela: gira em torno do eixo vertical. */
   pt([X, Y, Z]: V3): V3 {
-    return [CX + X * this.c + Z * this.s, Y, -X * this.s + Z * this.c];
+    const k = this.k;
+    return [this.cx + (X * this.c + Z * this.s) * k, Y * k, (-X * this.s + Z * this.c) * k];
   }
 
   private escreve(x: number, y: number, z: number, nx: number, ny: number, nz: number, m: Material, parte: number) {
-    if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) return;
-    const i = y * W + x;
+    if (x < 1 || y < 1 || x >= this.w - 1 || y >= this.h - 1) return;
+    const i = y * this.w + x;
     if (z <= this.z[i]) return;
     this.z[i] = z;
     this.mat[i] = m;
     this.parte[i] = parte;
-    const dx = x + 0.5 - CX;
-    this.lx[i] = dx * this.c - z * this.s;
-    this.lz[i] = dx * this.s + z * this.c;
+    const dx = x + 0.5 - this.cx;
+    this.lx[i] = (dx * this.c - z * this.s) / this.k;
+    this.lz[i] = (dx * this.s + z * this.c) / this.k;
     this.tom[i] = tonalizar(nx, ny, nz, m, x, y);
   }
 
@@ -139,7 +157,8 @@ class Estudio {
   bola(centro: V3, rx: number, ry: number, rz: number, m: Material, parte: number,
     p = 2, corte?: (X: number, Y: number, Z: number) => boolean) {
     const [wx, wy, wz] = this.pt(centro);
-    const { c, s } = this;
+    const { c, s, k: kk } = this;
+    rx *= kk; ry *= kk; rz *= kk;
     const R = Math.max(rx, rz) + 0.5;
     const passo = 0.4;
     for (let y = Math.floor(wy - ry); y <= Math.ceil(wy + ry); y++) {
@@ -156,7 +175,7 @@ class Estudio {
         for (let k = 0; k < 5; k++) { const mid = (lo + hi) / 2; if (F(mid) <= 1) lo = mid; else hi = mid; }
         dz = lo;
         const LX = dx * c - dz * s, LZ = dx * s + dz * c;
-        if (corte && !corte(centro[0] + LX, y + 0.5, centro[2] + LZ)) continue;
+        if (corte && !corte(centro[0] + LX / kk, (y + 0.5) / kk, centro[2] + LZ / kk)) continue;
         const gx = Math.sign(LX) * Math.abs(LX / rx) ** (p - 1) / rx;
         const gy = Math.sign(dyN) * Math.abs(dyN) ** (p - 1) / ry;
         const gz = Math.sign(LZ) * Math.abs(LZ / rz) ** (p - 1) / rz;
@@ -168,13 +187,14 @@ class Estudio {
   /** Cápsula entre dois pontos do corpo, raio afinando de ra a rb; `kz` < 1 achata. */
   capsula(aC: V3, bC: V3, ra: number, rb: number, m: Material, parte: number, kz = 1, corte?: (x: number, y: number) => boolean) {
     const a = this.pt(aC), b = this.pt(bC);
+    ra *= this.k; rb *= this.k;
     const r = Math.max(ra, rb);
     const [ax, ay, az] = a, [bx, by, bz] = b;
     const ux = bx - ax, uy = by - ay;
     const uu = ux * ux + uy * uy || 1;
     for (let y = Math.floor(Math.min(ay, by) - r); y <= Math.ceil(Math.max(ay, by) + r); y++) {
       for (let x = Math.floor(Math.min(ax, bx) - r); x <= Math.ceil(Math.max(ax, bx) + r); x++) {
-        if (corte && !corte(x, y)) continue;
+        if (corte && !corte(Math.floor(x / this.k), Math.floor(y / this.k))) continue;
         const px = x + 0.5, py = y + 0.5;
         const t = Math.max(0, Math.min(1, ((px - ax) * ux + (py - ay) * uy) / uu));
         const rr = ra + (rb - ra) * t;
@@ -189,30 +209,30 @@ class Estudio {
 
   /** Troca o material mantendo o tom, por região do corpo (estampa, listra, cinto). */
   recolorir(se: Regiao<Material | null | undefined>) {
-    for (let i = 0; i < W * H; i++) {
+    for (let i = 0; i < this.w * this.h; i++) {
       const m0 = this.mat[i];
       if (!m0) continue;
-      const m = se(this.lx[i], Math.floor(i / W), this.parte[i], this.lz[i], m0);
+      const m = se(this.lx[i], Math.floor(Math.floor(i / this.w) / this.k), this.parte[i], this.lz[i], m0);
       if (m) this.mat[i] = m;
     }
   }
 
   /** Escurece (+) ou clareia (−) o tom por região do corpo (dobra, costura). */
   dobrar(se: Regiao<number>) {
-    for (let i = 0; i < W * H; i++) {
+    for (let i = 0; i < this.w * this.h; i++) {
       const m0 = this.mat[i];
       if (!m0) continue;
-      const d = se(this.lx[i], Math.floor(i / W), this.parte[i], this.lz[i], m0);
+      const d = se(this.lx[i], Math.floor(Math.floor(i / this.w) / this.k), this.parte[i], this.lz[i], m0);
       if (d) this.tom[i] = Math.max(0, Math.min(4, this.tom[i] + d));
     }
   }
 
   /** Pinta por cima, por região do corpo (rosto, estampa); null deixa como está. */
   pintar(se: Regiao<string | null | undefined>) {
-    for (let i = 0; i < W * H; i++) {
+    for (let i = 0; i < this.w * this.h; i++) {
       const m0 = this.mat[i];
       if (!m0 || !this.final[i]) continue;
-      const c = se(this.lx[i], Math.floor(i / W), this.parte[i], this.lz[i], m0);
+      const c = se(this.lx[i], Math.floor(Math.floor(i / this.w) / this.k), this.parte[i], this.lz[i], m0);
       if (c) this.final[i] = c;
     }
   }
@@ -220,8 +240,8 @@ class Estudio {
   /** Pinta um pixel da tela (estrelinha, nó dos dedos), opcionalmente só sobre uma parte. */
   pinta(x: number, y: number, cor: string, so?: number) {
     x = Math.round(x); y = Math.round(y);
-    if (x < 0 || y < 0 || x >= W || y >= H) return;
-    const i = y * W + x;
+    if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
+    const i = y * this.w + x;
     if (so !== undefined && (!this.mat[i] || this.parte[i] !== so)) return;
     this.final[i] = cor;
   }
@@ -231,54 +251,54 @@ class Estudio {
     const { z, tom, mat, parte } = this;
     const cheio = (i: number) => mat[i] !== null;
     // Sombra projetada: algo bem mais à frente entre o pixel e a luz (que vem de cima e da direita).
-    const sombra = new Int8Array(W * H);
-    for (let y = 4; y < H; y++) for (let x = 0; x < W - 3; x++) {
-      const i = y * W + x;
+    const sombra = new Int8Array(this.w * this.h);
+    for (let y = 4; y < this.h; y++) for (let x = 0; x < this.w - 3; x++) {
+      const i = y * this.w + x;
       if (!cheio(i)) continue;
       for (const [ox, oy] of [[1, -2], [2, -4], [0, -2], [0, -3]]) {
-        const j = (y + oy) * W + x + ox;
-        if (cheio(j) && parte[j] !== parte[i] && z[j] > z[i] + 3) { sombra[i] = 1; break; }
+        const j = (y + oy) * this.w + x + ox;
+        if (cheio(j) && parte[j] !== parte[i] && z[j] > z[i] + 3 * this.k) { sombra[i] = 1; break; }
       }
     }
-    for (let i = 0; i < W * H; i++) if (sombra[i]) tom[i] = Math.min(4, tom[i] + 1);
+    for (let i = 0; i < this.w * this.h; i++) if (sombra[i]) tom[i] = Math.min(4, tom[i] + 1);
     // Pixel solto: um tom isolado no meio de outro vira o vizinho.
-    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
-      const i = y * W + x;
+    for (let y = 1; y < this.h - 1; y++) for (let x = 1; x < this.w - 1; x++) {
+      const i = y * this.w + x;
       if (!cheio(i)) continue;
-      const viz = [i - 1, i + 1, i - W, i + W];
+      const viz = [i - 1, i + 1, i - this.w, i + this.w];
       if (viz.some((j) => mat[j] !== mat[i])) continue;
       const t0 = tom[viz[0]];
       if (t0 !== tom[i] && viz.every((j) => tom[j] === t0)) tom[i] = t0;
     }
     // Linha interna: o pixel de trás, colado numa parte bem mais à frente, vira traço.
-    const linha: (string | null)[] = new Array(W * H).fill(null);
-    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
-      const i = y * W + x;
+    const linha: (string | null)[] = new Array(this.w * this.h).fill(null);
+    for (let y = 1; y < this.h - 1; y++) for (let x = 1; x < this.w - 1; x++) {
+      const i = y * this.w + x;
       if (!cheio(i)) continue;
-      for (const j of [i - 1, i + 1, i - W, i + W]) {
-        if (cheio(j) && parte[j] !== parte[i] && z[j] > z[i] + 2.4) {
+      for (const j of [i - 1, i + 1, i - this.w, i + this.w]) {
+        if (cheio(j) && parte[j] !== parte[i] && z[j] > z[i] + 2.4 * this.k) {
           linha[i] = mistura(mat[j]!.rampa[4], P.preto, 0.45);
           break;
         }
       }
     }
-    for (let i = 0; i < W * H; i++) if (cheio(i)) this.final[i] = linha[i] ?? mat[i]!.rampa[tom[i]];
+    for (let i = 0; i < this.w * this.h; i++) if (cheio(i)) this.final[i] = linha[i] ?? mat[i]!.rampa[tom[i]];
   }
 
   /** Contorno de fora: do lado da luz (cima/direita) um tom escuro da cor de dentro; do outro, preto. */
   grade(): Grade {
     const cor = this.final.slice();
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      const i = y * W + x;
+    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
+      const i = y * this.w + x;
       if (this.final[i]) continue;
       const esq = x > 0 ? this.final[i - 1] : null;
-      const baixo = y < H - 1 ? this.final[i + W] : null;
-      const dir = x < W - 1 ? this.final[i + 1] : null;
-      const cima = y > 0 ? this.final[i - W] : null;
+      const baixo = y < this.h - 1 ? this.final[i + this.w] : null;
+      const dir = x < this.w - 1 ? this.final[i + 1] : null;
+      const cima = y > 0 ? this.final[i - this.w] : null;
       if (esq || baixo) cor[i] = mistura(esq ?? baixo!, P.preto, 0.72);
       if (dir || cima) cor[i] = P.preto;
     }
-    return { w: W, h: H, cor };
+    return { w: this.w, h: this.h, cor };
   }
 }
 
@@ -299,46 +319,57 @@ const CAVEIRA = [
 ];
 
 export function figura(b: Boneco): Grade {
-  const e = new Estudio(b.giro ?? 0.55);
+  const k = b.escala ?? 1;
+  const e = new Estudio(b.giro ?? 0.55, Math.ceil(W * k), Math.ceil(H * k), CX * k, k);
   const q = b.quadro ?? 0;
   const bang = [0, 2, 5, 2][q];
   const avanco = [0, 2.5, 5, 2.5][q]; // a cabeça vai para a frente no headbang
   const passo = b.passo ?? 0;
   const noAr = passo === 1 ? -1 : passo === 3 ? 1 : 0; // lado (X) da perna no ar
-  const bob = noAr ? -1 : 0;
+  const bob = noAr ? -1 : b.respiro ? 1 : 0;
   const balanco = passo === 1 ? 1 : passo === 3 ? -1 : q === 1 ? 1 : q === 3 ? -1 : 0;
   const pose = b.pose ?? (b.instrumento ? 'tocando' : 'parado');
   const larg = b.largo ? 1.25 : 1;
+  /** Corpo grande: barriga, braço e perna grossos, cara redonda. */
+  const gor = b.gordo ? 1 : 0;
   const soco = q % 2 === 1 ? 2 : 0;
+  /** Instrumento clássico (Telecaster, Jazz Bass) em vez do Flying V do DIY. */
+  const classico = b.instrumento?.tipo === 'telecaster' || b.instrumento?.tipo === 'jazzbass';
+  /** Profundidade do instrumento: na frente da barriga de quem é grande. */
+  const zi = 10 + gor * 4.5 + (b.largo ? 1.5 : 0);
 
   const pele = mat(rampa(b.pele, SANGUE), 0.35);
   const cabelo = mat(rampa(b.cabelo), 0.55, true);
   const roupa = mat(rampa(b.roupa), 0.1);
   const calca = mat(rampa(b.calca), 0.08);
   const couro = mat(rampa(COURO), 0.9);
-  const bota = mat(rampa([P.asfalto, P.noite, P.preto]), 1);
+  const bota = b.tenis ? mat(rampa([P.concreto, P.asfalto, P.noite]), 0.35) : mat(rampa([P.asfalto, P.noite, P.preto]), 1);
   const metal = mat(rampa([P.branco, P.neblina, P.cimento]), 1);
   const corCobertura = b.cobertura ?? [P.laranja, P.vermelho, P.vinho];
   const cobertura = mat(rampa(corCobertura), 0.6);
 
-  const hy = 24 + bob + bang;
-  const hz = avanco;
+  const apanha = pose === 'apanha';
+  const hy = 24 + bob + bang + (apanha ? 1 : 0);
+  const hz = avanco + (apanha ? -3.5 : pose === 'soco' || pose === 'soco2' ? 1.5 : 0);
   const ey = hy + (q === 1 || q === 3 ? 1 : 0);
 
   // ── Cabeça: crânio, mandíbula comprida (traço Metalocalypse), nariz, orelha.
-  e.bola([0, hy - 0.5, hz], 6.9, 9.4, 7.3, pele, PARTE.cabeca, 2.15);
-  e.capsula([0, hy + 4, hz + 1.4], [0, hy + 8.8, hz + 2], 5.4, 4, pele, PARTE.cabeca);
+  e.bola([0, hy - 0.5, hz], 6.9 + gor * 0.7, 9.4, 7.3 + gor * 0.5, pele, PARTE.cabeca, 2.15);
+  e.capsula([0, hy + 4, hz + 1.4], [0, hy + 8.8, hz + 2], 5.4 + gor * 1.1, 4 + gor * 1.4, pele, PARTE.cabeca);
   e.capsula([0, ey + 0.6, hz + 6.2], [0.1, ey + 4.6, hz + 8.1], 0.9, 1.35, pele, PARTE.nariz);
   const cobreOrelha = b.estilo === 'cabelao' || b.estilo === 'bone' || b.estilo === 'capacete' || b.estilo === 'lenco';
+  // Alargador na orelha.
+  if (b.alargador && !cobreOrelha) for (const s of [-1, 1]) e.bola([s * 7.2, ey + 3.8, hz - 1], 1.1, 1.1, 1.1, mat(rampa([P.concreto, P.asfalto, P.preto]), 0.9), PARTE.acessorio);
   if (!cobreOrelha) for (const s of [-1, 1]) e.bola([s * 6.8, ey + 1.6, hz - 1], 1.7, 2.9, 2.2, pele, PARTE.orelha);
-  e.capsula([0, hy + 8, hz * 0.4 - 1.5], [0, 41 + bob, -1], 3.3 * larg, 3.7 * larg, pele, PARTE.pescoco);
+  e.capsula([0, hy + 8, hz * 0.4 - 1.5], [0, 41 + bob, -1], 3.3 * larg + gor * 1.4, 3.7 * larg + gor * 1.6, pele, PARTE.pescoco);
 
   // ── Tronco: peito, cintura, ombros e quadril.
   const tronco = b.jaqueta ? couro : roupa;
-  e.bola([0, 47 + bob, 1], 11 * larg, 9, 7, tronco, PARTE.tronco, 2.5);
-  e.capsula([0, 49 + bob, 0.8], [0, 62 + bob, 0], 7.6 * larg, 7 * (b.largo ? 1.15 : 1), tronco, PARTE.tronco);
-  for (const s of [-1, 1]) e.bola([s * 10 * larg, 43 + bob, 1], 4.6, 4.4, 4.4, tronco, PARTE.tronco);
-  e.bola([0, 67, 0], 8.2 * (b.largo ? 1.12 : 1), 4.8, 5.8, calca, PARTE.quadril, 2.4);
+  e.bola([0, 47 + bob, 1], 11 * larg + gor * 2.2, 9, 7 + gor * 1.6, tronco, PARTE.tronco, 2.5);
+  e.capsula([0, 49 + bob, 0.8], [0, 62 + bob, 0], 7.6 * larg + gor * 3, 7 * (b.largo ? 1.15 : 1) + gor * 3.2, tronco, PARTE.tronco);
+  if (gor) e.bola([0, 57 + bob, 4], 10, 8.5, 7.5, tronco, PARTE.tronco, 2.2); // barriga
+  for (const s of [-1, 1]) e.bola([s * (10 * larg + gor * 1.6), 43 + bob, 1], 4.6 + gor, 4.4 + gor * 0.6, 4.4 + gor, tronco, PARTE.tronco);
+  e.bola([0, 67, 0], 8.2 * (b.largo ? 1.12 : 1) + gor * 2.6, 4.8, 5.8 + gor * 2, calca, PARTE.quadril, 2.4);
 
   // ── Caixa de entrega / mochila nas costas, com alças na frente.
   if (b.bau) {
@@ -353,33 +384,48 @@ export function figura(b: Boneco): Grade {
     const ar = noAr === s;
     const apoio = noAr === -s;
     const zBase = s < 0 ? 3.5 : -3;
-    const quad: V3 = [s * 4.8, 68, 0];
-    const joelho: V3 = ar ? [s * 5.6, 83.5, 8] : apoio ? [s * 6, 86.5, zBase - 0.5] : [s * 6.2, 86.5, zBase + 2.5];
-    const tornozelo: V3 = ar ? [s * 6, 99.5, 5.5] : apoio ? [s * 6.5, 104, zBase - 4] : [s * 6.8, 104, zBase];
+    const quad: V3 = [s * (4.8 + gor * 1.2), 68, 0];
+    let joelho: V3 = ar ? [s * 5.6, 83.5, 8] : apoio ? [s * 6, 86.5, zBase - 0.5] : [s * 6.2, 86.5, zBase + 2.5];
+    let tornozelo: V3 = ar ? [s * 6, 99.5, 5.5] : apoio ? [s * 6.5, 104, zBase - 4] : [s * 6.8, 104, zBase];
+    /** Pé fora do chão (chute, pulo): o centro da bota. */
+    let noAlto: V3 | null = null;
+    if (pose === 'chute' && s < 0) { joelho = [s * 5, 73, 10]; tornozelo = [s * 5, 72, 19]; noAlto = [s * 5, 71.5, 22.5]; }
+    else if (pose === 'chute') { joelho = [s * 6, 86.5, -3.5]; tornozelo = [s * 6.5, 104, -7]; }
+    else if (pose === 'pulo') {
+      const z0 = s < 0 ? 7 : 3;
+      joelho = [s * 5.5, 79, z0 + 2]; tornozelo = [s * 5.8, 93, z0 - 4]; noAlto = [s * 5.8, 97.5, z0 - 1.5];
+    }
     const parte = s < 0 ? PARTE.pernaE : PARTE.pernaD;
     if (b.bermuda) {
-      e.capsula(quad, lerp(quad, joelho, 0.95), 5.4, 4.6, calca, parte);
-      e.capsula(lerp(quad, joelho, 0.9), tornozelo, 3.6, 2.7, pele, parte);
-      e.bola(lerp(joelho, tornozelo, 0.3), 2.8, 3.6, 3.2, pele, parte); // panturrilha
+      e.capsula(quad, lerp(quad, joelho, 0.95), 5.4 + gor * 1.4, 4.6 + gor * 1.2, calca, parte);
+      e.capsula(lerp(quad, joelho, 0.9), tornozelo, 3.6 + gor, 2.7 + gor * 0.6, pele, parte);
+      e.bola(lerp(joelho, tornozelo, 0.3), 2.8 + gor, 3.6, 3.2 + gor, pele, parte); // panturrilha
     } else {
-      e.capsula(quad, joelho, 4.8, 3.9, calca, parte);
-      e.capsula(joelho, tornozelo, 3.9, 3.1, calca, parte);
+      e.capsula(quad, joelho, 4.8 + gor * 1.4, 3.9 + gor, calca, parte);
+      e.capsula(joelho, tornozelo, 3.9 + gor, 3.1 + gor * 0.6, calca, parte);
     }
     const sobe = ar ? 4 : 0;
     const pe = s < 0 ? PARTE.peE : PARTE.peD;
     const tz = tornozelo[2];
-    if (b.chinelo) {
+    if (noAlto) {
+      if (b.chinelo) e.bola(noAlto, 3, 2.6, 5, pele, pe, 2.3);
+      else {
+        e.capsula(tornozelo, lerp(tornozelo, noAlto, 0.5), 3.9, 3.9, bota, pe);
+        e.bola(noAlto, 4.3, pose === 'chute' ? 4.2 : 3.2, 5.6, bota, pe, 2.4);
+      }
+    } else if (b.chinelo) {
       e.bola([tornozelo[0], 112.4 - sobe, tz + 2.2], 3, 2.4, 5, pele, pe, 2.3);
       e.bola([tornozelo[0], 115 - sobe, tz + 2], 3.6, 1.2, 6.2, mat(rampaDe(P.amarelo), 0.2), pe, 2.6);
     } else {
-      e.capsula([tornozelo[0], tornozelo[1] - 3, tz], [tornozelo[0], 108.5 - sobe, tz + 0.6], 4, 4, bota, pe);
+      if (!b.tenis) e.capsula([tornozelo[0], tornozelo[1] - 3, tz], [tornozelo[0], 108.5 - sobe, tz + 0.6], 4, 4, bota, pe);
+      else e.capsula([tornozelo[0], 107 - sobe, tz], [tornozelo[0], 109.5 - sobe, tz + 0.6], 3.8, 3.8, bota, pe);
       e.bola([tornozelo[0], 112.2 - sobe, tz + 2.6], 4.3, 3.2, 6.6, bota, pe, 2.4);
     }
   }
 
   // ── Braços: ombro → cotovelo → pulso → mão, no espaço do corpo.
   type Braco = { o: V3; c: V3; p: V3; m: V3; aberta?: 'chifre' | 'baqueta' };
-  const ombro = (s: number): V3 => [s * 10.8 * larg, 42 + bob, 0];
+  const ombro = (s: number): V3 => [s * (10.8 * larg + gor * 1.8), 42 + bob, 0];
   const caido = (s: number): Braco => {
     const o = ombro(s);
     const frente = noAr === -s; // o braço vai junto com a perna do outro lado
@@ -394,13 +440,34 @@ export function figura(b: Boneco): Grade {
     const p: V3 = [o[0] + s * 1.4, 20 + soco + bob, 3.5];
     return { o, c, p, m: [p[0], p[1] - 3, 4], aberta };
   };
+  /** Guarda de luta: punhos na altura do queixo, o de trás mais recolhido. */
+  const guarda = (s: number): Braco => {
+    const o = ombro(s);
+    const z0 = s < 0 ? 0 : -2;
+    return { o, c: [o[0] + s * 1.5, 54 + bob, 4 + z0], p: [s * 4, 46 + bob, 10 + z0], m: [s * 3.2, 43.5 + bob, 12 + z0] };
+  };
+  /** Braço esticado no soco, punho bem à frente da cara. */
+  const estica = (s: number): Braco => {
+    const o = ombro(s);
+    return { o, c: [o[0] * 0.6, 43 + bob, 8], p: [s * 2.5, 42.5 + bob, 16.5], m: [s * 2, 42.5 + bob, 20.5] };
+  };
   const bracos: Record<number, Braco> = { [-1]: caido(-1), [1]: caido(1) };
-  if (pose === 'maos') { bracos[-1] = erguido(-1, 'chifre'); bracos[1] = erguido(1, 'chifre'); }
+  if (pose === 'guarda' || pose === 'pulo' || pose === 'chute') { bracos[-1] = guarda(-1); bracos[1] = guarda(1); }
+  else if (pose === 'soco') { bracos[-1] = estica(-1); bracos[1] = guarda(1); }
+  else if (pose === 'soco2') { bracos[-1] = guarda(-1); bracos[1] = estica(1); }
+  else if (apanha) {
+    for (const s of [-1, 1]) { const o = ombro(s); bracos[s] = { o, c: [s * 13, 50 + bob, -5], p: [s * 12.5, 57 + bob, -10], m: [s * 12.5, 60 + bob, -11.5] }; }
+  } else if (pose === 'maos') { bracos[-1] = erguido(-1, 'chifre'); bracos[1] = erguido(1, 'chifre'); }
   else if (pose === 'chifres') bracos[-1] = erguido(-1, 'chifre');
   else if (pose === 'baqueta') { bracos[-1] = erguido(-1, 'baqueta'); bracos[1] = erguido(1, 'baqueta'); }
   else if (pose === 'microfone') {
     const o = ombro(-1);
     bracos[-1] = { o, c: [o[0] + 0.5, 54 + bob, 5], p: [-2.5, ey + 13, hz + 9], m: [-1.6, ey + 13.5, hz + 10.5] };
+  } else if (pose === 'tocando' && classico) {
+    // Telecaster/Jazz Bass: mão no braço lá na frente, a outra palhetando no corpo.
+    const oe = ombro(-1), od = ombro(1);
+    bracos[-1] = { o: oe, c: [oe[0] - 1, 56 + bob, zi - 4], p: [-13.5, 58 + bob, zi + 1], m: [-16, 56 + bob, zi + 2] };
+    bracos[1] = { o: od, c: [od[0] + 2, 55 + bob, zi - 5], p: [10, 62 + bob, zi + 1.5], m: [8, 66 + bob, zi + 2.5] };
   } else if (pose === 'tocando') {
     const oe = ombro(-1), od = ombro(1);
     bracos[-1] = { o: oe, c: [oe[0] - 2, 54 + bob, 4], p: [-12, 50.5 + bob, 9], m: [-13, 48.5 + bob, 10.5] };
@@ -410,7 +477,7 @@ export function figura(b: Boneco): Grade {
     const br = bracos[s];
     const parte = s < 0 ? PARTE.bracoE : PARTE.bracoD;
     const mao = s < 0 ? PARTE.maoE : PARTE.maoD;
-    const g = b.largo ? 0.8 : 0;
+    const g = (b.largo ? 0.8 : 0) + gor * 0.9;
     e.capsula(br.o, br.c, 3.6 + g, 3.1 + g, pele, parte);
     e.capsula(br.c, br.p, 3.1 + g, 2.6 + g, pele, parte);
     // Músculo: bíceps e antebraço saltados, para a luz desenhar o volume.
@@ -432,6 +499,20 @@ export function figura(b: Boneco): Grade {
     }
   }
 
+  // ── Fone de ouvido no pescoço (técnico de som).
+  if (b.fones) {
+    const fone = mat(rampa([P.concreto, P.asfalto, P.preto]), 0.9);
+    e.capsula([-5, hy + 12, hz * 0.4 + 1], [5, hy + 12, hz * 0.4 + 1], 0.9, 0.9, fone, PARTE.acessorio);
+    for (const s of [-1, 1]) e.bola([s * 5.2, hy + 13, hz * 0.4 + 2], 2.6, 2.6, 1.8, fone, PARTE.acessorio);
+  }
+  // ── Cassetete na mão de perto, ou escudo de choque no braço.
+  if (b.arma === 'cassetete') {
+    const m = bracos[-1].m;
+    e.capsula([m[0], m[1] + 1, m[2] + 1], [m[0] - 1, m[1] - 3, m[2] + 12], 1, 0.9, mat(rampa([P.concreto, P.asfalto, P.preto]), 0.8), PARTE.acessorio);
+  } else if (b.arma === 'escudo') {
+    e.bola([-6, 60 + bob, 14], 8.5, 17, 1.5, mat(rampa([P.branco, P.neblina, P.cimento]), 1.2), PARTE.acessorio, 3);
+  }
+
   // ── Microfone na frente da boca, com cabo.
   if (pose === 'microfone') {
     e.bola([0.5, ey + 9.4, hz + 11.5], 2.6, 2.6, 2.6, metal, PARTE.acessorio);
@@ -439,8 +520,39 @@ export function figura(b: Boneco): Grade {
     e.capsula([-2.5, ey + 17, hz + 9.5], [-6, 72 + bob, 5], 0.6, 0.6, mat(rampa(COURO), 0.2), PARTE.acessorio);
   }
 
-  // ── Instrumento: Flying V ou baixo de bico, atravessado na frente.
-  if (b.instrumento) {
+  // ── Instrumento clássico: Telecaster ou Jazz Bass, braço subindo uns 25°.
+  if (b.instrumento && classico) {
+    const jazz = b.instrumento.tipo === 'jazzbass';
+    const maple = mat(rampa([P.pastel_creme, P.caramelo_claro, P.caramelo]), 0.7);
+    const corpo = mat(rampa(b.instrumento.cor), 1);
+    const y = (v: number) => v + bob;
+    if (jazz) {
+      e.bola([6.5, y(68), zi], 11, 8.4, 1.9, corpo, PARTE.instrumento, 2.4);
+      e.bola([0.5, y(61), zi], 8.4, 6.2, 1.9, corpo, PARTE.instrumento, 2.4);
+      e.bola([-5.5, y(57), zi], 3.6, 2.6, 1.7, corpo, PARTE.instrumento, 2.2); // chifre de cima (offset)
+      e.bola([-4.5, y(66), zi], 3, 2.2, 1.7, corpo, PARTE.instrumento, 2.2);
+    } else {
+      e.bola([6, y(67), zi], 10, 7.8, 1.8, corpo, PARTE.instrumento, 2.6);
+      e.bola([1.5, y(61), zi], 7.6, 6, 1.8, corpo, PARTE.instrumento, 2.6);
+    }
+    const fim: V3 = jazz ? [-31, y(50), zi + 0.7] : [-26, y(52), zi + 0.7];
+    e.capsula([-4, y(61), zi + 0.7], fim, 1.4, 1.2, maple, PARTE.braco, 0.55);
+    e.bola([fim[0] - (jazz ? 3.4 : 2.8), fim[1] - 1, zi + 0.5], jazz ? 4.2 : 3.4, jazz ? 2 : 1.7, 0.7, maple, PARTE.mao_inst, 3);
+    e.capsula([-3, y(57), zi - 1], [6, y(41), 5], 0.8, 0.8, mat(rampa(COURO), 0.4), PARTE.acessorio); // correia
+    // Sunburst no Jazz Bass; escudo (pickguard) tartaruga no baixo, preto na Tele.
+    const sol = [mat(rampa([P.amarelo, P.mostarda, P.ruga]), 1), mat(rampa([P.laranja, P.vermelho, P.vinho]), 1), mat(rampa([P.ruga, P.chocolate, P.noite]), 1)];
+    const escudo = jazz ? mat(rampa([P.caramelo, P.ruga, P.chocolate]), 0.6) : mat(rampa([P.concreto, P.asfalto, P.preto]), 0.8);
+    e.recolorir((X, yy, p) => {
+      if (p !== PARTE.instrumento) return null;
+      const Y = yy - bob;
+      if (jazz && X < 4 && Y < 64 && Y > 56) return escudo;
+      if (!jazz && X < 4 && Y > 61 && Y < 71) return escudo;
+      if (jazz) { const d = Math.hypot(X - 5, (Y - 65.5) * 1.2); return d > 9 ? sol[2] : d > 6 ? sol[1] : sol[0]; }
+      return null;
+    });
+    // Escala de jacarandá no baixo.
+    if (jazz) e.recolorir((_X, _yy, p, _Z, m) => (p === PARTE.braco && m === maple ? mat(rampa([P.ruga, P.chocolate, P.noite]), 0.4) : null));
+  } else if (b.instrumento) {
     const baixo = b.instrumento.tipo === 'baixo';
     const madeira = mat(rampa([P.ruga, P.chocolate, P.noite]), 0.3);
     const corpo = mat(rampa(b.instrumento.cor), 0.9);
@@ -481,23 +593,33 @@ export function figura(b: Boneco): Grade {
       const alt = [7, 11, 13, 12, 9, 6][i];
       e.capsula([0, hy - 8 + Math.abs(i - 2) * 0.6, zb], [balanco * 0.5, hy - 8 - alt, zb - 2.5], 1.9, 0.45, cabelo, PARTE.cabelo);
     }
+  } else if (b.estilo === 'topete') {
+    // Cabelinho arrumado de playboy: risca do lado e topete pra cima.
+    e.bola([0, hy - 1.4, hz + 0.3], 7.6, 9.3, 7.7, cabelo, PARTE.cabelo, 2.1, linhaCabelo(6.2));
+    e.capsula([-1, hy - 8.5, hz + 3.5], [0.5, hy - 11.5, hz + 7.5], 3.6, 2.6, cabelo, PARTE.cabelo);
+  } else if (b.estilo === 'boneCurto') {
+    e.bola([0, hy - 1.2, hz + 0.2], 7.5 + gor * 0.7, 9.3, 7.6, cabelo, PARTE.cabelo, 2.1, linhaCabelo(6.4));
   } else if (b.estilo === 'coque') {
     e.bola([0, hy - 1.2, hz + 0.2], 7.7, 9.5, 7.8, cabelo, PARTE.cabelo, 2.1, linhaCabelo(6.5));
     e.bola([0, hy - 10.5, hz - 3.5], 3.8, 3.6, 3.8, cabelo, PARTE.cabelo);
   }
-  if (b.estilo === 'bone') {
-    e.bola([0, hy - 4.5, hz + 0.6], 8.2, 7, 8.2, cobertura, PARTE.acessorio, 2.2, (_X, Y) => Y < hy - 3.4);
+  if (b.estilo === 'bone' || b.estilo === 'boneCurto') {
+    e.bola([0, hy - 4.5, hz + 0.6], 8.2 + gor * 0.7, 7, 8.2, cobertura, PARTE.acessorio, 2.2, (_X, Y) => Y < hy - 3.4);
     // Aba para a frente.
     e.bola([0, hy - 3.6, hz + 8.5], 6.2, 1.1, 4.5, cobertura, PARTE.acessorio, 2.4);
   } else if (b.estilo === 'lenco') {
     e.bola([0, hy - 2.5, hz + 0.4], 7.8, 8.4, 8, cobertura, PARTE.acessorio, 2.2, (X, Y, Z) => Z < hz || Y < hy - 2.5 + Math.abs(X) * 0.3);
     e.bola([0, hy - 1, hz - 8.2], 2.2, 2, 2, cobertura, PARTE.acessorio);
     e.capsula([0, hy, hz - 8.4], [balanco, hy + 7, hz - 10], 1.4, 0.9, cobertura, PARTE.acessorio);
+  } else if (b.estilo === 'obra') {
+    // Capacete de obra: casco com aba em volta, cara de fora.
+    e.bola([0, hy - 5.6, hz + 0.5], 8.4, 6.2, 8.6, mat(rampa(corCobertura), 0.8), PARTE.acessorio, 2.2, (_X, Y) => Y < hy - 3.4);
+    e.bola([0, hy - 3.8, hz + 1], 9.8, 1.1, 10.2, mat(rampa(corCobertura), 0.5), PARTE.acessorio, 2.4);
   } else if (b.estilo === 'capacete') {
     e.bola([0, hy - 0.8, hz + 0.6], 8.6, 10.8, 9.2, mat(rampa(corCobertura), 1), PARTE.acessorio, 2.3);
   }
   if (b.barba) {
-    e.bola([0, hy + 6.8, hz + 3.2], 6.6, 6.4, 5, cabelo, PARTE.barba, 2.2, (_X, Y) => Y > ey + 3);
+    e.bola([0, hy + 6.8, hz + 3.2], 6.6 + gor * 1.2, 6.4 + gor * 0.6, 5 + gor * 0.8, cabelo, PARTE.barba, 2.2, (_X, Y) => Y > ey + 3);
     e.capsula([0, hy + 10, hz + 4.4], [0, hy + 15.5, hz + 4.6], 3.2, 1.8, cabelo, PARTE.barba, 1, pontaRala(hy + 17.3));
   }
 
@@ -592,6 +714,9 @@ export function figura(b: Boneco): Grade {
         if (ch === 'K') return P.preto;
       }
     }
+    // Crachá pendurado no peito.
+    if (p === PARTE.tronco && b.cracha && naFrente(Z) && X > -6.5 && X < -3 && yy >= 47 && yy <= 51) return yy === 47 ? P.azul : (yy === 49 && X > -5.5 && X < -4) ? P.cimento : P.branco;
+    if (p === PARTE.tronco && b.cracha && naFrente(Z) && yy > 40 && yy < 47 && Math.abs(X + 4.8 - (47 - yy) * 0.55) < 0.6) return P.vermelho;
     // Escudinho da amarelinha.
     if (p === PARTE.tronco && b.camisa === 'canarinho' && naFrente(Z) && X > 3 && X < 5.2 && yy >= 45 && yy <= 46) return yy === 45 ? P.ceu : P.azul;
     // Tachas da jaqueta nos ombros.
@@ -613,8 +738,26 @@ export function figura(b: Boneco): Grade {
     const yk = br.aberta ? my - 1 : my + 1;
     for (let i = -1; i <= 1; i++) e.pinta(mx + i, yk, rp[3], s < 0 ? PARTE.maoE : PARTE.maoD);
   }
-  // Guitarra: captadores, ponte e trastes.
-  if (b.instrumento) {
+  // Tele/Jazz: captadores, ponte cromada, trastes e tarraxas.
+  if (b.instrumento && classico) {
+    const jazz = b.instrumento.tipo === 'jazzbass';
+    e.pintar((X, yy, p) => {
+      const Y = yy - bob;
+      if (p === PARTE.instrumento) {
+        if (jazz) {
+          if ((X > 4.5 && X < 7.5 && Y === 63) || (X > 9 && X < 12 && Y === 66)) return P.preto;
+          if (X > 12.5 && X < 15 && Y >= 67 && Y <= 70) return Y === 67 ? P.branco : P.neblina;
+        } else {
+          if (X > 2 && X < 4.5 && Y === 62) return P.branco; // captador do braço
+          if (X > 9 && X < 12.5 && Y >= 67 && Y <= 70) return Y === 68 ? P.preto : Y === 67 ? P.branco : P.neblina; // ponte
+          if (X > 11 && X < 14.5 && Y >= 62 && Y <= 63) return P.neblina; // placa de controle
+        }
+      }
+      if (p === PARTE.braco && Math.round(-X * 1.1) % 3 === 0) return P.neblina; // trastes
+      if (p === PARTE.mao_inst && (Math.round(-X) % 2 === 0) && Y <= (jazz ? 48 : 50)) return P.branco; // tarraxas
+      return null;
+    });
+  } else if (b.instrumento) {
     for (const [X, Y, c] of [[4, 63, P.preto], [5, 63, P.preto], [7.5, 65, P.preto], [8.5, 65, P.preto], [11, 66.5, P.neblina]] as const) {
       const [x, y] = e.pt([X, Y + bob, 10]);
       e.pinta(x, y, c, PARTE.instrumento);
@@ -672,11 +815,39 @@ export function figura(b: Boneco): Grade {
     }
     return null;
   });
+  // Tatuagem fechada: braço (e perna de fora, na bermuda) em tinta.
+  if (b.tatuagem) {
+    const tinta = mistura(rp[3], '#14203a', 0.6);
+    const tinta2 = mistura(rp[2], '#2a3550', 0.45);
+    e.pintar((X, y, p, Z, m) => {
+      if (m !== pele) return null;
+      const braco = p === PARTE.bracoE || p === PARTE.bracoD;
+      const perna = (p === PARTE.pernaE || p === PARTE.pernaD) && b.tatuagemPerna;
+      if (!braco && !perna) return null;
+      const v = Math.sin(y * 0.9 + Z * 1.3 + X * 0.4) * Math.cos(y * 0.37 - Z * 0.8 + X * 1.1);
+      if (v > 0.32) return tinta;
+      if (v > 0.12) return tinta2;
+      if (v < -0.55 && (y + Math.round(Z)) % 3 === 0) return P.vermelho; // um toque de cor
+      return null;
+    });
+  }
+  // Meia na canela (bermuda + tênis).
+  if (b.meia && b.bermuda) e.pintar((_X, y, p, _Z, m) => ((p === PARTE.pernaE || p === PARTE.pernaD) && m === pele && y >= 101 ? (y === 103 ? P.concreto : P.papel) : null));
+  // Boné estampado.
+  if (b.boneEstampado) e.pintar((X, y, p, Z) => (p === PARTE.acessorio && y < hy - 3 && (Math.round(X * 1.3) + y + Math.round(Z)) % 4 === 0 ? [P.neon_verde, P.vermelho, P.amarelo, P.neon_rosa][Math.abs(Math.round(X + Z)) % 4] : null));
+  // Bigode fino e cavanhaque.
+  if (b.bigode) e.pintar((X, y, p, Z) => {
+    if (p !== PARTE.cabeca || Z < hz + 2.2) return null;
+    const dy = y - ey;
+    if (dy === 7 && X > -2.6 && X < 2.4) return rc[3];
+    if (dy >= 10 && dy <= 11 && Math.abs(X + 0.2) < 1) return rc[3];
+    return null;
+  });
   // Narina; risca do cabelo; logo do boné; bolinhas do lenço; viseira do capacete.
   e.pintar((X, y, p, Z) => {
     if (p === PARTE.nariz && y >= ey + 5 && X < 0.6) return rp[4];
     if (p === PARTE.cabelo && temCabelao && q !== 2 && Math.abs(X) < 0.6 && y < hy - 4 && Z > hz) return rc[4];
-    if (p === PARTE.acessorio && b.estilo === 'bone' && Z > hz + 5 && Math.abs(X) < 1.8 && y >= hy - 8 && y <= hy - 6) return y === hy - 8 ? P.branco : P.papel;
+    if (p === PARTE.acessorio && b.estilo === 'bone' && !b.boneEstampado && Z > hz + 5 && Math.abs(X) < 1.8 && y >= hy - 8 && y <= hy - 6) return y === hy - 8 ? P.branco : P.papel;
     if (p === PARTE.acessorio && b.estilo === 'lenco' && y < hy - 2 && (Math.round(X) + y) % 3 === 0 && Math.round(Z) % 3 === 0) return P.branco;
     if (p === PARTE.acessorio && b.estilo === 'capacete' && Z > hz + 4 && Math.abs(X) < 6.2) {
       const dy = y - ey;
@@ -684,6 +855,12 @@ export function figura(b: Boneco): Grade {
         if (Math.abs(X) > 5.4) return P.preto;
         if (dy === -3) return P.branco;
         if (dy === -2 && X > 1.5 && X < 3.5) return P.branco;
+        if (b.viseira) {
+          const v = rampaDe(b.viseira);
+          // Robô: dois olhos acesos no meio da viseira.
+          if (dy === 0 && (Math.abs(X - 2.4) < 0.9 || Math.abs(X + 1.6) < 0.9)) return v[0];
+          return dy < 0 ? v[2] : dy < 2 ? v[3] : v[4];
+        }
         return dy < 0 ? P.neon_ciano : dy < 2 ? P.ceu : P.marinho;
       }
     }

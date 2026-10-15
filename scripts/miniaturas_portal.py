@@ -32,6 +32,7 @@ LETRAS = {
     'P': ['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'],
     'R': ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
     'S': ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'],
+    'T': ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
     'Y': ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
     'U': ['#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
     'V': ['#...#', '#...#', '#...#', '#...#', '.#.#.', '.#.#.', '..#..'],
@@ -274,7 +275,42 @@ def faca():
     d.text((66, 212), 'FAÇA VOCÊ MESMO', font=fonte, fill=rgb('#16140f'))
     return img
 
-GERADORES = {'pixo': pixo, 'dobra': dobra, 'roda': roda, 'faca': faca}
+# ─── ESCOMBRO: A FITA ─────────────────────────────────────────
+def escombro():
+    import random
+    sp = sprites()['escombro']
+    img = fundo('#0b0f24', '#26375a')
+    d = ImageDraw.Draw(img)
+    rnd = random.Random(2016)
+    # Lajes com caixa d'água, muro com pixo, rua molhada.
+    x = 0
+    while x < 800:
+        w = rnd.randint(30, 70); h = rnd.randint(50, 130)
+        d.rectangle([x, 270 - h, x + w, 270], fill=rgb('#1f2440'))
+        if rnd.random() < 0.6:
+            d.rectangle([x + 4, 270 - h - 12, x + 18, 270 - h], fill=rgb('#2f5fbf'))
+        for j in range(270 - h + 8, 262, 14):
+            for i in range(x + 5, x + w - 6, 12):
+                if rnd.random() < 0.25:
+                    d.rectangle([i, j, i + 4, j + 4], fill=rgb(PAL['amarelo']))
+        x += w
+    d.rectangle([0, 220, 800, 300], fill=rgb('#3a3550'))
+    d.rectangle([0, 300, 800, 450], fill=rgb('#1e1c2a'))
+    for x in range(30, 800, 140):
+        d.rectangle([x, 380, x + 60, 385], fill=rgb('#cfcabd'))
+    for _ in range(140):
+        gx, gy = rnd.randint(0, 800), rnd.randint(0, 450)
+        d.line([(gx, gy), (gx - 2, gy + 10)], fill=rgb('#a0b4e6'), width=1)
+    # Pato à esquerda, banda em perfil à direita (2×).
+    p = sp['pato']
+    colar_grade(img, p, -20, 440 - p['h'] * 2 + 8, 2)
+    for i, g in enumerate(sp['banda']):
+        colar_grade(img, g, 300 + i * 118, 440 - g['h'] * 2 + 4, 2)
+    titulo(d, 'ESCOMBRO', 40, 30, 10, PAL['branco'], sombra=PAL['vermelho'])
+    titulo(d, 'A FITA', 44, 112, 6, PAL['amarelo'], sombra=PAL['vermelho'])
+    return img
+
+GERADORES = {'pixo': pixo, 'dobra': dobra, 'roda': roda, 'faca': faca, 'escombro': escombro}
 
 if __name__ == '__main__':
     for nome in sys.argv[1:] or GERADORES:

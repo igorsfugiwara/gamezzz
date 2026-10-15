@@ -49,8 +49,10 @@ export const TONS = {
   },
 } as const satisfies Record<string, Record<string, Tom>>;
 
-export type Estilo = 'cabelao' | 'moicano' | 'careca' | 'bone' | 'lenco' | 'capacete' | 'coque';
-export type Pose = 'parado' | 'chifres' | 'maos' | 'microfone' | 'baqueta' | 'tocando';
+export type Estilo = 'cabelao' | 'moicano' | 'careca' | 'bone' | 'lenco' | 'capacete' | 'coque' | 'obra' | 'boneCurto' | 'topete';
+export type Pose = 'parado' | 'chifres' | 'maos' | 'microfone' | 'baqueta' | 'tocando'
+  // Luta (boneco HD): guarda, soco de frente e de trás, chute, pulo, apanhando.
+  | 'guarda' | 'soco' | 'soco2' | 'chute' | 'pulo' | 'apanha';
 
 export interface Boneco {
   pele: Tom;
@@ -88,9 +90,32 @@ export interface Boneco {
   /** Desenha por cima antes do contorno (instrumentos, só no boneco pequeno). */
   extra?: (g: Grade) => void;
   /** Guitarra (Flying V) ou baixo na frente do corpo, no boneco HD. */
-  instrumento?: { tipo: 'guitarra' | 'baixo'; cor: Tom };
+  instrumento?: { tipo: 'guitarra' | 'baixo' | 'telecaster' | 'jazzbass'; cor: Tom };
   /** Giro do corpo no boneco HD, em radianos (0 = de frente; padrão: três-quartos virado para a direita). */
   giro?: number;
+  /** Tamanho do boneco HD (1 = 56×118; chefão maior, em escala inteira ou não). */
+  escala?: number;
+  /** Respiração do parado: ombro e cabeça descem 1 px. */
+  respiro?: boolean;
+  /** Cor da viseira do capacete (robô). */
+  viseira?: string;
+  /** Crachá no peito. */
+  cracha?: boolean;
+  /** Corpo grande (barriga, braço e perna grossos). */
+  gordo?: boolean;
+  /** Braços fechados de tatuagem (e pernas, com `tatuagemPerna`). */
+  tatuagem?: boolean;
+  tatuagemPerna?: boolean;
+  alargador?: boolean;
+  bigode?: boolean;
+  /** Tênis de cano baixo no lugar da bota; `meia` aparece com bermuda. */
+  tenis?: boolean;
+  meia?: boolean;
+  boneEstampado?: boolean;
+  /** Fone de ouvido pendurado no pescoço. */
+  fones?: boolean;
+  /** Na mão de perto: cassetete; no braço: escudo de choque. */
+  arma?: 'cassetete' | 'escudo';
 }
 
 export const BONECO_L = 28;

@@ -14,6 +14,25 @@ export interface Game {
 
 export const games: Game[] = [
   {
+    slug: 'escombro',
+    title: 'ESCOMBRO: A FITA',
+    description: 'Beat \'em up de 16 bits da banda Escombro HC: atravesse a periferia de SP na garoa, encare PM e GCM e derrube o Pato-Algoritmo para recuperar a fita master do disco novo. Em português, inglês e alemão.',
+    longDescription: 'ESCOMBRO: A FITA é um beat \'em up lateral com cara de cartucho de Super Nintendo e acabamento de pixel art HD. A master do disco novo da Escombro HC foi destruída e os pedaços ficaram espalhados em dez anos de estrada. Você escolhe um integrante da banda, cada um com tamanho, força, velocidade, alcance e especial próprios: Igor no baixo (onda de grave), Pucci na bateria (blast beat), Renato na guitarra (microfonia) ou Jota no vocal (grito). São três fases e um tutorial na sala de ensaio. Na periferia de São Paulo na garoa, PM e GCM fecham a rua e o Pato-Algoritmo, um pato gigante biotech, dispara laser do olho de LED. No canteiro de demolição chega a tropa de choque e a Mão Invisível do Mercado, que só apanha quando encosta no chão e chama fantasmas de gravata. Na casa de show lotada, o Técnico de Som folgado chicoteia com o cabo e solta microfonia. Coxinha, pastel e caldo de cana recuperam a vida, e o vira-lata caramelo morde por 14 segundos. Cada fase dá nota de S a C e libera conteúdo da banda no Arquivo. Dá para jogar no teclado, no controle ou no celular, em português, inglês ou alemão.',
+    howToPlay: [
+      'Ande com as setas ou WASD (no celular, use o direcional na tela)',
+      'J ou Z dá soco; aperte em sequência para fazer o combo de três golpes',
+      'K, X ou espaço pula; soco no ar vira voadora',
+      'Cada golpe enche a barra de MOSH; cheia, L ou C solta o especial do integrante',
+      'Inimigo piscando "!" vai bater: saia da frente. Quebre orelhão, lixeira e banca para achar comida',
+    ],
+    category: 'ação',
+    tags: ['beat em up', 'briga de rua', '16 bits', 'pixel art', 'hardcore', 'banda', 'escombro', 'ação'],
+    embedType: 'iframe-internal',
+    src: '/games/portal/escombro/index.html',
+    thumbnail: '/thumbnails/escombro-v1.png',
+    featured: true,
+  },
+  {
     slug: 'pixo',
     title: 'PIXO',
     description: 'O desenho do dia: um nonograma por dia que termina num desenho brasileiro em pixel art. Resolva, revele e cole no álbum.',
