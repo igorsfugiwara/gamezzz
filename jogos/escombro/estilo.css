@@ -267,6 +267,24 @@
 .res__arquivo[hidden] { display: none; }
 .retorno { margin: 0; min-height: 16px; font-family: var(--ui-font); font-size: 13px; color: var(--neon-verde); }
 .fim-duxxo { margin: 0; font-size: 10px; color: var(--neon-verde); }
+.fim-duxxo[hidden] { display: none; }
+/* Medalha de quem zerou: grande, pixel duro, balançando de leve na fita. */
+.medalha { width: 128px; height: 176px; image-rendering: pixelated; transform-origin: 50% 0; animation: balanca 2.4s ease-in-out infinite; filter: drop-shadow(4px 4px 0 #0d0b14); }
+@keyframes balanca { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@media (prefers-reduced-motion: reduce) { .medalha { animation: none; } }
+.fim-medalha { margin: 0; font-size: clamp(12px, 3.4vw, 16px); color: var(--obra); text-shadow: 2px 2px 0 var(--sangue); }
+.fim-fita { margin: 0; font-size: 10px; color: var(--neon-ciano); }
+.fim-dica { margin: 0; max-width: 420px; font-family: var(--ui-font); font-size: 12px; color: var(--cimento); }
+/* Selo na capa: quem zerou leva a medalha pra casa. */
+.selo { margin: 0; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border: 2px solid var(--obra); border-radius: 8px; background: rgba(7, 6, 11, 0.8); font-size: 9px; color: var(--obra); }
+.selo[hidden] { display: none; }
+.selo canvas { width: 24px; height: 33px; image-rendering: pixelated; }
+/* Links para o site da banda. */
+.link-banda { font-family: var(--pixel-font); font-size: 9px; color: var(--neon-ciano); text-decoration: none; border-bottom: 2px solid currentColor; padding-bottom: 2px; }
+.link-banda:hover, .link-banda:focus-visible { color: var(--obra); }
+.link-banda[hidden] { display: none; }
+.tela-menu--titulo .link-banda { text-shadow: -2px 0 0 #000, 2px 0 0 #000, 0 -2px 0 #000, 0 2px 0 #000; }
+.sel__info .link-banda { align-self: flex-start; font-size: 8px; }
 .arquivo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; width: min(460px, 100%); text-align: left; }
 .arquivo li { padding: 12px; border: 2px solid #4a4657; background: #1b1726; font-family: var(--ui-font); font-size: 13px; color: var(--papel); }
 .arquivo li b { display: block; margin-bottom: 4px; font-family: var(--pixel-font); font-size: 10px; color: var(--obra); }

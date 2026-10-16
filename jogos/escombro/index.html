@@ -43,7 +43,9 @@
         <button class="botao" id="b-novo" data-t="titulo.novo"></button>
         <button class="botao botao--leve" id="b-arquivo" data-t="titulo.arquivo"></button>
       </div>
+      <p class="selo" id="selo" hidden><canvas id="selo-medalha" class="pixel" width="64" height="88"></canvas><span id="selo-txt"></span></p>
       <p class="rodape" data-t="titulo.rodape"></p>
+      <a class="link-banda" href="https://escombro.vercel.app" target="_blank" rel="noopener">escombro.vercel.app ↗</a>
       <p class="aviso-flash" data-t="aviso.flash"></p>
     </section>
 
@@ -59,6 +61,7 @@
           <div class="stat"><span data-t="sel.vel"></span><i id="st-vel"></i></div>
           <div class="stat"><span data-t="sel.alcance"></span><i id="st-alc"></i></div>
           <p class="sel__esp"><b id="sel-esp"></b><br /><span id="sel-esp-txt"></span></p>
+          <a class="link-banda" id="sel-site" href="https://escombro.vercel.app" target="_blank" rel="noopener" data-t="sel.site"></a>
         </div>
       </div>
       <div class="fileira" id="fileira"></div>
@@ -133,10 +136,15 @@
 
     <!-- Fim (fita completa) -->
     <section class="tela-menu tela-menu--res" id="fim" hidden>
-      <h2 class="logo__nome logo__nome--fim" id="fim-titulo"></h2>
+      <h2 class="logo__nome logo__nome--fim" data-t="fim.zerou"></h2>
+      <canvas id="medalha" class="pixel medalha" width="64" height="88"></canvas>
+      <p class="fim-medalha" id="fim-medalha"></p>
+      <p class="fim-fita" id="fim-titulo"></p>
       <p class="premissa" data-t="fim.texto"></p>
+      <dl class="res__numeros" id="fim-numeros"></dl>
+      <p class="fim-dica" id="fim-dica"></p>
       <p class="fim-duxxo" data-t="fim.duxxo"></p>
-      <a class="botao botao--forte" id="b-seguir" target="_blank" rel="noopener" data-t="fim.seguir" hidden></a>
+      <a class="botao botao--forte" id="b-seguir" href="https://escombro.vercel.app" target="_blank" rel="noopener" data-t="fim.seguir"></a>
       <button class="botao" id="b-fim-menu" data-t="fim.menu"></button>
     </section>
 
@@ -144,6 +152,7 @@
     <section class="tela-menu tela-menu--sobre" id="arquivo" hidden>
       <h2 class="titulo-menu" data-t="arq.titulo"></h2>
       <ul class="arquivo" id="arquivo-lista"></ul>
+      <a class="link-banda" href="https://escombro.vercel.app" target="_blank" rel="noopener" data-t="arq.site"></a>
       <button class="botao" id="b-arq-fechar" data-t="arq.fechar"></button>
     </section>
   </div>

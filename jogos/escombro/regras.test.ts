@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   FASES, INTEGRANTES, INIMIGOS, PROGRESSO_INICIAL, acerta, liberado, concluirFase, danoDoGolpe, formatarTempo, nota, pedacosDaFita,
-  COMBOS, GOLPES, golpeDoCombo, danoDe, novoJogo,
+  COMBOS, GOLPES, golpeDoCombo, danoDe, novoJogo, medalhaDe,
 } from './regras';
 
 describe('acerto de golpe', () => {
@@ -94,6 +94,20 @@ describe('progresso', () => {
     expect(pedacosDaFita(n)).toBe(0);
     expect(n.arquivo).toEqual(p.arquivo);
     for (const i of INTEGRANTES) expect(liberado(i, n)).toBe(liberado(i, p));
+  });
+  it('zerar dá medalha pelas notas e ela fica no novo jogo', () => {
+    const ultima = FASES.length - 1;
+    let p = PROGRESSO_INICIAL;
+    for (const f of FASES) p = concluirFase({ ...p, liberada: f.n }, f.n, { nota: f.n === 2 ? 'A' : 'S', tempo: 100, pontos: 100 });
+    expect(medalhaDe(p)).toBe('prata');
+    expect(p.medalha).toBe('prata');
+    p = concluirFase(p, 2, { nota: 'S', tempo: 90, pontos: 900 });
+    p = concluirFase(p, ultima, { nota: 'S', tempo: 90, pontos: 900 });
+    expect(p.medalha).toBe('ouro');
+    // Pior depois não rebaixa a medalha; e o novo jogo guarda.
+    p = concluirFase({ ...p, melhores: { ...p.melhores, 1: { nota: 'C', tempo: 1, pontos: 99999 } } }, ultima, { nota: 'C', tempo: 999, pontos: 99999 });
+    expect(p.medalha).toBe('ouro');
+    expect(novoJogo(p).medalha).toBe('ouro');
   });
   it('o Felipeles sai com um S', () => {
     const felipe = INTEGRANTES.find((i) => i.id === 'felipeles')!;

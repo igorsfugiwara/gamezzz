@@ -424,7 +424,21 @@ export interface Progresso {
   arquivo: number[];
   /** Já tirou S alguma vez (libera o Felipeles; sobrevive ao "novo jogo"). */
   tirouS?: boolean;
+  /** Melhor medalha de quem zerou (sobrevive ao "novo jogo"). */
+  medalha?: Medalha;
 }
+
+export type Medalha = 'bronze' | 'prata' | 'ouro';
+const ORDEM_MEDALHA: Medalha[] = ['bronze', 'prata', 'ouro'];
+
+/** Medalha pelas notas das fases de rua: ouro com S em todas, prata com A ou melhor, bronze por zerar. */
+export function medalhaDe(p: Progresso): Medalha {
+  const notas = FASES.filter((f) => f.n > 0).map((f) => p.melhores[f.n]?.nota ?? 'C');
+  if (notas.every((n) => n === 'S')) return 'ouro';
+  if (notas.every((n) => n === 'S' || n === 'A')) return 'prata';
+  return 'bronze';
+}
+export const melhorMedalha = (a: Medalha | undefined, b: Medalha): Medalha => (a && ORDEM_MEDALHA.indexOf(a) > ORDEM_MEDALHA.indexOf(b) ? a : b);
 
 export const PROGRESSO_INICIAL: Progresso = { liberada: 0, zerou: false, quem: 'igor', melhores: {}, arquivo: [] };
 
@@ -433,7 +447,7 @@ export function concluirFase(p: Progresso, n: number, r: { nota: Nota; tempo: nu
   const ultima = FASES.length - 1;
   const antes = p.melhores[n];
   const melhor = !antes || r.pontos > antes.pontos ? r : antes;
-  return {
+  const novo: Progresso = {
     ...p,
     liberada: Math.max(p.liberada, Math.min(ultima, n + 1)),
     zerou: p.zerou || n === ultima,
@@ -441,6 +455,8 @@ export function concluirFase(p: Progresso, n: number, r: { nota: Nota; tempo: nu
     melhores: { ...p.melhores, [n]: melhor },
     arquivo: FASES[n].arquivo && !p.arquivo.includes(n) ? [...p.arquivo, n] : p.arquivo,
   };
+  // Zerou (passou da última): ganha a medalha das notas, guardando a melhor de todas as vezes.
+  return n === ultima ? { ...novo, medalha: melhorMedalha(p.medalha, medalhaDe(novo)) } : novo;
 }
 
 /**
@@ -453,6 +469,7 @@ export function novoJogo(p: Progresso): Progresso {
     quem: p.quem,
     arquivo: [...p.arquivo],
     zerou: p.zerou,
+    medalha: p.medalha,
     tirouS: !!p.tirouS || Object.values(p.melhores).some((m) => m.nota === 'S'),
   };
 }

@@ -11,7 +11,7 @@ import { PALETA as P } from '../compartilhado/paleta';
 import { bonecoHD, TONS, type Boneco, type Grade, type Pose, type Tom } from '../compartilhado/boneco';
 import { Estudio, mat, rampa, rampaDe, type V3 } from '../compartilhado/figura';
 import { emCache } from '../compartilhado/canvas';
-import type { Quem, TipoInimigo, TipoItem, TipoQuebravel } from './regras';
+import type { Medalha, Quem, TipoInimigo, TipoItem, TipoQuebravel } from './regras';
 
 export type Sprite = HTMLCanvasElement;
 export const GIRO_LUTA = 1.05;
@@ -71,7 +71,7 @@ export function spriteDenao(quadro: 0 | 1): Sprite {
  * two-step para andar, pulo de pé alto e voadora; mais apanhar, especial e a
  * dança da vitória.
  */
-export type PoseLuta = 'guarda' | 'twostep' | 'soco' | 'soco2' | 'moinho' | 'giro' | 'chute' | 'bicuda' | 'joelhada' | 'gancho' | 'investida' | 'lado' | 'passinho' | 'voadora' | 'pulo' | 'apanha' | 'especial' | 'danca';
+export type PoseLuta = 'guarda' | 'twostep' | 'soco' | 'soco2' | 'moinho' | 'giro' | 'chute' | 'bicuda' | 'joelhada' | 'gancho' | 'investida' | 'lado' | 'passinho' | 'voando' | 'deitado' | 'sentado' | 'ajoelhado' | 'voadora' | 'pulo' | 'apanha' | 'especial' | 'danca';
 
 /** Jazz Bass sunburst no Igor, Telecaster butterscotch no Renato. */
 const INSTRUMENTO: Partial<Record<Quem, Boneco['instrumento']>> = {
@@ -95,6 +95,8 @@ function quadroDaPose(p: PoseLuta, f: 0 | 1 | 2 | 3): Partial<Boneco> {
   if (p === 'bicuda') return { pose: 'chute', golpe: 2 };
   if (p === 'gancho') return { pose: 'gancho', golpe: f === 0 ? 0 : 1 };
   if (p === 'passinho') return { pose: 'passinho', golpe: (f % 2) as 0 | 1 };
+  if (p === 'ajoelhado') return { pose: 'ajoelhado', golpe: f === 0 ? 0 : 1 };
+  if (p === 'voando') return { pose: 'voando', grito: true };
   return { pose: poseFigura(p), passo: f, grito: p === 'apanha' };
 }
 
@@ -532,4 +534,69 @@ export function piscada(s: Sprite): Sprite {
   let b = brancos.get(s);
   if (!b) { b = branco(s); brancos.set(s, b); }
   return b;
+}
+
+// ─── Medalha de quem zerou ────────────────────────────────
+
+const METAL: Record<Medalha, [string, string, string, string, string]> = {
+  ouro: ['#fffbe0', '#ffe27a', '#f6c443', '#c9861a', '#6e3f0c'],
+  prata: ['#ffffff', '#e4e4ee', '#b4b4c6', '#7a7a90', '#3a3a4c'],
+  bronze: ['#ffe0bc', '#f2a868', '#c97a3a', '#8a4a1f', '#42200c'],
+};
+
+/**
+ * Medalha em pixel art (64×88): fita vermelha e preta da Escombro em V,
+ * argola e o disco de metal com uma fita cassete em relevo. `brilho` (0–3)
+ * passeia uma estrelinha pela borda.
+ */
+export function gradeMedalha(tipo: Medalha, brilho: 0 | 1 | 2 | 3 = 0): Grade {
+  const w = 64, h = 88;
+  const cor: (string | null)[] = new Array(w * h).fill(null);
+  const px = (x: number, y: number, c: string) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < w && y < h) cor[y * w + x] = c; };
+  const m = METAL[tipo];
+  // Fita em V: duas tiras listradas (vermelho, preto, vermelho) que se cruzam atrás da argola.
+  const listra = ['#8a1f36', '#d6353f', '#d6353f', '#1b1726', '#1b1726', '#d6353f', '#d6353f', '#8a1f36'];
+  for (let y = 0; y <= 40; y++) {
+    const k = y / 40;
+    for (const lado of [-1, 1]) {
+      const a = 32 + lado * (24 - k * 15), b = 32 + lado * (10 - k * 7);
+      const [x0, x1] = lado < 0 ? [a, b] : [b, a];
+      for (let x = Math.floor(x0); x <= Math.ceil(x1); x++) {
+        const f = (x - x0) / Math.max(1, x1 - x0);
+        let c = listra[Math.min(listra.length - 1, Math.floor(f * listra.length))];
+        if (y % 9 === 8) c = '#4a1426'; // dobrinha do pano
+        px(x, y, c);
+      }
+    }
+  }
+  // Argola.
+  for (let a = 0; a < Math.PI * 2; a += 0.08) px(32 + Math.cos(a) * 4, 42 + Math.sin(a) * 3, a > Math.PI ? m[1] : m[3]);
+  // Disco: borda escura, aro com luz de cima-esquerda, face com o relevo.
+  const cx = 32, cy = 64, R = 22;
+  for (let y = cy - R - 1; y <= cy + R + 1; y++) for (let x = cx - R - 1; x <= cx + R + 1; x++) {
+    const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.hypot(dx, dy);
+    if (d > R + 0.5) continue;
+    const luz = (-dx - dy) / (Math.SQRT2 * Math.max(1, d)); // -1..1, cima-esquerda acesa
+    let c: string;
+    if (d > R - 0.8) c = m[4];
+    else if (d > R - 4) c = luz > 0.5 ? m[0] : luz > 0 ? m[1] : luz > -0.6 ? m[2] : m[3];
+    else if (d > R - 5) c = luz > 0 ? m[3] : m[1]; // degrau do aro (sombra de um lado, brilho do outro)
+    else c = d < 9 && luz > 0.3 ? m[1] : m[2];
+    px(x, y, c);
+  }
+  // Fita cassete em relevo no meio.
+  const fx = 20, fy = 56, fw = 24, fh = 15;
+  for (let x = fx; x < fx + fw; x++) { px(x, fy, m[0]); px(x, fy + fh - 1, m[4]); }
+  for (let y = fy; y < fy + fh; y++) { px(fx, y, m[0]); px(fx + fw - 1, y, m[4]); }
+  for (let x = fx + 2; x < fx + fw - 2; x++) { px(x, fy + 2, m[3]); px(x, fy + 3, m[1]); } // etiqueta
+  for (const rx of [27, 37]) for (let a = 0; a < Math.PI * 2; a += 0.2) px(rx + Math.cos(a) * 2.6, 64 + Math.sin(a) * 2.6, a > Math.PI ? m[4] : m[0]);
+  for (let x = 30; x <= 34; x++) { px(x, 62, m[3]); px(x, 66, m[1]); } // janelinha da fita
+  for (let x = fx + 6; x < fx + fw - 6; x++) px(x, fy + fh - 3, m[3]); // trapézio de baixo
+  // Estrelinha de brilho passeando pela borda.
+  const ponto = [[17, 48], [47, 50], [46, 78], [15, 74]][brilho];
+  for (const [ox, oy, c] of [[0, 0, '#ffffff'], [1, 0, m[0]], [-1, 0, m[0]], [0, 1, m[0]], [0, -1, m[0]], [2, 0, m[1]], [-2, 0, m[1]], [0, 2, m[1]], [0, -2, m[1]]] as const) px(ponto[0] + ox, ponto[1] + oy, c);
+  return { w, h, cor };
+}
+export function spriteMedalha(tipo: Medalha, brilho: 0 | 1 | 2 | 3 = 0): Sprite {
+  return emCache(`esc-medalha-${tipo}-${brilho}`, () => gradeMedalha(tipo, brilho));
 }

@@ -58,7 +58,9 @@ export type Pose = 'parado' | 'chifres' | 'maos' | 'microfone' | 'baqueta' | 'to
   // Combos: joelhada no clinch e gancho de baixo pra cima.
   | 'joelhada' | 'gancho'
   // Roda punk de verdade: arrancada do crowdkill, braçada do side to side, passinho do two step.
-  | 'investida' | 'lado' | 'passinho';
+  | 'investida' | 'lado' | 'passinho'
+  // Cair e levantar: voando pra trás, deitado de costas, sentado e de joelho (0) / agachado (1).
+  | 'voando' | 'deitado' | 'sentado' | 'ajoelhado';
 
 export interface Boneco {
   pele: Tom;

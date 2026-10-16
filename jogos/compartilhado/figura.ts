@@ -352,7 +352,7 @@ export function figura(b: Boneco): Grade {
   const k = b.escala ?? 1;
   // Com Telecaster/Jazz Bass, o braço do instrumento passa da largura do boneco: a tela cresce para a direita.
   const golpeLongo = b.pose === 'soco' || b.pose === 'soco2' || b.pose === 'chute' || b.pose === 'giro' || b.pose === 'voadora' || b.pose === 'joelhada' || b.pose === 'gancho'
-    || b.pose === 'moinho' || b.pose === 'investida' || b.pose === 'lado' || b.pose === 'passinho';
+    || b.pose === 'moinho' || b.pose === 'investida' || b.pose === 'lado' || b.pose === 'passinho' || b.pose === 'sentado' || b.pose === 'voando';
   const extra = b.instrumento?.tipo === 'telecaster' || b.instrumento?.tipo === 'jazzbass' ? 46 : b.pose === 'lado' ? 26 : golpeLongo ? 18 : 0;
   const e = new Estudio(b.giro ?? 0.55, Math.ceil((W + extra) * k), Math.ceil(H * k), CX * k, k);
   const q = b.quadro ?? 0;
@@ -363,7 +363,9 @@ export function figura(b: Boneco): Grade {
   const fg = b.golpe ?? 0;
   /** Agachar (ginga da guarda, gancho armando): o quadril desce e os joelhos dobram. */
   const agacha = b.pose === 'guarda' ? [0, 1, 2, 1][b.ginga ?? 0] : b.pose === 'gancho' ? (fg === 0 ? 3 : -1)
-    : b.pose === 'moinho' ? 3 : b.pose === 'lado' ? 4 : b.pose === 'investida' ? 1 : 0;
+    : b.pose === 'moinho' ? 3 : b.pose === 'lado' ? 4 : b.pose === 'investida' ? 1
+      // Sentado no chão: o quadril desce até o piso; de joelho, até a metade.
+      : b.pose === 'sentado' ? 41 : b.pose === 'ajoelhado' ? (fg === 0 ? 17 : 7) : 0;
   const bob = (noAr || (b.pose === 'twostep' && passo % 2 === 1) ? -1 : b.respiro ? 1 : 0) + agacha;
   const balanco = passo === 1 ? 1 : passo === 3 ? -1 : q === 1 ? 1 : q === 3 ? -1 : 0;
   const pose = b.pose ?? (b.instrumento ? 'tocando' : 'parado');
@@ -406,6 +408,10 @@ export function figura(b: Boneco): Grade {
                     : pose === 'investida' ? [2, 2.5, 3, 1]
                       : pose === 'lado' ? [1, fg === 0 ? -3 : 3, 2, 1]
                         : pose === 'passinho' ? [-3.5, fg === 0 ? 1.5 : -1.5, -3, 0]
+                          : pose === 'voando' ? [0, 1.5, -2, 1]
+                            : pose === 'deitado' ? [0, 0, -1.5, 1]
+                              : pose === 'sentado' ? [0, 0, 1, 1]
+                                : pose === 'ajoelhado' ? [0, 1, 2, 2.5]
                     : apanha ? [-3, 0, -3.5, 1]
                       : pose === 'twostep' ? [1.5, 0, 1.5, 0]
                         : pose === 'guarda' ? [1, 0, 1, 0]
@@ -415,7 +421,9 @@ export function figura(b: Boneco): Grade {
    * Dobra de verdade: o tronco gira pra frente em torno do quadril (moinho
    * com a cara no chão, arrancada do crowdkill). A cabeça vai junto, em pé.
    */
-  const dobra = pose === 'moinho' ? 0.95 : pose === 'investida' ? 0.45 : pose === 'lado' ? 0.3 : 0;
+  const dobra = pose === 'moinho' ? 0.95 : pose === 'investida' ? 0.45 : pose === 'lado' ? 0.3
+    // Voando: arqueado pra trás; sentado e de joelho, tronco um pouco à frente pra se apoiar.
+    : pose === 'voando' ? -0.5 : pose === 'sentado' ? 0.2 : pose === 'ajoelhado' ? (fg === 0 ? 0.35 : 0.5) : 0;
   const piv = 66 + agacha;
   const cd = Math.cos(dobra), sd = Math.sin(dobra);
   const T = (p: V3): V3 => {
@@ -491,6 +499,27 @@ export function figura(b: Boneco): Grade {
       // (menos que as mãos); o de perto vai mais, o de lá fica encolhido.
       if (s < 0) { joelho = [s * 5.5, 71, 19]; tornozelo = [s * 5.8, 85, 17]; noAlto = [s * 5.8, 87.5, 20.5]; }
       else { joelho = [s * 5.5, 70, 15]; tornozelo = [s * 5.8, 82, 9]; noAlto = [s * 5.8, 82.5, 12.5]; }
+    } else if (pose === 'voando') {
+      // Arremessado: joelhos dobrados à frente, pés soltos pra trás.
+      const z0 = s < 0 ? 4 : 0;
+      joelho = [s * 5.5, 80, z0 + 11]; tornozelo = [s * 6, 95, z0 + 5]; noAlto = [s * 6, 96.5, z0 + 8.5];
+    } else if (pose === 'deitado') {
+      // Deitado (o sprite é girado 90°): uma perna esticada, a outra com o joelho pra cima.
+      if (s < 0) { joelho = [s * 5.6, 84, 9]; tornozelo = [s * 6, 101, 4]; }
+      else { joelho = [s * 6.4, 86.5, -1]; tornozelo = [s * 7, 104, -2]; }
+    } else if (pose === 'sentado') {
+      // Sentado no chão: coxas no piso, pernas esticadas pra frente, um joelho meio dobrado.
+      if (s < 0) { joelho = [s * 6, 101, 17]; tornozelo = [s * 6.2, 109, 29]; noAlto = [s * 6.2, 111.5, 33]; }
+      else { joelho = [s * 6.5, 107, 14]; tornozelo = [s * 6.8, 110, 27]; noAlto = [s * 6.8, 112, 31]; }
+    } else if (pose === 'ajoelhado') {
+      if (fg === 0) {
+        // Um joelho no chão (o de trás, canela deitada), o pé da frente plantado.
+        if (s < 0) { joelho = [s * 6, 89, 12]; tornozelo = [s * 6.4, 104, 10]; }
+        else { joelho = [s * 6.2, 109, -1]; tornozelo = [s * 6.4, 111, -15]; noAlto = [s * 6.4, 112, -18.5]; }
+      } else {
+        // Quase de pé: agachado, os dois pés no chão.
+        joelho = [s * 7, 88, (s < 0 ? 9 : 4)]; tornozelo = [s * 7.2, 104, s < 0 ? 4 : -3];
+      }
     } else if (pose === 'moinho') {
       // Windmill: passada larga (um pé bem na frente, outro bem atrás) e joelhos dobrados.
       const z = s < 0 ? 11 : -10;
@@ -603,6 +632,23 @@ export function figura(b: Boneco): Grade {
       const m: V3 = [o[0] + s * 3, o[1] + Math.cos(a) * R, o[2] + Math.sin(a) * R];
       const c = lerp(o, m, 0.5);
       bracos[s] = { o, c: [c[0] + s * 2, c[1], c[2]], p: lerp(o, m, 0.86), m };
+    }
+  } else if (pose === 'voando') {
+    // Arremessado: braços jogados pra cima e pra trás.
+    for (const s of [-1, 1]) { const o = ombro(s); bracos[s] = { o, c: [s * 15, o[1] - 6, o[2] - 5], p: [s * 16, o[1] - 14, o[2] - 9], m: [s * 16, o[1] - 17, o[2] - 10] }; }
+  } else if (pose === 'deitado') {
+    // Deitado: braços largados acima da cabeça (vira "pra trás" no chão).
+    for (const s of [-1, 1]) { const o = ombro(s); bracos[s] = { o, c: [s * 15, o[1] - 9, o[2] + (s < 0 ? 3 : -2)], p: [s * 16, o[1] - 19, o[2] + (s < 0 ? 4 : -3)], m: [s * 16, o[1] - 22, o[2] + (s < 0 ? 4 : -3)] }; }
+  } else if (pose === 'sentado') {
+    // Sentado: mãos no chão atrás, empurrando pra levantar.
+    for (const s of [-1, 1]) { const o = ombro(s); bracos[s] = { o, c: [s * 13, o[1] + 8, o[2] - 7], p: lerp([s * 13, o[1] + 8, o[2] - 7], [s * 13, 112, o[2] - 12], 0.85), m: [s * 13, 112, o[2] - 12] }; }
+  } else if (pose === 'ajoelhado') {
+    // De joelho: uma mão no joelho da frente empurrando; agachado, as duas nas coxas.
+    for (const s of [-1, 1]) {
+      const o = ombro(s);
+      const apoio: V3 = fg === 0 ? (s < 0 ? [s * 6, 86, 14] : [s * 12, 96, 2]) : [s * 7.5, 82, s < 0 ? 12 : 8];
+      const c = lerp(o, apoio, 0.5);
+      bracos[s] = { o, c: [c[0] + s * 3, c[1], c[2]], p: lerp(o, apoio, 0.88), m: apoio };
     }
   } else if (pose === 'investida') {
     // Crowdkill: o braço de trás armado lá atrás pra braçada; o da frente abre caminho.
