@@ -54,7 +54,9 @@ export type Pose = 'parado' | 'chifres' | 'maos' | 'microfone' | 'baqueta' | 'to
   // Luta (boneco HD): guarda, soco de frente e de trás, chute, pulo, apanhando.
   | 'guarda' | 'soco' | 'soco2' | 'chute' | 'pulo' | 'apanha'
   // Roda punk: moinho de braço, chute giratório (braços abertos) e o two-step.
-  | 'moinho' | 'giro' | 'twostep' | 'voadora';
+  | 'moinho' | 'giro' | 'twostep' | 'voadora'
+  // Combos: joelhada no clinch e gancho de baixo pra cima.
+  | 'joelhada' | 'gancho';
 
 export interface Boneco {
   pele: Tom;
@@ -99,6 +101,8 @@ export interface Boneco {
   escala?: number;
   /** Respiração do parado: ombro e cabeça descem 1 px. */
   respiro?: boolean;
+  /** Ginga da guarda parada (0–3): o corpo quica nos joelhos, como no fliperama. */
+  ginga?: 0 | 1 | 2 | 3;
   /** Cor da viseira do capacete (robô). */
   viseira?: string;
   /** Quadro do golpe animado (moinho: 0 em cima, 1 na frente, 2 embaixo). */

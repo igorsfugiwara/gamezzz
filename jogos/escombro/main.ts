@@ -15,12 +15,12 @@ import { evento } from '../compartilhado/eventos';
 import { compartilhar } from '../compartilhado/compartilhar';
 import { destravarAudio, setMudo, estaMudo, setVolume, volumeGeral, vibrar } from '../compartilhado/som';
 import { Tutorial } from '../compartilhado/tutorial';
-import { t, tri, idioma, definirIdioma, type Idioma } from './i18n';
+import { t, tri, idioma, definirIdioma, type Idioma, type Tri } from './i18n';
 import {
   INTEGRANTES, INIMIGOS, FASES, ITENS, CHAO, PROGRESSO_INICIAL, VIDA_JOGADOR, MOSH_POR_ACERTO, MOSH_POR_KO,
-  integrante, acerta, danoDoGolpe, nota as notaDaFase, concluirFase, pedacosDaFita, formatarTempo,
+  integrante, acerta, danoDoGolpe, danoDe, golpeDoCombo, comboNomeado, GOLPES, COMBOS, nota as notaDaFase, concluirFase, pedacosDaFita, formatarTempo,
   type Quem, type TipoInimigo, type TipoItem, type TipoQuebravel, type Fase, type Progresso, type Nota, type Chefe as TipoChefe,
-  PEDACOS_DA_FITA, liberado,
+  PEDACOS_DA_FITA, liberado, type Golpe, type Entrada,
 } from './regras';
 import {
   spriteIntegrante, retratoIntegrante, rostoIntegrante, spriteInimigo, spriteTecnico, spritePato, spriteMao,
@@ -54,8 +54,7 @@ function traduzir() {
   document.querySelectorAll<HTMLElement>('[data-t]').forEach((el) => { el.textContent = t(el.dataset.t as Parameters<typeof t>[0]); });
   document.querySelectorAll<HTMLButtonElement>('#idiomas button').forEach((b) => b.classList.toggle('ativo', b.dataset.idioma === idioma()));
   $('b-som').textContent = `${t('jogo.som')}: ${estaMudo() ? 'OFF' : 'ON'}`;
-  $('b-mudo').textContent = estaMudo() ? '🔇' : '🔊';
-  $('b-mudo').setAttribute('aria-pressed', String(estaMudo()));
+  document.querySelectorAll<HTMLElement>('[data-mudo]').forEach((b) => { b.textContent = estaMudo() ? '🔇' : '🔊'; b.setAttribute('aria-pressed', String(estaMudo())); });
   $('b-flash').textContent = `${t('jogo.flash')}: ${reduzirFlash ? 'ON' : 'OFF'}`;
 }
 const idiomaSalvo = ler<Idioma | null>(JOGO, 'idioma', null);
@@ -67,22 +66,30 @@ function ajustarTela() {
   const deitado = innerWidth > innerHeight;
   const toque = matchMedia('(pointer: coarse)').matches;
   app.classList.toggle('esc--deitado', deitado);
+  app.classList.toggle('esc--toque', toque);
   $('controles').hidden = !(toque && modo === 'jogo');
   const r = $('palco').getBoundingClientRect();
-  const k = Math.min(r.width / LARG, (deitado || $('controles').hidden ? innerHeight : innerHeight * 0.58) / ALT);
+  // Em pé, tudo tem que caber na altura que existe (o portal e o celular já comem
+  // topo e rodapé): faixa de texto + jogo + controles. O jogo fica com o que sobrar.
+  const altura = app.clientHeight || innerHeight;
+  const faixa = altura < 560 ? 56 : 76;
+  app.style.setProperty('--alt-faixa', `${faixa}px`);
+  const sobra = deitado ? altura : altura - faixa - 16 - ($('controles').hidden ? 0 : 184);
+  const k = Math.max(0.25, Math.min(r.width / LARG, sobra / ALT));
   const ki = k >= 1 ? Math.floor(k * (devicePixelRatio || 1)) / (devicePixelRatio || 1) : k;
   tela.style.width = `${Math.floor(LARG * ki)}px`;
   tela.style.height = `${Math.floor(ALT * ki)}px`;
+  app.style.setProperty('--larg-tela', `${Math.floor(LARG * ki)}px`);
 }
 addEventListener('resize', ajustarTela);
 
 // ─── Entrada: teclado, controle e toque ───────────────────
 const teclas = new Set<string>();
 const toqueDir = { x: 0, y: 0 };
-const toqueBotao = { soco: false, pulo: false, esp: false };
-const ctrl = { x: 0, y: 0, soco: false, pulo: false, esp: false, start: false, voltar: false };
-const antes = { soco: false, pulo: false, esp: false, start: false, voltar: false };
-const aperto = { soco: false, pulo: false, esp: false, start: false, voltar: false };
+const toqueBotao = { soco: false, chute: false, pulo: false, esp: false };
+const ctrl = { x: 0, y: 0, soco: false, chute: false, pulo: false, esp: false, start: false, voltar: false };
+const antes = { soco: false, chute: false, pulo: false, esp: false, start: false, voltar: false };
+const aperto = { soco: false, chute: false, pulo: false, esp: false, start: false, voltar: false };
 
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
@@ -102,6 +109,7 @@ function ligarBotao(id: string, chave: keyof typeof toqueBotao) {
   b.addEventListener('pointercancel', off);
 }
 ligarBotao('b-soco', 'soco');
+ligarBotao('b-chute', 'chute');
 ligarBotao('b-pulo', 'pulo');
 ligarBotao('b-esp', 'esp');
 {
@@ -126,13 +134,14 @@ ligarBotao('b-esp', 'esp');
 $('b-pausa').addEventListener('click', () => alternarPausa());
 
 function lerControles() {
-  let x = 0, y = 0, soco = false, pulo = false, esp = false, start = false;
+  let x = 0, y = 0, soco = false, chute = false, pulo = false, esp = false, start = false;
   const tem = (...ks: string[]) => ks.some((k) => teclas.has(k));
   if (tem('arrowleft', 'a')) x -= 1;
   if (tem('arrowright', 'd')) x += 1;
   if (tem('arrowup', 'w')) y -= 1;
   if (tem('arrowdown', 's')) y += 1;
   soco = tem('j', 'z');
+  chute = tem('u', 'v');
   pulo = tem('k', 'x', ' ');
   esp = tem('l', 'c');
   start = tem('enter', 'escape', 'p');
@@ -144,16 +153,16 @@ function lerControles() {
     if (Math.abs(ay) > 0.4) y = Math.sign(ay);
     const b = (i: number) => !!gp.buttons[i]?.pressed;
     if (b(14)) x = -1; if (b(15)) x = 1; if (b(12)) y = -1; if (b(13)) y = 1;
-    soco ||= b(2); pulo ||= b(0); esp ||= b(1) || b(3); start ||= b(9); voltar ||= b(8);
+    soco ||= b(2); chute ||= b(3); pulo ||= b(0); esp ||= b(1) || b(5); start ||= b(9); voltar ||= b(8);
   }
   if (toqueDir.x || toqueDir.y) { x = toqueDir.x; y = toqueDir.y; }
-  soco ||= toqueBotao.soco; pulo ||= toqueBotao.pulo; esp ||= toqueBotao.esp;
-  Object.assign(ctrl, { x, y, soco, pulo, esp, start, voltar });
-  for (const k of ['soco', 'pulo', 'esp', 'start', 'voltar'] as const) { aperto[k] = ctrl[k] && !antes[k]; antes[k] = ctrl[k]; }
+  soco ||= toqueBotao.soco; chute ||= toqueBotao.chute; pulo ||= toqueBotao.pulo; esp ||= toqueBotao.esp;
+  Object.assign(ctrl, { x, y, soco, chute, pulo, esp, start, voltar });
+  for (const k of ['soco', 'chute', 'pulo', 'esp', 'start', 'voltar'] as const) { aperto[k] = ctrl[k] && !antes[k]; antes[k] = ctrl[k]; }
 }
 
 // ─── Estado de jogo ───────────────────────────────────────
-type Modo = 'titulo' | 'selecao' | 'mapa' | 'carregando' | 'jogo' | 'pausa' | 'continue' | 'resultado' | 'fim' | 'arquivo';
+type Modo = 'titulo' | 'selecao' | 'mapa' | 'carregando' | 'jogo' | 'pausa' | 'golpes' | 'continue' | 'resultado' | 'fim' | 'arquivo';
 let modo: Modo = 'titulo';
 
 type Estado = 'parado' | 'anda' | 'golpe' | 'pulo' | 'voadora' | 'apanha' | 'voa' | 'caido' | 'levanta' | 'especial' | 'prepara' | 'tonto' | 'morto' | 'danca';
@@ -162,7 +171,7 @@ interface Corpo {
   x: number; y: number; z: number; vx: number; vy: number; vz: number;
   dir: 1 | -1; vida: number; max: number; estado: Estado; t: number; pisca: number;
 }
-interface Jogador extends Corpo { quem: Quem; combo: number; janela: number; acertou: Set<object>; invul: number; mosh: number; vidas: number; golpesSofridos: number[]; noAr: boolean }
+interface Jogador extends Corpo { quem: Quem; seq: string; golpe: Golpe; fila: string; janela: number; acertou: Set<object>; invul: number; mosh: number; vidas: number; golpesSofridos: number[]; noAr: boolean }
 interface Inimigo extends Corpo { tipo: TipoInimigo; semente: number; recarga: number; lado: 1 | -1; engajado: boolean; morto: number; rotulo?: string }
 interface Item { x: number; y: number; tipo: TipoItem; vz: number; z: number }
 interface Quebravel { x: number; y: number; tipo: TipoQuebravel; item: TipoItem; vida: number; pisca: number }
@@ -246,7 +255,7 @@ function poeira(x: number, y: number, n = 6, cor: string = P.papel) {
 function novoJogador(quem: Quem): Jogador {
   return {
     quem, x: 90, y: 220, z: 0, vx: 0, vy: 0, vz: 0, dir: 1, vida: VIDA_JOGADOR, max: VIDA_JOGADOR, estado: 'parado', t: 0, pisca: 0,
-    combo: 0, janela: 0, acertou: new Set(), invul: 1, mosh: SEM_MOSH_FASE0, vidas: 3, golpesSofridos: [], noAr: false,
+    seq: '', golpe: 'jab', fila: '', janela: 0, acertou: new Set(), invul: 1, mosh: SEM_MOSH_FASE0, vidas: 3, golpesSofridos: [], noAr: false,
   };
 }
 
@@ -316,6 +325,7 @@ let inicioTut = { x: 90, y: 220 };
 const tutorial = new Tutorial(JOGO, [
   { id: 'mover', texto: () => t('tut.mover'), lugar: 'topo', quando: jogando0, alvo: () => naCena(jog.x, jog.y - 60, 30), ok: () => Math.hypot(jog.x - inicioTut.x, jog.y - inicioTut.y) > 40 },
   { id: 'soco', texto: () => t('tut.soco'), lugar: 'topo', quando: jogando0, alvo: () => { const a = inimigos[0]; return a ? naCena(a.x, a.y - 60, 30) : null; }, ok: () => acertos >= 3 },
+  { id: 'chute', texto: () => t('tut.chute'), lugar: 'topo', quando: jogando0, alvo: () => ($('controles').hidden ? null : $('b-chute')), ok: () => chutes >= 2 },
   { id: 'pulo', texto: () => t('tut.pulo'), lugar: 'topo', quando: jogando0, ok: () => pulou },
   { id: 'mosh', texto: () => t('tut.mosh'), lugar: 'topo', quando: () => jogando0() && jog.mosh > 0, segundos: 4 },
   { id: 'esp', texto: () => t('tut.esp'), lugar: 'topo', quando: () => jogando0() && jog.mosh >= 100, alvo: () => ($('controles').hidden ? null : $('b-esp')), ok: () => especialUsado },
@@ -372,7 +382,7 @@ function atualizarCamera(dt: number) {
 }
 
 // ─── Jogador ──────────────────────────────────────────────
-/** Combo de roda punk: gancho (crowdkill), moinho de braço e chute giratório. */
+/** Combo do aliado (Jota): gancho, moinho de braço e chute giratório. */
 const DUR_GOLPE = [0.22, 0.34, 0.46];
 /** Janela em que cada golpe pega (fração da duração). */
 const ATIVO = [[0.35, 0.75], [0.5, 0.85], [0.62, 0.92]];
@@ -383,6 +393,7 @@ function atualizarJogador(dt: number) {
   j.t += dt;
   j.invul = Math.max(0, j.invul - dt);
   j.janela = Math.max(0, j.janela - dt);
+  anuncio.vida = Math.max(0, anuncio.vida - dt);
   j.pisca = Math.max(0, j.pisca - dt);
   recargaGel = Math.max(0, recargaGel - dt);
   const noChao = j.z <= 0;
@@ -395,21 +406,27 @@ function atualizarJogador(dt: number) {
       if (ctrl.x) j.dir = ctrl.x > 0 ? 1 : -1;
       j.estado = ctrl.x || ctrl.y ? 'anda' : 'parado';
       if (aperto.pulo) { j.estado = 'pulo'; j.vz = 290; j.vx = ctrl.x * 96 * ficha.vel; j.t = 0; pulou = true; sfx.pulo(); }
-      else if (aperto.soco && fase.distancia) atirarGel();
-      else if (aperto.soco) golpe(j.janela > 0 ? (j.combo + 1) % 3 : 0);
+      else if ((aperto.soco || aperto.chute) && fase.distancia) atirarGel();
+      else if (aperto.soco || aperto.chute) golpe((j.janela > 0 && j.seq.length < 3 ? j.seq : '') + (aperto.soco ? 'S' : 'C'));
       else if (aperto.esp && j.mosh >= 100) iniciarEspecial();
       break;
     }
     case 'golpe': {
       if (aperto.esp && j.mosh >= 100) { iniciarEspecial(); break; } // o especial corta o combo
       if (fase.distancia) { if (j.t > 0.2) j.estado = 'parado'; break; } // pandemia: só o jato de álcool
-      const dur = DUR_GOLPE[j.combo] / ficha.vel ** 0.35;
-      const [a0, a1] = ATIVO[j.combo];
-      if (j.t > dur * a0 && j.t < dur * a1) aplicarGolpeDoJogador(danoDoGolpe(ficha.forca, j.combo, false), j.combo === 2, 38 * ficha.alcance + (j.combo === 2 ? 18 : j.combo === 1 ? 8 : 4));
-      if (aperto.soco && j.t > dur * 0.45) j.janela = 0.3; // guarda o próximo aperto
+      const ficha_g = GOLPES[j.golpe];
+      const dur = ficha_g.dur / ficha.vel ** 0.35;
+      // Voadora de roda: um pulinho pra frente no meio do combo.
+      if (j.golpe === 'voadoraRoda') { j.x += j.dir * 70 * dt; j.vz -= 900 * dt; j.z = Math.max(0, j.z + j.vz * dt); }
+      const [a0, a1] = ficha_g.ativo;
+      if (j.t > dur * a0 && j.t < dur * a1) aplicarGolpeDoJogador(danoDe(ficha.forca, j.golpe), ficha_g.derruba, 38 * ficha.alcance + ficha_g.alcance);
+      const apertou: Entrada | null = aperto.soco ? 'S' : aperto.chute ? 'C' : null;
+      // Guarda os próximos apertos em fila (quem amassa o botão não perde golpe).
+      if (apertou && j.seq.length + j.fila.length < 3) { j.fila += apertou; j.janela = 0.3; }
       if (j.t >= dur) {
-        if (j.janela > 0 && j.combo < 2) golpe(j.combo + 1);
-        else { j.estado = 'parado'; j.janela = j.combo < 2 ? 0.35 : 0; }
+        if (j.golpe === 'voadoraRoda') { j.z = 0; poeira(j.x, j.y, 4); }
+        if (j.fila && j.seq.length < 3) golpe(j.seq + j.fila[0], j.fila.slice(1));
+        else { j.estado = 'parado'; j.janela = j.seq.length < 3 ? 0.35 : 0; }
       }
       break;
     }
@@ -418,7 +435,7 @@ function atualizarJogador(dt: number) {
       j.x += j.vx * dt;
       j.vz -= 900 * dt;
       j.z = Math.max(0, j.z + j.vz * dt);
-      if (j.estado === 'pulo' && aperto.soco) { j.estado = 'voadora'; j.t = 0; j.acertou = new Set(); sfx.golpe(); }
+      if (j.estado === 'pulo' && (aperto.soco || aperto.chute)) { j.estado = 'voadora'; j.t = 0; j.acertou = new Set(); sfx.golpe(); }
       // Voadora giratória: pega quando a perna desce do alto e fica reta (quadros 3 e 4).
       if (j.estado === 'voadora' && j.t > 0.16) aplicarGolpeDoJogador(danoDoGolpe(ficha.forca, 0, true), true, 50 * ficha.alcance);
       if (j.z <= 0 && j.vz < 0) { j.z = 0; j.estado = 'parado'; poeira(j.x, j.y, 4); }
@@ -467,13 +484,23 @@ function atualizarJogador(dt: number) {
 function atirarGel() {
   if (recargaGel > 0) return;
   recargaGel = 0.26;
-  jog.estado = 'golpe'; jog.combo = 0; jog.t = 0;
+  jog.estado = 'golpe'; jog.golpe = 'jab'; jog.seq = ''; jog.t = 0;
   projeteis.push({ x: jog.x + jog.dir * 30, y: jog.y, z: 58, vx: jog.dir * 330, vida: 0.6, atingidos: new Set(), tipo: 'gel' });
   sfx.golpe();
 }
 
-function golpe(n: number) {
-  jog.estado = 'golpe'; jog.combo = n; jog.t = 0; jog.janela = 0; jog.acertou = new Set();
+/** Anúncio do combo com nome ("MOINHO!"), no alto da tela. */
+let anuncio = { texto: '', vida: 0 };
+let chutes = 0;
+
+/** Golpe da sequência `seq` (1 a 3 apertos de soco/chute). */
+function golpe(seq: string, fila = '') {
+  const g = golpeDoCombo(seq);
+  Object.assign(jog, { estado: 'golpe', seq, golpe: g, t: 0, janela: 0, fila, acertou: new Set() });
+  if (g === 'voadoraRoda') jog.vz = 230;
+  if (seq.endsWith('C')) chutes++;
+  const nomeado = seq.length === 3 ? comboNomeado(seq) : null;
+  if (nomeado) anuncio = { texto: `${tri(nomeado.nome).toUpperCase()}!`, vida: 1.2 };
   sfx.golpe();
 }
 
@@ -1081,14 +1108,15 @@ function quadro(agora: number) {
   const dt = Math.min(1 / 30, (agora - anterior) / 1000);
   anterior = agora;
   // Pausado, o mundo congela: ninguém anda nem pisca atrás do menu.
-  if (modo !== 'pausa' && modo !== 'continue') relogio += dt;
+  if (modo !== 'pausa' && modo !== 'golpes' && modo !== 'continue') relogio += dt;
   lerControles();
   if (modo === 'jogo') {
     if (aperto.start) alternarPausa();
     else passo(dt);
     desenhar();
-  } else if (modo === 'pausa' || modo === 'continue') {
+  } else if (modo === 'pausa' || modo === 'golpes' || modo === 'continue') {
     if (aperto.start && modo === 'pausa') alternarPausa();
+    if (aperto.voltar && modo === 'golpes') { modo = 'pausa'; mostrar('pausa'); }
     if (modo === 'continue') atualizarContinue(dt);
     desenhar();
   } else if (modo === 'titulo') {
@@ -1104,7 +1132,7 @@ function quadro(agora: number) {
 }
 /** `?relogio` troca o requestAnimationFrame por timer: dá para testar com a aba escondida. */
 const RELOGIO_TIMER = new URLSearchParams(location.search).has('relogio');
-if (RELOGIO_TIMER) Object.assign(window, { __escNocaute: () => { if (chefe) { chefe.vida = 1; ferirChefe(5); } }, __esc: () => ({ modo, camX, ondaIdx, inimigos: inimigos.length, alvos: inimigos.map((e) => ({ x: Math.round(e.x), y: Math.round(e.y), vida: e.vida, estado: e.estado })), quebraveis: quebraveis.length, itens: itens.length, chefe: chefe && { vida: chefe.vida, acao: chefe.acao }, jog: { x: jog.x, y: jog.y, z: jog.z, vida: jog.vida, mosh: jog.mosh, estado: jog.estado, invul: jog.invul, pisca: jog.pisca } }) });
+if (RELOGIO_TIMER) Object.assign(window, { __escNocaute: () => { if (chefe) { chefe.vida = 1; ferirChefe(5); } }, __esc: () => ({ modo, camX, ondaIdx, inimigos: inimigos.length, alvos: inimigos.map((e) => ({ x: Math.round(e.x), y: Math.round(e.y), vida: e.vida, estado: e.estado })), quebraveis: quebraveis.length, itens: itens.length, chefe: chefe && { vida: chefe.vida, acao: chefe.acao }, jog: { x: jog.x, y: jog.y, z: jog.z, vida: jog.vida, mosh: jog.mosh, estado: jog.estado, invul: jog.invul, pisca: jog.pisca, seq: jog.seq, golpe: jog.golpe }, anuncio: anuncio.vida > 0 ? anuncio.texto : '' }) });
 const proximoQuadro = () => (RELOGIO_TIMER ? setTimeout(() => quadro(performance.now()), 16) : requestAnimationFrame(quadro));
 
 function passo(dt: number) {
@@ -1136,17 +1164,26 @@ type Desenhavel = { y: number; f: () => void };
 function poseDoJogador(): { s: Sprite; caido: boolean } {
   const j = jog;
   const passoAnim = (Math.floor(relogio * 9) % 4) as 0 | 1 | 2 | 3;
-  const respiro = Math.floor(relogio * 2) % 2 === 1;
   let pose: PoseLuta = 'guarda';
   let p: 0 | 1 | 2 | 3 = 0;
   switch (j.estado) {
+    case 'parado': p = (Math.floor(relogio * 5) % 4) as 0 | 1 | 2 | 3; break; // ginga
     case 'anda': pose = 'twostep'; p = passoAnim; break;
     case 'golpe': {
-      const u = j.t / (DUR_GOLPE[j.combo] / integrante(j.quem).vel ** 0.35);
-      pose = fase.distancia ? 'soco' : (['soco', 'moinho', 'giro'] as const)[j.combo];
-      if (j.combo === 0 && u > 0.85) pose = 'guarda';
-      else if (j.combo === 1) p = (u < 0.3 ? 0 : u < 0.6 ? 1 : 2) as 0 | 1 | 2;
-      else if (j.combo === 2) p = (u < 0.25 ? 0 : u < 0.45 ? 1 : u < 0.7 ? 2 : 3) as 0 | 1 | 2 | 3;
+      if (fase.distancia) { pose = 'soco'; break; }
+      const u = j.t / (GOLPES[j.golpe].dur / integrante(j.quem).vel ** 0.35);
+      const volta = u > 0.86; // recolhe para a guarda no fim
+      switch (j.golpe) {
+        case 'jab': pose = volta ? 'guarda' : 'soco'; break;
+        case 'direto': pose = volta ? 'guarda' : 'soco2'; break;
+        case 'chute': pose = 'chute'; p = u < 0.3 || volta ? 0 : 1; break;
+        case 'joelhada': pose = volta ? 'guarda' : 'joelhada'; break;
+        case 'moinho': pose = 'moinho'; p = (u < 0.3 ? 0 : u < 0.6 ? 1 : 2) as 0 | 1 | 2; break;
+        case 'giratorio': pose = 'giro'; p = (u < 0.25 ? 0 : u < 0.45 ? 1 : u < 0.7 ? 2 : 3) as 0 | 1 | 2 | 3; break;
+        case 'bicuda': pose = u < 0.3 || volta ? 'chute' : 'bicuda'; break;
+        case 'voadoraRoda': pose = 'voadora'; p = Math.min(3, Math.floor(u * 4)) as 0 | 1 | 2 | 3; break;
+        case 'gancho': pose = 'gancho'; p = u < 0.38 ? 0 : 1; break;
+      }
       break;
     }
     case 'danca': pose = 'danca'; p = (Math.floor(j.t * 6) % 4) as 0 | 1 | 2 | 3; break;
@@ -1157,7 +1194,7 @@ function poseDoJogador(): { s: Sprite; caido: boolean } {
     case 'caido': return { s: spriteIntegrante(j.quem, 'apanha', 0, false, !!fase.distancia), caido: true };
     default: break;
   }
-  return { s: spriteIntegrante(j.quem, pose, p, j.estado === 'parado' && respiro, !!fase.distancia), caido: false };
+  return { s: spriteIntegrante(j.quem, pose, p, false, !!fase.distancia), caido: false };
 }
 
 function poseDoInimigo(e: Inimigo): { s: Sprite; caido: boolean } {
@@ -1165,7 +1202,9 @@ function poseDoInimigo(e: Inimigo): { s: Sprite; caido: boolean } {
   if (e.estado === 'caido' || e.estado === 'morto') return { s: spriteInimigo(e.tipo, e.semente, 'apanha'), caido: e.tipo !== 'fantasma' };
   const pose: PoseLuta | 'tonto' = e.estado === 'prepara' ? 'guarda' : e.estado === 'golpe' ? (e.tipo === 'choque' ? 'soco2' : 'soco')
     : e.estado === 'apanha' || e.estado === 'voa' ? 'apanha' : e.estado === 'tonto' ? 'tonto' : 'guarda';
-  return { s: spriteInimigo(e.tipo, e.semente, pose, e.estado === 'anda' || e.tipo === 'virus' ? passoAnim : 0), caido: false };
+  if (e.estado === 'anda' && pose === 'guarda' && e.tipo !== 'fantasma' && e.tipo !== 'virus') return { s: spriteInimigo(e.tipo, e.semente, 'twostep', passoAnim), caido: false };
+  const ginga = (Math.floor((relogio + e.semente * 0.21) * 5) % 4) as 0 | 1 | 2 | 3;
+  return { s: spriteInimigo(e.tipo, e.semente, pose, e.tipo === 'virus' ? passoAnim : pose === 'guarda' ? ginga : 0), caido: false };
 }
 
 /** Sprite com o pé em (x, y-z), virado para `dir`; caído = deitado de costas. */
@@ -1408,6 +1447,10 @@ function desenharHud() {
     texto(String(pontos).padStart(7, '0'), LARG - 8, 20, P.branco, 8, 'right');
   }
   if (combo >= 2) texto(`${combo} HITS`, 8, 44, combo >= 10 ? P.neon_rosa : P.amarelo, 10);
+  if (anuncio.vida > 0) {
+    const pop = anuncio.vida > 1.05 ? 2 : 0; // entra um tico maior
+    texto(semAcento(anuncio.texto), LARG / 2, 56 - pop, Math.floor(anuncio.vida * 10) % 2 ? P.amarelo : P.branco, 14 + pop, 'center');
+  }
   if (chefe) {
     texto(nomeDoChefe(chefe.tipo), LARG / 2, ALT - 26, P.branco, 8, 'center');
     barra(60, ALT - 14, LARG - 120, 6, chefe.vida / chefe.max, P.neon_rosa, P.noite);
@@ -1436,9 +1479,10 @@ function desenharTituloFundo() {
 }
 
 // ─── Telas ────────────────────────────────────────────────
-const TELAS = ['titulo', 'selecao', 'mapa', 'carregando', 'pausa', 'continue', 'resultado', 'fim', 'arquivo'];
+const TELAS = ['titulo', 'selecao', 'mapa', 'carregando', 'pausa', 'golpes', 'continue', 'resultado', 'fim', 'arquivo'];
 function mostrar(id: string | null) {
   for (const t2 of TELAS) $(t2).hidden = t2 !== id;
+  app.classList.toggle('esc--menu', id !== null); // nos menus, o mudo da faixa some (a capa e a pausa têm o deles)
   ajustarTela();
 }
 
@@ -1630,7 +1674,7 @@ function bora() {
 // Carregamento: gera os sprites da fase aos poucos, com dica da banda.
 const DICAS = [
   { pt: 'Café cura. Energético cura mais e enche o MOSH.', en: 'Coffee heals. Energy drinks heal more and fill MOSH.', de: 'Kaffee heilt. Energy-Drinks heilen mehr und füllen MOSH.' },
-  { pt: 'O combo é de roda: gancho, moinho e chute giratório.', en: 'The combo is pure pit: hook, windmill and spin kick.', de: 'Die Kombo ist reiner Pit: Haken, Windmühle, Drehkick.' },
+  { pt: 'Misture soco e chute: três golpes fecham um combo. A lista está em GOLPES, na pausa.', en: 'Mix punch and kick: three hits make a combo. See MOVES in the pause menu.', de: 'Schlag und Tritt mischen: drei Treffer sind eine Kombo. Liste unter MOVES in der Pause.' },
   { pt: 'O vira-lata caramelo morde por 14 segundos. Respeita.', en: 'The caramel mutt bites for 14 seconds. Respect.', de: 'Der Karamell-Straßenhund beißt 14 Sekunden lang.' },
   { pt: 'Inimigo piscando "!" vai bater. Sai da frente.', en: 'An enemy flashing "!" is about to hit. Move.', de: 'Gegner mit "!" schlägt gleich zu. Ausweichen.' },
   { pt: 'Ninguém solta a mão de ninguém.', en: 'Nobody lets go of anyone’s hand.', de: 'Niemand lässt jemandes Hand los.' },
@@ -1643,7 +1687,9 @@ function carregar(n: number) {
   const f = FASES[n];
   const tarefas: (() => void)[] = [];
   const quem = progresso.quem;
-  for (const p of ['guarda', 'soco', 'chute', 'pulo', 'apanha', 'especial'] as const) tarefas.push(() => spriteIntegrante(quem, p));
+  for (const p of ['soco', 'soco2', 'bicuda', 'joelhada', 'pulo', 'apanha', 'especial'] as const) tarefas.push(() => spriteIntegrante(quem, p));
+  for (let k = 0; k < 4; k++) tarefas.push(() => spriteIntegrante(quem, 'guarda', k as 0 | 1 | 2 | 3));
+  for (let k = 0; k < 2; k++) { tarefas.push(() => spriteIntegrante(quem, 'chute', k as 0 | 1)); tarefas.push(() => spriteIntegrante(quem, 'gancho', k as 0 | 1)); }
   for (let k = 0; k < 4; k++) { const f = k as 0 | 1 | 2 | 3; tarefas.push(() => spriteIntegrante(quem, 'twostep', f)); tarefas.push(() => spriteIntegrante(quem, 'danca', f)); }
   const masc = !!f.distancia;
   for (let k = 0; k < 4; k++) { const fq = k as 0 | 1 | 2 | 3; tarefas.push(() => spriteIntegrante(quem, 'moinho', Math.min(2, k) as 0 | 1 | 2)); tarefas.push(() => spriteIntegrante(quem, 'giro', fq)); tarefas.push(() => spriteIntegrante(quem, 'voadora', fq)); }
@@ -1657,7 +1703,7 @@ function carregar(n: number) {
   const tipos = [...new Set(f.ondas.flatMap((o) => o.inimigos))];
   for (const tp of tipos) for (let s = 0; s < (tp === 'papelao' ? 1 : 3); s++) {
     for (const p of ['guarda', 'soco', 'apanha'] as const) tarefas.push(() => spriteInimigo(tp, s, p));
-    for (let k = 1; k < 4; k++) tarefas.push(() => spriteInimigo(tp, s, 'guarda', k as 0 | 1 | 2 | 3));
+    for (let k = 0; k < 4; k++) { tarefas.push(() => spriteInimigo(tp, s, 'guarda', k as 0 | 1 | 2 | 3)); tarefas.push(() => spriteInimigo(tp, s, 'twostep', k as 0 | 1 | 2 | 3)); }
   }
   if (f.chefe === 'algoritmo') for (let q = 0; q < 4; q++) tarefas.push(() => spritePato(q as 0 | 1 | 2 | 3));
   if (f.chefe === 'mao') { for (let q = 0; q < 3; q++) tarefas.push(() => spriteMao(q as 0 | 1 | 2)); for (const p of ['guarda', 'soco', 'apanha'] as const) tarefas.push(() => spriteInimigo('fantasma', 0, p)); }
@@ -1680,9 +1726,53 @@ function alternarPausa() {
   else if (modo === 'pausa') { modo = 'jogo'; mostrar(null); tutorial.retomar?.(); }
 }
 $('b-voltar').addEventListener('click', alternarPausa);
+
+/** Página de golpes da pausa: controles e combos, montada do dado (regras.ts). */
+const AJUDA: [Tri, Tri][] = [
+  [{ pt: 'ANDAR', en: 'MOVE', de: 'LAUFEN' }, { pt: 'Setas ou WASD · direcional', en: 'Arrows or WASD · d-pad', de: 'Pfeile oder WASD · Steuerkreuz' }],
+  [{ pt: 'SOCO', en: 'PUNCH', de: 'SCHLAG' }, { pt: 'J ou Z · botão SOCO', en: 'J or Z · PUNCH button', de: 'J oder Z · SCHLAG' }],
+  [{ pt: 'CHUTE', en: 'KICK', de: 'TRITT' }, { pt: 'U ou V · botão CHUTE', en: 'U or V · KICK button', de: 'U oder V · TRITT' }],
+  [{ pt: 'PULO', en: 'JUMP', de: 'SPRUNG' }, { pt: 'K, X ou espaço · botão PULO', en: 'K, X or space · JUMP button', de: 'K, X oder Leertaste · SPRUNG' }],
+  [{ pt: 'VOADORA', en: 'FLYING KICK', de: 'FLUGKICK' }, { pt: 'Pule e aperte soco ou chute no ar', en: 'Jump, then punch or kick in the air', de: 'Springen, dann in der Luft schlagen oder treten' }],
+  [{ pt: 'ESPECIAL', en: 'SPECIAL', de: 'SPEZIAL' }, { pt: 'Barra MOSH cheia: L ou C · botão ESP', en: 'MOSH bar full: L or C · SP button', de: 'MOSH-Balken voll: L oder C · SP' }],
+  [{ pt: 'PAUSA · SOM', en: 'PAUSE · SOUND', de: 'PAUSE · TON' }, { pt: 'Enter ou P pausa · M liga e desliga o som', en: 'Enter or P pauses · M toggles sound', de: 'Enter oder P pausiert · M schaltet den Ton' }],
+];
+function abrirGolpes() {
+  const lista = $('golpes-controles');
+  lista.innerHTML = '';
+  for (const [nome, como] of AJUDA) {
+    const li = document.createElement('li');
+    const b = document.createElement('b'); b.textContent = tri(nome);
+    const sp = document.createElement('span'); sp.textContent = tri(como);
+    li.append(b, sp);
+    lista.appendChild(li);
+  }
+  const combos = $('golpes-combos');
+  combos.innerHTML = '';
+  for (const c of COMBOS) {
+    const li = document.createElement('li');
+    const seq = document.createElement('div');
+    seq.className = 'golpes__seq';
+    for (const e of c.seq) {
+      const i = document.createElement('i');
+      if (e === 'C') i.className = 'c';
+      i.textContent = e === 'S' ? t('controles.soco') : t('controles.chute');
+      seq.appendChild(i);
+    }
+    const nome = document.createElement('em'); nome.textContent = `→ ${semAcento(tri(c.nome).toUpperCase())}`; // a fonte de pixel não tem Ó
+    seq.appendChild(nome);
+    const txt = document.createElement('span'); txt.textContent = tri(c.texto);
+    li.append(seq, txt);
+    combos.appendChild(li);
+  }
+  modo = 'golpes';
+  mostrar('golpes');
+}
+$('b-golpes').addEventListener('click', () => { sfx.menu(); abrirGolpes(); });
+$('b-golpes-voltar').addEventListener('click', () => { sfx.menu(); modo = 'pausa'; mostrar('pausa'); });
 function alternarMudo() { setMudo(!estaMudo()); gravar(JOGO, 'mudo', estaMudo()); ajustarVolume(); traduzir(); }
 $('b-som').addEventListener('click', alternarMudo);
-$('b-mudo').addEventListener('click', (ev) => { ev.stopPropagation(); alternarMudo(); (ev.currentTarget as HTMLElement).blur(); });
+document.querySelectorAll<HTMLElement>('[data-mudo]').forEach((b) => b.addEventListener('click', (ev) => { ev.stopPropagation(); alternarMudo(); b.blur(); }));
 window.addEventListener('keydown', (ev) => { if (ev.key.toLowerCase() === 'm' && !ev.repeat) alternarMudo(); });
 const controleVolume = $<HTMLInputElement>('volume');
 setVolume(ler(JOGO, 'volume', 1));

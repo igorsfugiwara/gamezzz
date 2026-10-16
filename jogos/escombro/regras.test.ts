@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   FASES, INTEGRANTES, INIMIGOS, PROGRESSO_INICIAL, acerta, liberado, concluirFase, danoDoGolpe, formatarTempo, nota, pedacosDaFita,
+  COMBOS, GOLPES, golpeDoCombo, danoDe,
 } from './regras';
 
 describe('acerto de golpe', () => {
@@ -33,6 +34,28 @@ describe('dano', () => {
     const fraco = Math.min(...INTEGRANTES.map((i) => i.forca));
     const combo = danoDoGolpe(fraco, 0, false) + danoDoGolpe(fraco, 1, false) + danoDoGolpe(fraco, 2, false);
     expect(Math.ceil(INIMIGOS.pm.vida / combo)).toBeLessThanOrEqual(2);
+  });
+});
+
+describe('combos de soco e chute', () => {
+  it('os cinco combos com nome fecham com finalizadores diferentes, todos derrubando', () => {
+    expect(COMBOS.map((c) => c.seq).sort()).toEqual(['CCC', 'CCS', 'SCC', 'SSC', 'SSS']);
+    const fins = COMBOS.map((c) => golpeDoCombo(c.seq));
+    expect(new Set(fins).size).toBe(5);
+    for (const g of fins) expect(GOLPES[g].derruba).toBe(true);
+  });
+  it('os dois primeiros golpes seguem o botão e nunca derrubam', () => {
+    expect(golpeDoCombo('S')).toBe('jab');
+    expect(golpeDoCombo('C')).toBe('chute');
+    expect(golpeDoCombo('SS')).toBe('direto');
+    expect(golpeDoCombo('CC')).toBe('joelhada');
+    for (const s of ['S', 'C', 'SS', 'SC', 'CS', 'CC']) expect(GOLPES[golpeDoCombo(s)].derruba).toBe(false);
+  });
+  it('qualquer sequência de três fecha com um finalizador', () => {
+    for (const a of 'SC') for (const b of 'SC') for (const c of 'SC') expect(GOLPES[golpeDoCombo(a + b + c)].derruba).toBe(true);
+  });
+  it('o finalizador bate mais que o jab', () => {
+    expect(danoDe(1, 'giratorio')).toBeGreaterThan(danoDe(1, 'jab'));
   });
 });
 

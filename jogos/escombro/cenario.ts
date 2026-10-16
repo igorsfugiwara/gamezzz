@@ -42,6 +42,60 @@ function ret(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: nu
   g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
 }
 
+/** Disco em pixel duro (lua, farol): sem antialias, borda limpa. */
+function disco(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, cor: string) {
+  g.fillStyle = cor;
+  for (let y = -r; y <= r; y++) {
+    const w = Math.round(Math.sqrt(r * r - y * y + r * 0.6));
+    g.fillRect(Math.round(cx - w), Math.round(cy + y), w * 2, 1);
+  }
+}
+
+/**
+ * Lambe-lambe do "Cicatrizes" (2020): quadrado preto com o coração branco
+ * enrolado em arame farpado, pingando, e o nome em arco por cima.
+ */
+const CORACAO = [
+  '..XXX...XXX..',
+  '.XXXXX.XXXXX.',
+  'XXXXXXXXXXXXX',
+  'XXXXXXXXXXXXX',
+  'XXXXXXXXXXXXX',
+  '.XXXXXXXXXXX.',
+  '..XXXXXXXXX..',
+  '...XXXXXXX...',
+  '....XXXXX....',
+  '.....XXX.....',
+  '......X......',
+];
+function capaCicatrizes(g: CanvasRenderingContext2D, x: number, y: number, rasgado = false) {
+  const L = 34;
+  ret(g, x - 1, y - 1, L + 2, L + 2, '#d9d4c7'); // cola/papel aparecendo na borda
+  ret(g, x, y, L, L, '#141216');
+  // Plástico do vinil: reflexos diagonais bem apagados.
+  g.fillStyle = '#262329';
+  for (let i = 0; i < L; i++) { if (i % 9 < 2) g.fillRect(x + i, y + Math.floor(i * 0.6), 1, 1); if (i % 7 === 0) g.fillRect(x + L - 1 - i, y + 2 + Math.floor(i * 0.3), 1, 1); }
+  // "escombro" e "CICATRIZES" em arco: pontinhos claros (lidos de longe como letreiro).
+  g.fillStyle = '#9c98a8';
+  for (let i = 0; i < 8; i++) g.fillRect(x + 13 + i, y + 5, 1, 1);
+  g.fillStyle = '#e9e4d6';
+  for (let i = 0; i < 20; i++) {
+    const a = Math.PI * (0.15 + 0.7 * (i / 19));
+    if (i % 2 === 0 || i % 5 === 1) g.fillRect(Math.round(x + 17 - Math.cos(a) * 12), Math.round(y + 15 - Math.sin(a) * 7), 1, 1 + (i % 3 === 0 ? 1 : 0));
+  }
+  // Coração.
+  const hx = x + 11, hy = y + 14;
+  CORACAO.forEach((linha, j) => { for (let i = 0; i < linha.length; i++) if (linha[i] === 'X') ret(g, hx + i, hy + j, 1, 1, j < 2 && i > 7 ? '#ffffff' : j > 6 ? '#c9c4d0' : '#f2efe8'); });
+  // Arame farpado atravessando, com as farpas.
+  g.fillStyle = '#5a5662';
+  for (let i = -2; i < 16; i++) { g.fillRect(hx + i, hy + 3 + Math.floor(i * 0.45), 1, 1); g.fillRect(hx + 14 - i, hy + 5 + Math.floor(i * 0.3), 1, 1); }
+  for (const [fx, fy] of [[2, 4], [8, 7], [12, 7], [4, 8]]) { g.fillRect(hx + fx - 1, hy + fy - 1, 1, 1); g.fillRect(hx + fx + 1, hy + fy + 1, 1, 1); g.fillRect(hx + fx + 1, hy + fy - 1, 1, 1); }
+  // Pingos.
+  ret(g, hx + 4, hy + 11, 1, 3, '#f2efe8'); ret(g, hx + 9, hy + 10, 1, 2, '#f2efe8'); ret(g, hx + 9, hy + 13, 1, 1, '#f2efe8');
+  ret(g, x + L - 6, y + L - 6, 4, 4, '#e9e4d6'); // selo da gravadora
+  if (rasgado) { g.fillStyle = '#d9d4c7'; for (let j = 0; j < 7; j++) g.fillRect(x + L - 7 + j, y, 7 - j, 1); } // canto descolando
+}
+
 /** Faixas de cor com pontilhado entre elas (degradê de SNES, sem borrão). */
 function faixas(g: CanvasRenderingContext2D, w: number, y0: number, y1: number, cores: string[]) {
   const n = cores.length;
@@ -389,7 +443,8 @@ function pandemia(): Palco {
     for (let j = 114; j < 172; j += 3) ret(gm, x + 8, j, 100, 1, '#4a5660'); // porta de enrolar
     textoPixel(gm, 'FECHADO', x + 26, 140, 12, P.vermelho, 'bold', 0, P.branco);
   }
-  for (const x of [80, 440, 800]) { ret(gm, x, 104, 34, 44, P.papel); ret(gm, x + 3, 108, 28, 24, '#2b2838'); textoPixel(gm, 'CICATRIZES', x - 2, 134, 8, P.preto); } // lambe do lançamento
+  // Lambe-lambe do lançamento: a capa do "Cicatrizes", em dupla e trio, como colam na rua.
+  for (const [x, y, n] of [[60, 104, 2], [430, 102, 3], [790, 106, 2]] as const) for (let k = 0; k < n; k++) capaCicatrizes(gm, x + k * 37, y + (k % 2), k === n - 1);
   pixo(gm, 'VACINA JÁ', 200, 100, 14, P.neon_verde, rnd);
   pixo(gm, 'HARDCORE POR UM MUNDO MAIS DIGNO', 500, 82, 12, P.amarelo, rnd);
   tresSetas(gm, 380, 90, 13, P.branco);
@@ -411,7 +466,7 @@ function ensaio(): Palco {
   for (let j = 10; j < 160; j += 8) for (let i = ((j / 8) % 2) * 8; i < LARG; i += 16) { ret(g, i, j, 8, 8, '#353148'); ret(g, i + 2, j + 2, 4, 4, '#3d3852'); } // espuma caixa de ovo
   ret(g, 16, 12, 214, 22, P.preto); textoPixel(g, 'ESTÚDIO DO DENÃO · IPIRANGA', 22, 15, 11, P.amarelo);
   ret(g, 408, 12, 58, 24, P.preto); textoPixel(g, '04:00', 414, 14, 15, P.vermelho);
-  ret(g, 250, 14, 60, 40, '#0b0f24'); ret(g, 279, 14, 2, 40, '#4a4657'); ret(g, 250, 33, 60, 2, '#4a4657'); ret(g, 262, 20, 2, 2, P.amarelo); // ainda é noite
+  ret(g, 250, 14, 60, 40, '#0b0f24'); ret(g, 279, 14, 2, 40, '#4a4657'); ret(g, 250, 33, 60, 2, '#4a4657'); disco(g, 264, 22, 5, '#f2e6a6'); disco(g, 267, 20, 4, '#0b0f24'); // ainda é noite: lua minguante
   for (const [x, cor] of [[40, P.vermelho], [130, P.amarelo]] as const) { ret(g, x, 46, 44, 54, '#d9d4c7'); ret(g, x + 4, 50, 36, 26, cor); textoPixel(g, 'HC', x + 10, 80, 14, P.preto); }
   antifa(g, 400, 76, 16);
   ret(g, 220, 90, 120, 80, '#1b1726'); // bateria ao fundo

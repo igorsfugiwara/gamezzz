@@ -320,6 +320,69 @@ export function danoDoGolpe(forca: number, n: number, noAr: boolean): number {
   return Math.round((n === 2 ? 13 : 7) * forca);
 }
 
+// ─── Combos: soco (S) e chute (C) ─────────────────────────
+
+/** Botão de ataque: soco ou chute. */
+export type Entrada = 'S' | 'C';
+
+/**
+ * Cada golpe do combo. Os dois primeiros saem do botão apertado; o terceiro
+ * (finalizador, derruba) depende da sequência inteira.
+ */
+export type Golpe = 'jab' | 'direto' | 'chute' | 'joelhada' | 'moinho' | 'giratorio' | 'bicuda' | 'voadoraRoda' | 'gancho';
+
+export interface FichaGolpe {
+  /** Duração em segundos (antes da velocidade de quem bate). */
+  dur: number;
+  /** Fração da duração em que o golpe pega. */
+  ativo: readonly [number, number];
+  /** Alcance extra além do braço (px). */
+  alcance: number;
+  /** Peso no dano: 1 = jab, 2 = finalizador. */
+  peso: number;
+  derruba: boolean;
+}
+
+export const GOLPES: Record<Golpe, FichaGolpe> = {
+  jab: { dur: 0.22, ativo: [0.35, 0.75], alcance: 4, peso: 1, derruba: false },
+  direto: { dur: 0.26, ativo: [0.35, 0.75], alcance: 8, peso: 1.1, derruba: false },
+  chute: { dur: 0.3, ativo: [0.4, 0.8], alcance: 14, peso: 1.15, derruba: false },
+  joelhada: { dur: 0.28, ativo: [0.35, 0.75], alcance: 2, peso: 1.2, derruba: false },
+  moinho: { dur: 0.4, ativo: [0.5, 0.88], alcance: 10, peso: 1.85, derruba: true },
+  giratorio: { dur: 0.46, ativo: [0.62, 0.92], alcance: 18, peso: 1.9, derruba: true },
+  bicuda: { dur: 0.4, ativo: [0.45, 0.85], alcance: 20, peso: 1.85, derruba: true },
+  voadoraRoda: { dur: 0.5, ativo: [0.35, 0.85], alcance: 16, peso: 2, derruba: true },
+  gancho: { dur: 0.36, ativo: [0.4, 0.8], alcance: 4, peso: 1.95, derruba: true },
+};
+
+/** Os combos com nome (aparecem na tela e na página de golpes da pausa). */
+export const COMBOS: readonly { seq: string; golpe: Golpe; nome: Tri; texto: Tri }[] = [
+  { seq: 'SSS', golpe: 'moinho', nome: { pt: 'Moinho', en: 'Windmill', de: 'Windmühle' }, texto: { pt: 'Jab, direto e moinho de braço.', en: 'Jab, cross and windmill.', de: 'Jab, Gerade und Windmühle.' } },
+  { seq: 'CCC', golpe: 'giratorio', nome: { pt: 'Giratório', en: 'Spin kick', de: 'Drehkick' }, texto: { pt: 'Chute, joelhada e chute giratório.', en: 'Kick, knee and spinning kick.', de: 'Kick, Knie und Drehkick.' } },
+  { seq: 'SSC', golpe: 'bicuda', nome: { pt: 'Bicuda', en: 'High kick', de: 'Hoher Tritt' }, texto: { pt: 'Dois socos e um chute alto na cara.', en: 'Two punches, then a high kick.', de: 'Zwei Schläge, dann ein hoher Tritt.' } },
+  { seq: 'SCC', golpe: 'voadoraRoda', nome: { pt: 'Voadora de roda', en: 'Pit flying kick', de: 'Pit-Flugkick' }, texto: { pt: 'Soco, chute e uma voadora girando.', en: 'Punch, kick and a spinning flying kick.', de: 'Schlag, Kick und ein Dreh-Flugkick.' } },
+  { seq: 'CCS', golpe: 'gancho', nome: { pt: 'Gancho', en: 'Uppercut', de: 'Aufwärtshaken' }, texto: { pt: 'Dois chutes e um gancho de baixo pra cima.', en: 'Two kicks and an uppercut.', de: 'Zwei Kicks und ein Aufwärtshaken.' } },
+];
+
+/** Golpe que sai de uma sequência (1 a 3 entradas). */
+export function golpeDoCombo(seq: string): Golpe {
+  const ultima = seq[seq.length - 1] as Entrada;
+  if (seq.length === 1) return ultima === 'S' ? 'jab' : 'chute';
+  if (seq.length === 2) return ultima === 'S' ? (seq[0] === 'S' ? 'direto' : 'jab') : (seq[0] === 'C' ? 'joelhada' : 'chute');
+  const nomeado = COMBOS.find((c) => c.seq === seq);
+  if (nomeado) return nomeado.golpe;
+  // As misturas sem nome (SCS, CSC, CSS) fecham pelo último botão.
+  return ultima === 'S' ? 'moinho' : 'bicuda';
+}
+
+/** Combo com nome dessa sequência de três, se houver. */
+export const comboNomeado = (seq: string) => COMBOS.find((c) => c.seq === seq) ?? null;
+
+/** Dano de um golpe do combo, pela força de quem bate. */
+export function danoDe(forca: number, g: Golpe): number {
+  return Math.round(7 * GOLPES[g].peso * forca);
+}
+
 export const MOSH_POR_ACERTO = 6;
 export const MOSH_POR_KO = 10;
 export const VIDA_JOGADOR = 100;

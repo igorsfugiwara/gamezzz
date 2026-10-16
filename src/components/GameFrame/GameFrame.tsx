@@ -11,6 +11,26 @@ interface GameFrameProps {
 export default function GameFrame({ src, title }: GameFrameProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Celular em pé: o quadro vai do lugar onde começa até o pé da tela visível
+  // (100svh, com a barra do navegador aparecendo). Assim o jogo cabe inteiro
+  // entre a navbar do site e a barra do sistema, sem precisar rolar.
+  useEffect(() => {
+    const ajustar = () => {
+      const c = containerRef.current;
+      if (!c) return;
+      const topo = c.getBoundingClientRect().top + window.scrollY;
+      c.style.setProperty('--frame-topo', `${Math.round(topo)}px`);
+    };
+    ajustar();
+    window.addEventListener('orientationchange', ajustar);
+    window.addEventListener('resize', ajustar);
+    return () => {
+      window.removeEventListener('orientationchange', ajustar);
+      window.removeEventListener('resize', ajustar);
+    };
+  }, []);
 
   // Modo imersivo por CSS: o iframe vira `position: fixed; inset: 0`.
   // É o fallback obrigatório — o Safari do iPhone não implementa
@@ -92,7 +112,7 @@ export default function GameFrame({ src, title }: GameFrameProps) {
           )}
         </button>
       </div>
-      <div className={styles.container}>
+      <div ref={containerRef} className={styles.container}>
         <iframe
           ref={iframeRef}
           src={url}

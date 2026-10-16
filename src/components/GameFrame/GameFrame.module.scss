@@ -85,9 +85,11 @@
     aspect-ratio: auto;
     max-height: none;
     min-height: 0;
-    height: 78svh;
     /* Navegador sem `svh` (Safari < 15.4) cai aqui e ainda fica utilizável. */
-    height: max(78svh, 420px);
+    height: max(78vh, 420px);
+    /* Do topo do quadro (medido no GameFrame) até o pé da tela visível, com
+       um respiro de 8px: cabe entre a navbar e a barra do navegador/sistema. */
+    height: max(calc(100svh - var(--frame-topo, 12.5rem) - 8px), 420px);
   }
 }
 

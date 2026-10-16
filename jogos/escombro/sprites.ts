@@ -71,7 +71,7 @@ export function spriteDenao(quadro: 0 | 1): Sprite {
  * two-step para andar, pulo de pé alto e voadora; mais apanhar, especial e a
  * dança da vitória.
  */
-export type PoseLuta = 'guarda' | 'twostep' | 'soco' | 'soco2' | 'moinho' | 'giro' | 'chute' | 'voadora' | 'pulo' | 'apanha' | 'especial' | 'danca';
+export type PoseLuta = 'guarda' | 'twostep' | 'soco' | 'soco2' | 'moinho' | 'giro' | 'chute' | 'bicuda' | 'joelhada' | 'gancho' | 'voadora' | 'pulo' | 'apanha' | 'especial' | 'danca';
 
 /** Jazz Bass sunburst no Igor, Telecaster butterscotch no Renato. */
 const INSTRUMENTO: Partial<Record<Quem, Boneco['instrumento']>> = {
@@ -87,7 +87,15 @@ function poseDoEspecial(quem: Quem): Partial<Boneco> {
 }
 
 /** Pose de luta → pose do boneco (para inimigos e chefes, que não dançam nem têm especial). */
-const poseFigura = (p: PoseLuta): Pose => (p === 'danca' ? 'maos' : p === 'especial' ? 'guarda' : p);
+const poseFigura = (p: PoseLuta): Pose => (p === 'danca' ? 'maos' : p === 'especial' ? 'guarda' : p === 'bicuda' ? 'chute' : p);
+/** Pose de luta + quadro → campos do boneco (guarda quica na ginga, chute arma e estica...). */
+function quadroDaPose(p: PoseLuta, f: 0 | 1 | 2 | 3): Partial<Boneco> {
+  if (p === 'guarda') return { pose: 'guarda', ginga: f };
+  if (p === 'chute') return { pose: 'chute', golpe: f === 0 ? 0 : 1 };
+  if (p === 'bicuda') return { pose: 'chute', golpe: 2 };
+  if (p === 'gancho') return { pose: 'gancho', golpe: f === 0 ? 0 : 1 };
+  return { pose: poseFigura(p), passo: f, grito: p === 'apanha' };
+}
 
 /** Giro do corpo em cada quadro do chute giratório: de costas, de lado e o chute de frente. */
 const GIRO_CHUTE = [Math.PI, Math.PI * 1.5, 0.25, 0];
@@ -103,8 +111,7 @@ export function spriteIntegrante(quem: Quem, pose: PoseLuta, f: 0 | 1 | 2 | 3 = 
         : pose === 'moinho' ? { pose, golpe: Math.min(2, f) as 0 | 1 | 2 }
           : pose === 'giro' ? { pose, giro: GIRO_LUTA + GIRO_CHUTE[f] }
             : pose === 'voadora' ? { pose, giro: GIRO_LUTA + VOADORA[f].g, anguloChute: VOADORA[f].a, grito: true }
-              : pose === 'chute' ? { pose, golpe: (f === 0 ? 0 : 1) as 0 | 1 }
-            : { pose, passo: f, grito: pose === 'apanha' }),
+              : quadroDaPose(pose, f)),
   }));
 }
 
@@ -166,7 +173,7 @@ export function spriteInimigo(tipo: TipoInimigo, semente: number, pose: PoseLuta
   const s = semente % 6;
   return emCache(`esc-ini-${tipo}-${s}-${pose}-${passo}`, () => bonecoHD({
     ...visualInimigo(tipo, s), giro: GIRO_LUTA,
-    ...(pose === 'tonto' ? { pose: 'apanha', tonto: true } : { pose: poseFigura(pose), passo }),
+    ...(pose === 'tonto' ? { pose: 'apanha', tonto: true } : quadroDaPose(pose, passo)),
   }));
 }
 
@@ -202,7 +209,7 @@ export function spriteTecnico(pose: PoseLuta | 'tonto' | 'microfone', passo: 0 |
     pele: bravo ? [P.pessego, P.caramelo, P.vermelho] : TONS.pele.clara, cabelo: TONS.cabelo.loiro,
     roupa: bravo ? TONS.roupa.vermelha : [P.pastel_rosa, P.neon_rosa, P.vinho], calca: [P.pastel_creme, P.caramelo_claro, P.caramelo],
     estilo: 'topete', fones: true, oculos: !bravo, tenis: true, escala: 1.45, giro: GIRO_LUTA, grito: bravo,
-    ...(pose === 'tonto' ? { pose: 'apanha', tonto: true } : pose === 'microfone' ? { pose: 'microfone', grito: true } : { pose: poseFigura(pose), passo }),
+    ...(pose === 'tonto' ? { pose: 'apanha', tonto: true } : pose === 'microfone' ? { pose: 'microfone', grito: true } : quadroDaPose(pose, passo)),
   }));
 }
 
@@ -216,7 +223,7 @@ export function spritePequenoPoder(pose: PoseLuta | 'tonto', passo: 0 | 1 | 2 | 
     pele: bravo ? [P.pessego, P.caramelo, P.vermelho] : TONS.pele.clara, cabelo: TONS.cabelo.preto,
     roupa: [P.laranja, P.vermelho, P.vinho], calca: FARDA_GCM, estilo: 'quepe', cobertura: [P.concreto, P.asfalto, P.noite],
     protecoes: true, colete: false, mangaLonga: true, oculos: !bravo, grito: bravo, arma: 'cassetete', escala: 1.15, giro: GIRO_LUTA,
-    ...(pose === 'tonto' ? { pose: 'apanha', tonto: true } : { pose: poseFigura(pose as PoseLuta), passo }),
+    ...(pose === 'tonto' ? { pose: 'apanha', tonto: true } : quadroDaPose(pose as PoseLuta, passo)),
   }));
 }
 

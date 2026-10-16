@@ -43,7 +43,17 @@ function aplicarSaida() {
 export function setVolume(v: number): void { volume = Math.max(0, Math.min(1, v)); aplicarSaida(); }
 export function volumeGeral(): number { return volume; }
 
-export function setMudo(valor: boolean): void { mudo = valor; aplicarSaida(); }
+/**
+ * Mudo de verdade: zera a saída e ainda suspende o contexto (no iPhone, só
+ * baixar o ganho às vezes não basta com a trilha tocando).
+ */
+export function setMudo(valor: boolean): void {
+  mudo = valor;
+  aplicarSaida();
+  if (!contexto) return;
+  if (mudo) void contexto.suspend().catch(() => {});
+  else void contexto.resume().catch(() => {});
+}
 export function estaMudo(): boolean { return mudo; }
 
 /** Uma nota curta. `freq` em Hz. */
