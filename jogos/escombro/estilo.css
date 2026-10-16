@@ -192,6 +192,7 @@
 .botao--leve { background: none; box-shadow: none; }
 .botao:active { transform: translateY(3px); box-shadow: 0 1px 0 #0d0b14; }
 .botao[hidden] { display: none; }
+.botao:disabled { opacity: 0.45; box-shadow: none; }
 .linha-botoes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .titulo-menu { margin: 0; font-size: clamp(12px, 3.6vw, 18px); color: var(--obra); text-shadow: 2px 2px 0 var(--sangue); }
 
@@ -220,6 +221,8 @@
 .gb-barra i { display: block; height: 100%; width: 0; background: var(--gb1); }
 .botao--gb { background: var(--gb2); color: var(--gb0); border-color: var(--gb0); box-shadow: 0 4px 0 var(--gb1); }
 .botao--gb.botao--forte { background: var(--gb1); color: var(--gb3); }
+/* Setas do mapa: grandes o bastante para o dedo e para o olho. */
+#b-mapa-esq, #b-mapa-dir { min-width: 64px; font-family: system-ui, sans-serif; font-size: 22px; line-height: 1; }
 
 /* Seleção em tela baixa ou estreita (celular): retrato e ficha lado a lado, rostos numa fileira. */
 @media (max-height: 760px), (max-width: 480px) {

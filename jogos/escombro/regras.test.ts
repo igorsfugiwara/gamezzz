@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   FASES, INTEGRANTES, INIMIGOS, PROGRESSO_INICIAL, acerta, liberado, concluirFase, danoDoGolpe, formatarTempo, nota, pedacosDaFita,
-  COMBOS, GOLPES, golpeDoCombo, danoDe,
+  COMBOS, GOLPES, golpeDoCombo, danoDe, novoJogo,
 } from './regras';
 
 describe('acerto de golpe', () => {
@@ -84,6 +84,16 @@ describe('progresso', () => {
     expect(pedacosDaFita(p)).toBe(1);
     const pior = concluirFase(p, 1, { nota: 'C', tempo: 300, pontos: 100 });
     expect(pior.melhores[1].pontos).toBe(5000);
+  });
+  it('novo jogo zera as fases mas guarda o arquivo e os integrantes destravados', () => {
+    let p = concluirFase(PROGRESSO_INICIAL, 1, { nota: 'S', tempo: 90, pontos: 9000 });
+    p = { ...p, zerou: true };
+    const n = novoJogo(p);
+    expect(n.liberada).toBe(0);
+    expect(n.melhores).toEqual({});
+    expect(pedacosDaFita(n)).toBe(0);
+    expect(n.arquivo).toEqual(p.arquivo);
+    for (const i of INTEGRANTES) expect(liberado(i, n)).toBe(liberado(i, p));
   });
   it('o Felipeles sai com um S', () => {
     const felipe = INTEGRANTES.find((i) => i.id === 'felipeles')!;

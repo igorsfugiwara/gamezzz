@@ -295,7 +295,7 @@ export const ITENS: Record<TipoItem, { vida: number; mosh: number }> = {
 export function liberado(i: Integrante, p: Progresso): boolean {
   if (!i.secreto) return true;
   if (i.secreto === 'zerar') return p.zerou;
-  return Object.values(p.melhores).some((m) => m.nota === 'S');
+  return !!p.tirouS || Object.values(p.melhores).some((m) => m.nota === 'S');
 }
 
 // ─── Combate ──────────────────────────────────────────────
@@ -417,6 +417,8 @@ export interface Progresso {
   quem: Quem;
   melhores: Record<number, { nota: Nota; tempo: number; pontos: number }>;
   arquivo: number[];
+  /** Já tirou S alguma vez (libera o Felipeles; sobrevive ao "novo jogo"). */
+  tirouS?: boolean;
 }
 
 export const PROGRESSO_INICIAL: Progresso = { liberada: 0, zerou: false, quem: 'igor', melhores: {}, arquivo: [] };
@@ -430,8 +432,23 @@ export function concluirFase(p: Progresso, n: number, r: { nota: Nota; tempo: nu
     ...p,
     liberada: Math.max(p.liberada, Math.min(ultima, n + 1)),
     zerou: p.zerou || n === ultima,
+    tirouS: !!p.tirouS || r.nota === 'S',
     melhores: { ...p.melhores, [n]: melhor },
     arquivo: FASES[n].arquivo && !p.arquivo.includes(n) ? [...p.arquivo, n] : p.arquivo,
+  };
+}
+
+/**
+ * Novo jogo: as fases voltam a travar e as notas somem; o arquivo liberado e
+ * os integrantes destravados (Duxxo, Felipeles) continuam.
+ */
+export function novoJogo(p: Progresso): Progresso {
+  return {
+    ...PROGRESSO_INICIAL,
+    quem: p.quem,
+    arquivo: [...p.arquivo],
+    zerou: p.zerou,
+    tirouS: !!p.tirouS || Object.values(p.melhores).some((m) => m.nota === 'S'),
   };
 }
 

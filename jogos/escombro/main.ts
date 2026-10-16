@@ -20,7 +20,7 @@ import {
   INTEGRANTES, INIMIGOS, FASES, ITENS, CHAO, PROGRESSO_INICIAL, VIDA_JOGADOR, MOSH_POR_ACERTO, MOSH_POR_KO,
   integrante, acerta, danoDoGolpe, danoDe, golpeDoCombo, comboNomeado, GOLPES, COMBOS, nota as notaDaFase, concluirFase, pedacosDaFita, formatarTempo,
   type Quem, type TipoInimigo, type TipoItem, type TipoQuebravel, type Fase, type Progresso, type Nota, type Chefe as TipoChefe,
-  PEDACOS_DA_FITA, liberado, type Golpe, type Entrada,
+  PEDACOS_DA_FITA, liberado, novoJogo, type Golpe, type Entrada,
 } from './regras';
 import {
   spriteIntegrante, retratoIntegrante, rostoIntegrante, spriteInimigo, spriteTecnico, spritePato, spriteMao,
@@ -1522,7 +1522,14 @@ function apertouStart() {
   (($('b-continuar').hidden ? $('b-novo') : $('b-continuar')) as HTMLButtonElement).focus();
 }
 $('b-start').addEventListener('click', apertouStart);
-$('b-novo').addEventListener('click', () => { sfx.confirma(); abrirMapa(0); });
+$('b-novo').addEventListener('click', () => {
+  const temProgresso = progresso.liberada > 0 || Object.keys(progresso.melhores).length > 0;
+  if (temProgresso && !confirm(t('titulo.novoConfirma'))) return;
+  sfx.confirma();
+  progresso = novoJogo(progresso);
+  salvarProgresso();
+  abrirMapa(0);
+});
 $('b-continuar').addEventListener('click', () => { sfx.confirma(); abrirMapa(progresso.liberada); });
 $('b-arquivo').addEventListener('click', () => abrirArquivo());
 
@@ -1632,7 +1639,9 @@ function abrirMapa(n: number) {
 function atualizarLegenda() {
   const f = FASES[noMapa];
   const melhor = progresso.melhores[noMapa];
-  $('mapa-legenda').textContent = `${f.n === 0 ? '' : `${f.n} · `}${f.ano} · ${tri(f.nome).toUpperCase()}${melhor && f.n > 0 ? ` · ${melhor.nota}` : ''}`;
+  const travada = noMapa > progresso.liberada;
+  $('mapa-legenda').textContent = `${f.n === 0 ? '' : `${f.n} · `}${f.ano} · ${tri(f.nome).toUpperCase()}${melhor && f.n > 0 ? ` · ${melhor.nota}` : ''}${travada ? ` — ${t('mapa.travada')}` : ''}`;
+  $<HTMLButtonElement>('b-bora').disabled = travada;
 }
 let mapaTrava = 0;
 function navegarMapa() {
@@ -1641,8 +1650,9 @@ function navegarMapa() {
   if (ctrl.x && mapaTrava <= 0) moverMapa(ctrl.x);
   if (aperto.soco || aperto.start) bora();
 }
+/** As setas passam por todas as fases; as travadas aparecem, mas não dá para entrar. */
 function moverMapa(d: number) {
-  const novo = clamp(noMapa + d, 0, progresso.liberada);
+  const novo = clamp(noMapa + d, 0, FASES.length - 1);
   if (novo !== noMapa) { noMapa = novo; sfx.menu(); atualizarLegenda(); }
   mapaTrava = 0.25;
 }
@@ -1687,6 +1697,7 @@ function desenharMapa() {
 }
 function bora() {
   if (modo !== 'mapa') return;
+  if (noMapa > progresso.liberada) { sfx.dano(); return; }
   sfx.confirma();
   abrirSelecao(noMapa);
 }
