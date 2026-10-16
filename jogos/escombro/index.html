@@ -11,6 +11,7 @@
     <div class="palco" id="palco">
       <canvas id="tela" class="pixel tela" width="480" height="270"></canvas>
       <p class="cartao" id="cartao" hidden aria-live="polite"></p>
+      <button class="mudo" id="b-mudo" aria-label="Som" aria-pressed="false"></button>
     </div>
 
     <!-- Controles de toque -->
@@ -56,7 +57,10 @@
         </div>
       </div>
       <div class="fileira" id="fileira"></div>
-      <button class="botao botao--forte" id="b-escolher" data-t="sel.ok"></button>
+      <div class="linha-botoes">
+        <button class="botao botao--leve" id="b-sel-voltar" data-t="menu.voltar"></button>
+        <button class="botao botao--forte" id="b-escolher" data-t="sel.ok"></button>
+      </div>
     </section>
 
     <!-- Mapa (Game Boy) -->
@@ -68,6 +72,7 @@
         <button class="botao botao--gb botao--forte" id="b-bora" data-t="mapa.ir"></button>
         <button class="botao botao--gb" id="b-mapa-dir">▶</button>
       </div>
+      <button class="botao botao--gb botao--leve" id="b-mapa-voltar" data-t="menu.voltar"></button>
     </section>
 
     <!-- Carregando (Game Boy) -->
@@ -82,6 +87,7 @@
       <h2 class="titulo-menu" data-t="jogo.pausa"></h2>
       <button class="botao botao--forte" id="b-voltar" data-t="jogo.voltar"></button>
       <button class="botao" id="b-som"></button>
+      <label class="volume"><span data-t="jogo.volume"></span><input type="range" id="volume" min="0" max="100" step="5" /></label>
       <button class="botao" id="b-flash"></button>
       <button class="botao botao--leve" id="b-sair" data-t="jogo.sair"></button>
     </section>

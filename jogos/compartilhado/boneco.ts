@@ -112,6 +112,14 @@ export interface Boneco {
   tatuagemCabeca?: boolean;
   /** Máscara cirúrgica (pandemia). */
   mascara?: boolean;
+  /** Camiseta por fora da calça: sem cinto, barra cobrindo o quadril. */
+  camisaPraFora?: boolean;
+  /** Magrelo: braço e tronco mais finos. */
+  magro?: boolean;
+  /** Cor da íris (padrão: preto). */
+  olhos?: string;
+  /** Sobrancelha reta, sem a cara de bravo. */
+  sobrancelhaCalma?: boolean;
   /** Regata: sem manga, ombro de fora. */
   regata?: boolean;
   /** Manga comprida da farda (sem ser jaqueta). */

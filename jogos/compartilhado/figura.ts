@@ -184,6 +184,31 @@ export class Estudio {
     }
   }
 
+  /**
+   * Decalque: uma figura 2D (função cor(u, v)) colada num plano do corpo, com
+   * origem `o` e eixos `eu`, `ev`. Cada cor vira um material plano: sai na tela
+   * exatamente como foi desenhada (pixel art), com contorno e linha interna.
+   */
+  plano(o: V3, eu: V3, ev: V3, u0: number, u1: number, v0: number, v1: number, cor: (u: number, v: number) => string | null, parte: number) {
+    const passo = 0.35 / this.k;
+    for (let u = u0; u <= u1; u += passo) for (let v = v0; v <= v1; v += passo) {
+      const c = cor(u, v);
+      if (!c) continue;
+      const [x, y, z] = this.pt([o[0] + u * eu[0] + v * ev[0], o[1] + u * eu[1] + v * ev[1], o[2] + u * eu[2] + v * ev[2]]);
+      const xi = Math.floor(x), yi = Math.floor(y);
+      if (xi < 1 || yi < 1 || xi >= this.w - 1 || yi >= this.h - 1) continue;
+      const i = yi * this.w + xi;
+      if (z <= this.z[i]) continue;
+      let m = Estudio.chapas.get(c);
+      if (!m) { m = mat([c, c, c, c, mistura(c, FRIO, 0.4)], 0); Estudio.chapas.set(c, m); }
+      this.z[i] = z; this.mat[i] = m; this.parte[i] = parte; this.tom[i] = 2;
+      const dx = x - this.cx;
+      this.lx[i] = (dx * this.c - z * this.s) / this.k;
+      this.lz[i] = (dx * this.s + z * this.c) / this.k;
+    }
+  }
+  private static chapas = new Map<string, Material>();
+
   /** Cápsula entre dois pontos do corpo, raio afinando de ra a rb; `kz` < 1 achata. */
   capsula(aC: V3, bC: V3, ra: number, rb: number, m: Material, parte: number, kz = 1, corte?: (x: number, y: number) => boolean) {
     const a = this.pt(aC), b = this.pt(bC);
@@ -322,7 +347,7 @@ export function figura(b: Boneco): Grade {
   const k = b.escala ?? 1;
   // Com Telecaster/Jazz Bass, o braço do instrumento passa da largura do boneco: a tela cresce para a direita.
   const golpeLongo = b.pose === 'soco' || b.pose === 'soco2' || b.pose === 'chute' || b.pose === 'giro' || b.pose === 'voadora';
-  const extra = b.instrumento?.tipo === 'telecaster' || b.instrumento?.tipo === 'jazzbass' ? 34 : golpeLongo ? 18 : 0;
+  const extra = b.instrumento?.tipo === 'telecaster' || b.instrumento?.tipo === 'jazzbass' ? 46 : golpeLongo ? 18 : 0;
   const e = new Estudio(b.giro ?? 0.55, Math.ceil((W + extra) * k), Math.ceil(H * k), CX * k, k);
   const q = b.quadro ?? 0;
   const bang = [0, 2, 5, 2][q];
@@ -339,7 +364,7 @@ export function figura(b: Boneco): Grade {
   /** Instrumento clássico (Telecaster, Jazz Bass) em vez do Flying V do DIY. */
   const classico = b.instrumento?.tipo === 'telecaster' || b.instrumento?.tipo === 'jazzbass';
   /** Profundidade do instrumento: na frente da barriga de quem é grande. */
-  const zi = 10 + gor * 4.5 + (b.largo ? 1.5 : 0);
+  const zi = 11.5 + gor * 4.5 + (b.largo ? 1.5 : 0);
 
   const pele = mat(rampa(b.pele, SANGUE), 0.35);
   const cabelo = mat(rampa(b.cabelo), 0.55, true);
@@ -358,9 +383,9 @@ export function figura(b: Boneco): Grade {
   const hz = avanco + (apanha ? -3.5 : pose === 'soco' || pose === 'soco2' ? 2.5 : pulo ? 8 : 0);
   /** Tronco inclinado para a frente (pulo) ou para trás (chute). */
   const incl = pulo ? 5 : pose === 'chute' || pose === 'voadora' ? -2 : 0;
-  const mus = b.musculoso ? 1 : 0;
+  const mus = b.musculoso ? 1 : b.magro ? -0.8 : 0;
   const folga = b.folgado ? 1 : 0;
-  const ey = hy + (q === 1 || q === 3 ? 1 : 0);
+  const ey = hy + (q === 1 || q === 3 ? 1 : 0) + (pulo ? 2 : 0); // no pulo, olhando pra baixo
 
   // ── Cabeça: crânio, mandíbula comprida (traço Metalocalypse), nariz, orelha.
   e.bola([0, hy - 0.5, hz], 6.9 + gor * 0.7, 9.4, 7.3 + gor * 0.5, pele, PARTE.cabeca, 2.15);
@@ -375,7 +400,7 @@ export function figura(b: Boneco): Grade {
   // ── Tronco: peito, cintura, ombros e quadril.
   const tronco = b.jaqueta ? couro : roupa;
   e.bola([0, 47 + bob, 1 + incl], 11 * larg + gor * 2.2 + mus * 1.4 + folga * 1.2, 9 + mus * 0.6, 7 + gor * 1.6 + folga, tronco, PARTE.tronco, 2.5);
-  e.capsula([0, 49 + bob, 0.8 + incl * 0.6], [0, (folga ? 69 : 62) + bob, 0], 7.6 * larg + gor * 3 - mus * 0.8 + folga * 1.4, 7 * (b.largo ? 1.15 : 1) + gor * 3.2 - mus * 0.8 + folga * 1.6, tronco, PARTE.tronco);
+  e.capsula([0, 49 + bob, 0.8 + incl * 0.6], [0, (folga || b.camisaPraFora ? 69 : 62) + bob, 0], 7.6 * larg + gor * 3 - mus * 0.8 + folga * 1.4, 7 * (b.largo ? 1.15 : 1) + gor * 3.2 - mus * 0.8 + folga * 1.6, tronco, PARTE.tronco);
   if (gor) e.bola([0, 57 + bob, 4], 10, 8.5, 7.5, tronco, PARTE.tronco, 2.2); // barriga
   for (const s of [-1, 1]) e.bola([s * (10 * larg + gor * 1.6 + mus), 43 + bob, 1 + incl], 4.6 + gor + mus * 1.3, 4.4 + gor * 0.6 + mus, 4.4 + gor + mus, b.regata ? pele : tronco, b.regata ? (s < 0 ? PARTE.bracoE : PARTE.bracoD) : PARTE.tronco);
   e.bola([0, 67, 0], 8.2 * (b.largo ? 1.12 : 1) + gor * 2.6, 4.8, 5.8 + gor * 2, calca, PARTE.quadril, 2.4);
@@ -417,8 +442,11 @@ export function figura(b: Boneco): Grade {
       const z0 = s < 0 ? 9 : 5;
       joelho = [s * 5.5, 70, z0 + 12]; tornozelo = [s * 5.8, 80, z0 + 1]; noAlto = [s * 5.8, 78, z0 - 2.5];
     } else if (pose === 'twostep' && ((passo === 1 && s < 0) || (passo === 3 && s > 0))) {
-      // Two-step: a perna da vez chuta baixo pra frente.
-      joelho = [s * 5, 83, 9]; tornozelo = [s * 5.2, 95, 16]; noAlto = [s * 5.2, 95.5, 19.5];
+      // Passo: a perna da vez vai quase esticada pra frente, pé pouco acima do chão.
+      joelho = [s * 5, 85.5, 5]; tornozelo = [s * 5.2, 102.5, 9.5]; noAlto = [s * 5.2, 104.5, 13];
+    } else if (pose === 'twostep' && passo % 2 === 1) {
+      // A de apoio fica pra trás: a passada aparece inteira.
+      joelho = [s * 6, 86.5, zBase - 1.5]; tornozelo = [s * 6.5, 104, zBase - 4.5];
     }
     const parte = s < 0 ? PARTE.pernaE : PARTE.pernaD;
     if (b.bermuda) {
@@ -498,7 +526,7 @@ export function figura(b: Boneco): Grade {
     for (const s of [-1, 1]) { const o = ombro(s); bracos[s] = { o, c: [s * 15, 44 + bob, 0], p: [s * 19, 43 + bob, 1], m: [s * 21.5, 43 + bob, 1] }; }
   } else if (pose === 'pulo') {
     // Mãos pra frente, na altura dos joelhos, junto com eles.
-    for (const s of [-1, 1]) { const o = ombro(s); const z = s < 0 ? 0 : -2; bracos[s] = { o: [o[0], o[1], o[2] + incl], c: [o[0] * 0.75, 52 + bob, 9 + z + incl], p: [s * 3.5, 60 + bob, 17 + z], m: [s * 3, 62 + bob, 20.5 + z] }; }
+    for (const s of [-1, 1]) { const o = ombro(s); const z = s < 0 ? 0 : -2; bracos[s] = { o: [o[0], o[1], o[2] + incl], c: [o[0] * 0.85, 43 + bob, 12 + z + incl], p: [s * 6, 42 + bob, 24 + z], m: [s * 5.5, 42 + bob, 27.5 + z] }; }
   }
   else if (pose === 'twostep') {
     // Braços balançando junto com o passo, cotovelo pra fora.
@@ -521,8 +549,9 @@ export function figura(b: Boneco): Grade {
   } else if (pose === 'tocando' && classico) {
     // Telecaster/Jazz Bass: mão no braço lá na frente, a outra palhetando no corpo.
     const oe = ombro(-1), od = ombro(1);
-    bracos[-1] = { o: oe, c: [oe[0] - 2, 55 + bob, zi - 5], p: [-11, 62 + bob, zi + 1.5], m: [-9.5, 66.5 + bob, zi + 2.5] };
-    bracos[1] = { o: od, c: [od[0] + 1, 56 + bob, zi - 4], p: [16, 58 + bob, zi + 1], m: [19.5, 55.5 + bob, zi + 2] };
+    // Palhetada entre os captadores (não em cima do corpo todo); mão esquerda no meio do braço.
+    bracos[-1] = { o: oe, c: [oe[0] - 3, 56 + bob, zi - 5], p: [-3.5, 62 + bob, zi + 1.5], m: [-0.5, 64.5 + bob, zi + 2.5] };
+    bracos[1] = { o: od, c: [od[0] + 2, 57 + bob, zi - 4], p: [20, 56 + bob, zi + 1], m: [24, 53.5 + bob, zi + 2] };
   } else if (pose === 'tocando') {
     const oe = ombro(-1), od = ombro(1);
     bracos[-1] = { o: oe, c: [oe[0] - 2, 54 + bob, 4], p: [-12, 50.5 + bob, 9], m: [-13, 48.5 + bob, 10.5] };
@@ -580,39 +609,60 @@ export function figura(b: Boneco): Grade {
     e.capsula([-2.5, ey + 17, hz + 9.5], [-6, 72 + bob, 5], 0.6, 0.6, mat(rampa(COURO), 0.2), PARTE.acessorio);
   }
 
-  // ── Instrumento clássico de destro: Telecaster ou Jazz Bass, corpo no quadril
-  // direito e o braço subindo uns 22° para o lado esquerdo de quem toca (+X).
+  // ── Instrumento clássico de destro, desenhado como pixel art e colado no plano
+  // da frente do corpo: Telecaster ou Jazz Bass, braço subindo uns 22° para o
+  // lado esquerdo de quem toca (+X). `u` corre do fundo do corpo até a mão.
   if (b.instrumento && classico) {
     const jazz = b.instrumento.tipo === 'jazzbass';
-    const maple = mat(rampa([P.pastel_creme, P.caramelo_claro, P.caramelo]), 0.7);
-    const corpo = mat(rampa(b.instrumento.cor), 1);
-    const y = (v: number) => v + bob;
-    if (jazz) {
-      e.bola([-7.5, y(68.5), zi], 12.5, 9.6, 2, corpo, PARTE.instrumento, 2.4);
-      e.bola([-0.5, y(60.5), zi], 9.6, 7, 2, corpo, PARTE.instrumento, 2.4);
-      e.bola([6.5, y(56), zi], 4.1, 3, 1.8, corpo, PARTE.instrumento, 2.2); // chifre de cima (corpo offset)
-      e.bola([5.2, y(66.5), zi], 3.4, 2.5, 1.8, corpo, PARTE.instrumento, 2.2);
-    } else {
-      e.bola([-7, y(67.5), zi], 11.5, 9, 1.9, corpo, PARTE.instrumento, 2.6);
-      e.bola([-2, y(60.5), zi], 8.8, 7, 1.9, corpo, PARTE.instrumento, 2.6);
-    }
-    const fim: V3 = jazz ? [36, y(49), zi + 0.8] : [30, y(50.5), zi + 0.8];
-    e.capsula([4.5, y(61), zi + 0.8], fim, 1.6, 1.35, maple, PARTE.braco, 0.55);
-    e.bola([fim[0] + (jazz ? 3.6 : 3), fim[1] - 1, zi + 0.6], jazz ? 4.6 : 3.8, jazz ? 2.2 : 1.9, 0.7, maple, PARTE.mao_inst, 3);
-    e.capsula([3, y(56), zi - 1], [-6, y(41), 5], 0.8, 0.8, mat(rampa(COURO), 0.4), PARTE.acessorio); // correia
-    // Sunburst no Jazz Bass; escudo (pickguard) tartaruga no baixo, preto na Tele.
-    const sol = [mat(rampa([P.amarelo, P.mostarda, P.ruga]), 1), mat(rampa([P.laranja, P.vermelho, P.vinho]), 1), mat(rampa([P.ruga, P.chocolate, P.noite]), 1)];
-    const escudo = jazz ? mat(rampa([P.caramelo, P.ruga, P.chocolate]), 0.6) : mat(rampa([P.concreto, P.asfalto, P.preto]), 0.8);
-    e.recolorir((X, yy, p) => {
-      if (p !== PARTE.instrumento) return null;
-      const Y = yy - bob;
-      if (jazz && X > -4.5 && Y < 64 && Y > 55) return escudo;
-      if (!jazz && X > -4.5 && Y > 60 && Y < 72) return escudo;
-      if (jazz) { const d = Math.hypot(X + 5.5, (Y - 66) * 1.2); return d > 10 ? sol[2] : d > 7 ? sol[1] : sol[0]; }
-      return null;
-    });
-    // Escala de jacarandá no baixo.
-    if (jazz) e.recolorir((_X, _yy, p, _Z, m) => (p === PARTE.braco && m === maple ? mat(rampa([P.ruga, P.chocolate, P.noite]), 0.4) : null));
+    const th = (22 * Math.PI) / 180;
+    const eu: V3 = [Math.cos(th), -Math.sin(th), 0];
+    const ev: V3 = [Math.sin(th), Math.cos(th), 0];
+    const o: V3 = [-7.5, 66.5 + bob, zi];
+    const [cl, cm, cs] = b.instrumento.cor;
+    const elipse = (u: number, v: number, cu: number, cv: number, ru: number, rv: number) => ((u - cu) / ru) ** 2 + ((v - cv) / rv) ** 2 <= 1;
+    const corpo = (u: number, v: number) => jazz
+      ? (elipse(u, v, -1.5, 0.4, 9.6, 9.2) || elipse(u, v, 8.5, -0.3, 7.6, 7) || elipse(u, v, 14.6, -4.6, 3.6, 2.4) || elipse(u, v, 13.2, 5, 2.8, 2.1))
+        && !elipse(u, v, 4.5, -10.3, 3.6, 3.2) && !elipse(u, v, 4.5, 10.6, 3.6, 3.2)
+      : (elipse(u, v, -1.5, 0.3, 9.2, 8.6) || (u > -2 && u < 12.5 && v > -7.6 && v < 6.6 && !(u > 8 && v > 2.4 - (u - 8) * 0.25)) || elipse(u, v, 12.6, -4.6, 2.6, 2.8))
+        && !elipse(u, v, 13.4, 4.2, 4.2, 3.4);
+    const NECK0 = jazz ? 14 : 11.5, NECK1 = jazz ? 43 : 37;
+    const braco = (u: number, v: number) => u >= NECK0 && u <= NECK1 && Math.abs(v) <= 1.5 + (NECK1 - u) * 0.012;
+    const cabeca = (u: number, v: number) => jazz
+      ? u > NECK1 && u < NECK1 + 9 && v > -1.9 && v < 2.6 + (u - NECK1) * 0.05
+      : u > NECK1 && u < NECK1 + 7.2 && v > -1.5 && v < 2.6;
+    // Tamanho real: Jazz Bass ≈ 2/3 da altura de quem toca, Tele um pouco menor.
+    const S = 1.22;
+    e.plano(o, eu, ev, -12 * S, (NECK1 + 10) * S, -12 * S, 12 * S, (uu, vv) => {
+      const u = uu / S, v = vv / S;
+      if (cabeca(u, v)) {
+        const borda = v > (jazz ? 2.1 : 2.1);
+        if (borda && (Math.round((u - NECK1) * 1.1) % (jazz ? 2 : 1) === 0)) return P.neblina; // tarraxas
+        return jazz ? P.chocolate : P.pastel_creme;
+      }
+      if (braco(u, v)) {
+        if (Math.abs(v) > 1.25) return jazz ? P.ruga : P.caramelo;
+        if (Math.round((u - NECK0) * 0.9) % 3 === 0) return P.neblina; // trastes
+        if (Math.abs(v) < 0.45 && [3, 5, 7, 9].some((n) => Math.abs(u - NECK0 - n * 2.8) < 0.5)) return P.branco; // marcação
+        return jazz ? P.chocolate : P.pastel_creme; // jacarandá no baixo, maple na Tele
+      }
+      if (!corpo(u, v)) return null;
+      if (jazz) {
+        if (u > 3 && u < 13 && v > -6.5 && v < -1.6) return P.ruga; // escudo tartaruga
+        if (Math.abs(v) < 2.6 && ((u > 1 && u < 2.6) || (u > 7.6 && u < 9.2))) return P.preto; // captadores
+        if (u > -7 && u < -4.6 && Math.abs(v) < 3) return u < -6.4 ? P.branco : P.neblina; // ponte
+        const d = Math.hypot(u - 1.5, v * 1.1);
+        return d > 8.5 ? P.noite : d > 6.8 ? P.chocolate : d > 4.8 ? P.vermelho : d > 3 ? P.laranja : P.amarelo; // sunburst
+      }
+      if (u > 1.5 && u < 11 && v > -5.6 && v < 3.6 && !(u > 8 && v > 1.8)) { // escudo preto
+        if (u > 7.6 && u < 9.4 && Math.abs(v) < 2) return P.branco; // captador do braço
+        return P.preto;
+      }
+      if (u > -7.5 && u < -2.5 && Math.abs(v) < 3.6) return u > -4.6 && u < -3.4 ? P.preto : P.neblina; // ponte de chapa
+      if (u > -1 && u < 5 && v > 4.2 && v < 5.8) return Math.round(u) % 3 === 0 ? P.preto : P.branco; // placa de controle
+      const dBorda = Math.min(Math.abs(v + 7.4), Math.abs(v - 6.4));
+      return dBorda < 1 ? cs : v < -3 ? cl : cm; // butterscotch com luz em cima
+    }, PARTE.instrumento);
+    e.capsula([-3, 58.5 + bob, zi - 1], [-6, 41 + bob, 5], 0.8, 0.8, mat(rampa(COURO), 0.4), PARTE.acessorio); // correia
   } else if (b.instrumento) {
     const baixo = b.instrumento.tipo === 'baixo';
     const madeira = mat(rampa([P.ruga, P.chocolate, P.noite]), 0.3);
@@ -748,11 +798,12 @@ export function figura(b: Boneco): Grade {
       return 0;
     });
   }
-  // Cinto de tacha com fivela.
+  // Cinto de tacha com fivela (quem usa a camiseta pra fora não mostra cinto).
   const cinto = mat(rampa(COURO), 0.7);
   const fivela = mat(rampaDe(P.amarelo), 1);
+  const temCinto = !b.camisaPraFora && !folga;
   e.recolorir((X, y, p, Z) => {
-    if (p !== PARTE.quadril && p !== PARTE.tronco) return null;
+    if (!temCinto || (p !== PARTE.quadril && p !== PARTE.tronco)) return null;
     if (b.avental && naFrente(Z) && Math.abs(X) < 7) return null;
     if (y < 63 + bob || y > 64 + bob) return null;
     return naFrente(Z) && Math.abs(X) < 1.8 ? fivela : cinto;
@@ -792,7 +843,7 @@ export function figura(b: Boneco): Grade {
     const yy = y - bob;
     const d = Math.abs(X);
     // Tachas do cinto.
-    if ((p === PARTE.quadril || p === PARTE.tronco) && yy === 63 && d > 2.5 && Math.round(X) % 2 === 0) return P.neblina;
+    if (temCinto && (p === PARTE.quadril || p === PARTE.tronco) && yy === 63 && d > 2.5 && Math.round(X) % 2 === 0) return P.neblina;
     // Estampa de caveira no peito.
     if (p === PARTE.tronco && b.estampa && (b.camisa ?? 'lisa') === 'lisa' && naFrente(Z)) {
       const i = Math.floor(X + 4.5), j = yy - 45;
@@ -826,25 +877,8 @@ export function figura(b: Boneco): Grade {
     const yk = br.aberta ? my - 1 : my + 1;
     for (let i = -1; i <= 1; i++) e.pinta(mx + i, yk, rp[3], s < 0 ? PARTE.maoE : PARTE.maoD);
   }
-  // Tele/Jazz: captadores, ponte cromada, trastes e tarraxas.
   if (b.instrumento && classico) {
-    const jazz = b.instrumento.tipo === 'jazzbass';
-    e.pintar((X, yy, p) => {
-      const Y = yy - bob;
-      if (p === PARTE.instrumento) {
-        if (jazz) {
-          if ((X > -8.5 && X < -5 && Y === 62) || (X > -13.5 && X < -10 && Y === 66)) return P.preto;
-          if (X > -17.5 && X < -14.5 && Y >= 67 && Y <= 71) return Y === 67 ? P.branco : P.neblina;
-        } else {
-          if (X > -5 && X < -2.5 && Y === 61) return P.branco; // captador do braço
-          if (X > -14 && X < -10 && Y >= 67 && Y <= 71) return Y === 68 ? P.preto : Y === 67 ? P.branco : P.neblina; // ponte
-          if (X > -16.5 && X < -12.5 && Y >= 61 && Y <= 62) return P.neblina; // placa de controle
-        }
-      }
-      if (p === PARTE.braco && Math.round(X * 1.1) % 3 === 0) return P.neblina; // trastes
-      if (p === PARTE.mao_inst && (Math.round(X) % 2 === 0) && Y <= (jazz ? 47 : 49)) return P.branco; // tarraxas
-      return null;
-    });
+    // (detalhes já vêm no desenho do decalque)
   } else if (b.instrumento) {
     for (const [X, Y, c] of [[4, 63, P.preto], [5, 63, P.preto], [7.5, 65, P.preto], [8.5, 65, P.preto], [11, 66.5, P.neblina]] as const) {
       const [x, y] = e.pt([X, Y + bob, 10]);
@@ -876,15 +910,16 @@ export function figura(b: Boneco): Grade {
         for (const s of [-1, 1]) {
           const u = X - s * 3; // 0 no meio do olho
           if (Math.abs(u) <= 2.2 && dy >= -1 && dy <= 1) {
-            if (dy === 0 && Math.abs(u) < 1.6) return u > -0.1 && u < 1.4 ? P.preto : P.papel; // pupila olhando para a frente
+            if (dy === 0 && Math.abs(u) < 1.6) return u > -0.1 && u < 1.4 ? (b.olhos ?? P.preto) : P.papel; // pupila olhando para a frente
             return dy === -1 ? rp[4] : rp[3]; // órbita funda
           }
         }
       }
-      // Sobrancelha brava em V.
+      // Sobrancelha: brava em V (padrão) ou reta e tranquila.
       for (const s of [-1, 1]) {
         const u = X * s;
-        if (u > 0.4 && u < 5.6 && Math.abs(dy - (-1.2 - u * 0.42)) < 0.6) return sobrancelha;
+        const alvo = b.sobrancelhaCalma ? -2.4 : -1.2 - u * 0.42;
+        if (u > (b.sobrancelhaCalma ? 1.2 : 0.4) && u < 5.6 && Math.abs(dy - alvo) < 0.6) return sobrancelha;
       }
       // Maçã do rosto marcada (traço de desenho de metal).
       if (X > 4 && X < 5.2 && dy >= 3 && dy <= 6) return rp[3];
@@ -933,9 +968,13 @@ export function figura(b: Boneco): Grade {
   });
   // Tatuagem na careca.
   if (b.tatuagemCabeca) e.pintar((X, y, p, Z) => {
-    if (p !== PARTE.cabeca || y > hy - 2.5) return null;
-    const v = Math.sin(X * 0.9 + y * 0.7) * Math.cos(Z * 0.8 - y * 0.4);
-    return v > 0.35 ? mistura(rp[3], '#14203a', 0.6) : null;
+    // Um carimbinho de cada lado da cabeça, acima da orelha: losango com ponto no meio.
+    if (p !== PARTE.cabeca || Math.abs(X) < 4.5) return null;
+    const du = Z - (hz - 0.5), dv = y - (hy - 3);
+    const r = Math.abs(du) + Math.abs(dv);
+    if (r < 3.2 && r > 1.8) return mistura(rp[3], '#14203a', 0.65);
+    if (r < 0.9) return mistura(rp[3], '#14203a', 0.65);
+    return null;
   });
   // Bigode fino e cavanhaque.
   if (b.bigode) e.pintar((X, y, p, Z) => {

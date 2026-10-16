@@ -26,7 +26,24 @@ export function destravarAudio(): void {
 /** Contexto de áudio para quem monta o próprio grafo (trilhas). null se mudo ou sem WebAudio. */
 export function contextoDeAudio(): AudioContext | null { return ctx(); }
 
-export function setMudo(valor: boolean): void { mudo = valor; }
+let volume = 1;
+let saida: GainNode | null = null;
+/** Nó de saída comum: todo som passa por aqui, então volume e mudo valem para tudo. */
+export function saidaDeAudio(c: AudioContext): AudioNode {
+  if (!saida) {
+    saida = c.createGain();
+    saida.gain.value = mudo ? 0 : volume;
+    saida.connect(c.destination);
+  }
+  return saida;
+}
+function aplicarSaida() {
+  if (contexto && saida) saida.gain.setTargetAtTime(mudo ? 0 : volume, contexto.currentTime, 0.04);
+}
+export function setVolume(v: number): void { volume = Math.max(0, Math.min(1, v)); aplicarSaida(); }
+export function volumeGeral(): number { return volume; }
+
+export function setMudo(valor: boolean): void { mudo = valor; aplicarSaida(); }
 export function estaMudo(): boolean { return mudo; }
 
 /** Uma nota curta. `freq` em Hz. */
@@ -40,7 +57,7 @@ export function nota(freq: number, duracao = 0.12, tipo: OscillatorType = 'squar
   osc.frequency.setValueAtTime(freq, t);
   ganho.gain.setValueAtTime(volume, t);
   ganho.gain.exponentialRampToValueAtTime(0.0001, t + duracao);
-  osc.connect(ganho).connect(c.destination);
+  osc.connect(ganho).connect(saidaDeAudio(c));
   osc.start(t);
   osc.stop(t + duracao + 0.02);
 }
@@ -70,7 +87,7 @@ export function ruido(duracao = 0.15, volume = 0.08, corte = 2000): void {
   filtro.frequency.value = corte;
   const ganho = c.createGain();
   ganho.gain.value = volume;
-  fonte.connect(filtro).connect(ganho).connect(c.destination);
+  fonte.connect(filtro).connect(ganho).connect(saidaDeAudio(c));
   fonte.start();
 }
 

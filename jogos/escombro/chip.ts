@@ -3,7 +3,7 @@
  * triângulo e ruído, como os canais de um console da época), e os efeitos
  * de soco, pancada, item e especial. Nada de arquivo de áudio.
  */
-import { contextoDeAudio, estaMudo } from '../compartilhado/som';
+import { contextoDeAudio, estaMudo, saidaDeAudio } from '../compartilhado/som';
 
 type Musica = 'titulo' | 'ensaio' | 'garoa' | 'canteiro' | 'show' | 'chefe' | 'vitoria' | 'silencio';
 
@@ -70,7 +70,7 @@ function montar(c: AudioContext) {
   mestre.gain.value = 0;
   const comp = c.createDynamicsCompressor();
   comp.threshold.value = -14;
-  mestre.connect(comp).connect(c.destination);
+  mestre.connect(comp).connect(saidaDeAudio(c));
   ruido = c.createBuffer(1, c.sampleRate, c.sampleRate);
   const d = ruido.getChannelData(0);
   // Ruído "de chip": amostra repetida em degraus, mais áspero que o branco.
@@ -178,7 +178,7 @@ function efeito(fn: (c: AudioContext, t: number, d: AudioNode) => void) {
   montar(c);
   const g = c.createGain();
   g.gain.value = 0.9;
-  g.connect(c.destination);
+  g.connect(saidaDeAudio(c));
   fn(c, c.currentTime, g);
 }
 

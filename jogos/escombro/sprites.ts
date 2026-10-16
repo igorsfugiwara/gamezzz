@@ -33,27 +33,28 @@ export const VISUAL: Record<Quem, Boneco> = {
   // Pucci: cabelão preto, boné estampado colorido, bigode fino, braço fechado.
   pucci: {
     pele: TONS.pele.clara, cabelo: TONS.cabelo.preto, roupa: PRETO, calca: PRETO, estilo: 'bone', cobertura: PRETO, boneEstampado: true,
-    bigode: true, tatuagem: true, tenis: true, escala: 1.03,
+    bigode: true, tatuagem: true, tenis: true, magro: true, escala: 1.03,
   },
   // Renato: barba cheia grisalha, boné preto, braço tatuado; o mais baixo de todos.
   renato: {
     pele: TONS.pele.clara, cabelo: TONS.cabelo.grisalho, roupa: PRETO, calca: PRETO, estilo: 'boneCurto', cobertura: PRETO,
-    barba: true, tatuagem: true, tenis: true, escala: 0.86,
+    barba: true, tatuagem: true, tenis: true, camisaPraFora: true, escala: 0.86,
   },
   // Jota: o maior, forte e gordo; boné preto, barba preta, braço e perna tatuados.
   vocal: {
     pele: TONS.pele.morena, cabelo: TONS.cabelo.preto, roupa: PRETO, calca: PRETO, estilo: 'boneCurto', cobertura: PRETO,
-    barba: true, gordo: true, largo: true, tatuagem: true, tatuagemPerna: true, bermuda: true, tenis: true, escala: 1.08,
+    barba: true, gordo: true, largo: true, tatuagem: true, tatuagemPerna: true, bermuda: true, tenis: true, camisaPraFora: true, escala: 1.08,
   },
   // Duxxo (secreto): careca, branco, da altura do Lingão e maior que o Renato.
   duxxo: {
     pele: TONS.pele.clara, cabelo: TONS.cabelo.castanho, roupa: PRETO, calca: PRETO, estilo: 'careca',
-    tatuagem: true, tenis: true,
+    tatuagem: true, tenis: true, camisaPraFora: true,
   },
   // Felipeles (secreto), antigo baterista: careca com tatuagem na cabeça, magro e bombado, braço fechado; regata e bermuda.
   felipeles: {
     pele: TONS.pele.clara, cabelo: TONS.cabelo.castanho, roupa: PRETO, calca: PRETO, estilo: 'careca',
-    tatuagem: true, tatuagemCabeca: true, musculoso: true, regata: true, bermuda: true, tenis: true, meia: true,
+    tatuagem: true, tatuagemCabeca: true, musculoso: true, regata: true, estampa: true, bermuda: true, tenis: true, meia: true,
+    olhos: P.ceu, sobrancelhaCalma: true, camisaPraFora: true,
   },
 };
 
@@ -105,6 +106,20 @@ export function spriteIntegrante(quem: Quem, pose: PoseLuta, f: 0 | 1 | 2 | 3 = 
               : pose === 'chute' ? { pose, golpe: (f === 0 ? 0 : 1) as 0 | 1 }
             : { pose, passo: f, grito: pose === 'apanha' }),
   }));
+}
+
+/**
+ * Rosto para os ícones (seleção e HUD): o modelo quase de frente, cabeça
+ * enquadrada no quadrado. `k` = 1 para o HUD (32 px), 2 para a seleção (64 px).
+ */
+export function rostoIntegrante(quem: Quem, k: 1 | 2 = 2, mascara = false): Sprite {
+  return emCache(`esc-rosto-${quem}-${k}-${mascara}`, () => {
+    const g = bonecoHD({ ...VISUAL[quem], escala: k, giro: 0.35, pose: 'parado', mascara });
+    const lado = 32 * k, x0 = 13 * k, y0 = 9 * k;
+    const cor = new Array(lado * lado).fill(null);
+    for (let y = 0; y < lado; y++) for (let x = 0; x < lado; x++) cor[y * lado + x] = g.cor[(y + y0) * g.w + x + x0] ?? null;
+    return { w: lado, h: lado, cor };
+  });
 }
 
 /** Retrato grande da seleção: três-quartos, segurando o instrumento. */
@@ -211,7 +226,7 @@ export function spriteVirus(q: 0 | 1, escala = 1, ferido = false): Sprite {
 }
 export function gradeVirus(q: 0 | 1, escala = 1, ferido = false): Grade {
   const L = Math.ceil(56 * escala), A = Math.ceil(56 * escala);
-  const e = new Estudio(0.4, L, A, L / 2 / escala, escala);
+  const e = new Estudio(0.4, L, A, L / 2, escala);
   const corpo = mat(rampa([P.neon_verde, P.folha, P.musgo]), 0.9);
   const ponta = mat(rampa([P.pastel_rosa, P.neon_rosa, P.vinho]), 1.2);
   const r = 14 + q;
@@ -338,27 +353,51 @@ export function gradeMao(pose: 0 | 1 | 2 | 3 | 4): Grade {
 
 // ─── Vira-lata caramelo ───────────────────────────────────
 
+/**
+ * Vira-lata caramelo de perfil, galope em 4 quadros (alcança, junta, cruza,
+ * voa), orelha e rabo balançando; `morde` estica a cabeça com a boca aberta.
+ */
 export function spriteCaramelo(quadro: 0 | 1 | 2 | 3, morde = false): Sprite {
   return emCache(`esc-dog-${quadro}-${morde}`, () => {
-    const e = new Estudio(1.35, 52, 40, 24);
-    const pelo = mat(rampa([P.caramelo_claro, P.caramelo, P.ruga]), 0.3, true);
-    const claro = mat(rampa([P.pastel_creme, P.caramelo_claro, P.caramelo]), 0.2);
-    const chao = 38;
-    e.capsula([0, chao - 16, -9], [0, chao - 17, 7], 7, 7.5, pelo, 1);
-    const passo = [0, 3, 0, -3][quadro];
-    for (const [s, z, fase] of [[-1, 6, 1], [1, 6, -1], [-1, -7, -1], [1, -7, 1]] as const) {
-      e.capsula([s * 3.5, chao - 13, z], [s * 3.5, chao - 1, z + passo * fase], 2, 1.7, pelo, 2);
+    const e = new Estudio(1.45, 60, 44, 26);
+    const pelo = mat(rampa([P.caramelo_claro, P.caramelo, P.ruga]), 0.35);
+    const claro = mat(rampa([P.branco, P.pastel_creme, P.caramelo_claro]), 0.2);
+    const escuro = mat(rampa([P.concreto, P.asfalto, P.preto]), 0.9);
+    const chao = 42;
+    const bob = quadro === 1 || quadro === 3 ? -1 : 0;
+    const y = (v: number) => v + bob;
+    // Tronco: peito fundo, cintura, anca.
+    e.bola([0, y(chao - 18), 7], 5.6, 6.2, 5.2, pelo, 1);
+    e.bola([0, y(chao - 18), 0], 5, 5.2, 7, pelo, 1);
+    e.bola([0, y(chao - 19), -7.5], 5.2, 5.4, 4.8, pelo, 1);
+    // Patas: [avanço do pé, quanto sobe] para dianteiras e traseiras em cada quadro do galope.
+    const frente = [[9, -1], [2, -5], [-5, 0], [3, -6]][quadro];
+    const tras = [[-9, 0], [-2, -5], [5, -1], [-3, -6]][quadro];
+    for (const [s, z0, [dz, dy], fase] of [[-1, 7, frente, 0], [1, 7, frente, 1], [-1, -8, tras, 0], [1, -8, tras, 1]] as const) {
+      const atraso = fase * 1.2;
+      const joelho: V3 = [s * 2.6, y(chao - 10) + dy * 0.5, z0 + (dz - atraso) * 0.45];
+      const pe: V3 = [s * 2.6, chao - 1.5 + dy, z0 + dz - atraso];
+      e.capsula([s * 2.6, y(chao - 16), z0], joelho, 2.1, 1.7, pelo, 2);
+      e.capsula(joelho, pe, 1.7, 1.4, pelo, 2);
+      e.bola([pe[0], pe[1], pe[2] + 1], 1.8, 1.4, 2.2, claro, 3, 2.2); // patinha branca
     }
-    const cz = morde ? 17 : 13;
-    e.bola([0, chao - 25, cz], 6.5, 6.5, 6.5, pelo, 3);
-    e.bola([0, chao - 22, cz + 6], 3.6, 3, 4.5, claro, 4, 2.2);
-    for (const s of [-1, 1]) e.bola([s * 4.5, chao - 31, cz - 2], 2, 3.5, 2, pelo, 5); // orelha
-    e.capsula([0, chao - 20, -10], [0, chao - 30 + (quadro % 2) * 2, -15], 1.7, 1.2, pelo, 6); // rabo pra cima
-    e.recolorir((_X, y, p) => (p === 1 && y > chao - 13 ? claro : null)); // barriga clara
+    // Pescoço e cabeça (na mordida a cabeça avança).
+    const hz = morde ? 17 : 14;
+    e.capsula([0, y(chao - 21), 9], [0, y(chao - 27), hz - 2], 3.8, 3.2, pelo, 4);
+    e.bola([0, y(chao - 29), hz], 4.4, 4.2, 4.8, pelo, 5);
+    e.capsula([0, y(chao - 28), hz + 3], [0, y(chao - 27), hz + 7.5], 2.6, 1.9, claro, 6);
+    e.bola([0, y(chao - 27.5), hz + 8], 1.1, 1, 1.1, escuro, 7);
+    if (morde) e.capsula([0, y(chao - 25), hz + 2], [0, y(chao - 23), hz + 7], 1.5, 1.2, mat(rampaDe(P.vinho), 0.3), 8); // boca aberta
+    // Orelha caída que balança no galope; para trás na mordida.
+    const flop = morde ? -3 : [0, 1, 0, -1][quadro];
+    for (const s of [-1, 1]) e.capsula([s * 2.4, y(chao - 32), hz - 1], [s * 3.2, y(chao - 33) + 2 + flop, hz - 4], 1.6, 0.7, mat(rampa([P.caramelo, P.ruga, P.chocolate]), 0.3), 9);
+    // Rabo enrolado pra cima, abanando.
+    const abana = [0, 1.5, 0, -1.5][quadro];
+    e.capsula([0, y(chao - 21), -11], [abana, y(chao - 26), -14], 1.8, 1.4, pelo, 10);
+    e.capsula([abana, y(chao - 26), -14], [abana * 1.5, y(chao - 30), -12], 1.4, 0.8, pelo, 10);
+    e.recolorir((_X, yy, p, Z) => ((p === 1 && yy > chao - 15 + bob && Z > -3) || (p === 1 && Z > 9) ? claro : null)); // peito e barriga claros
     e.revelar();
-    e.pintar((X, y, p, Z) => (p === 3 && Z > cz + 2 && y === chao - 27 && Math.abs(Math.abs(X) - 2.5) < 1 ? P.preto : null));
-    e.pintar((_X, y, p, Z) => (p === 4 && Z > cz + 9 && y <= chao - 23 ? P.preto : null));
-    if (morde) e.pintar((_X, y, p, Z) => (p === 4 && Z > cz + 6 && y === chao - 20 ? P.branco : null));
+    e.pintar((X, yy, p, Z) => (p === 5 && Z > hz + 1 && Math.abs(yy - (chao - 30 + bob)) < 0.6 && X < 1 && X > -2.5 ? P.preto : null)); // olho
     return e.grade();
   });
 }
@@ -421,24 +460,32 @@ export function spriteItem(item: TipoItem): Sprite {
 
 export function spriteQuebravel(tipo: TipoQuebravel, rachado = false): Sprite {
   return emCache(`esc-queb-${tipo}-${rachado}`, () => {
-    const e = new Estudio(0.6, 64, 96, 32);
-    const chao = 94;
+    const grande = tipo === 'orelhao';
+    const e = new Estudio(0.6, grande ? 130 : 64, grande ? 172 : 96, grande ? 65 : 32);
+    const chao = grande ? 166 : 94;
     if (tipo === 'orelhao') {
-      // Orelhão duplo de SP: duas cúpulas laranja no mesmo poste, cada uma com o telefone dentro.
+      // Orelhão duplo de SP, na escala de gente: duas cúpulas laranja no mesmo poste.
       const ferro = mat(rampa([P.neblina, P.cimento, P.concreto]), 0.8);
-      e.capsula([0, chao, -2], [0, chao - 50, -2], 2, 2, ferro, 1);
-      e.capsula([-14, chao - 50, -2], [14, chao - 50, -2], 1.6, 1.6, ferro, 1);
+      // Medidas de gente (118 px ≈ 1,75 m): a boca da cúpula fica na altura do ombro.
+      e.capsula([0, chao, -4], [0, chao - 150, -4], 3, 3, ferro, 1);
+      e.capsula([-27, chao - 150, -4], [27, chao - 150, -4], 2.4, 2.4, ferro, 1);
+      // A cúpula é um ovo cortado embaixo e na frente; por dentro, escuro.
+      const casca = (y: number, Z: number) => y > chao - 92 || (Z > 4 && y > chao - 128);
       for (const s of [-1, 1]) {
-        e.bola([s * 13, chao - 64, 0], 11, 15, 10, mat(rampa([P.pessego, P.laranja, P.vermelho]), 0.9), 2 + (s > 0 ? 1 : 0), 2.2);
-        e.bola([s * 13, chao - 60, 6], 3.2, 5, 2, mat(rampa(PRETO), 0.5), 4, 4); // aparelho
+        e.bola([s * 27, chao - 120, 0], 25, 34, 22, mat(rampa([P.pessego, P.laranja, P.vermelho]), 0.9), 2 + (s > 0 ? 1 : 0), 2.3, (_X, y, Z) => !casca(y, Z));
+        e.bola([s * 27, chao - 118, -4], 22, 30, 17, mat(rampa([P.vinho, P.noite, P.preto]), 0.2), 5, 2.3); // fundo
+        e.bola([s * 27, chao - 112, 2], 5, 8, 3, mat(rampa(PRETO), 0.5), 4, 4); // aparelho
+        e.capsula([s * 27 + 4, chao - 104, 3], [s * 27 + 6, chao - 96, 3], 0.9, 0.9, mat(rampa(PRETO), 0.3), 4); // fio
+        e.capsula([s * 27 - 8, chao - 100, 1], [s * 27 + 8, chao - 100, 1], 1.6, 1.6, mat(rampa([P.cimento, P.concreto, P.asfalto]), 0.4), 4); // prateleira
       }
-      // Boca da cúpula: o fundo escuro aparece na frente.
-      e.recolorir((X, y, p, Z) => ((p === 2 || p === 3) && Z > 5 && y > chao - 66 && Math.abs(Math.abs(X) - 13) < 7 ? mat(rampa([P.vermelho, P.vinho, P.noite]), 0.2) : null));
     } else if (tipo === 'lixeira') {
-      // Lixeira verde cilíndrica, de tampa preta.
-      e.capsula([0, chao - 3, 0], [0, chao - 34, 0], 10, 10, mat(rampa([P.menta, P.folha, P.musgo]), 0.6), 2, 1);
-      e.bola([0, chao - 35, 0], 10.5, 2.4, 10.5, mat(rampa(PRETO), 0.6), 3, 2.6);
-      e.dobrar((_X, y, p) => (p === 2 && (y === chao - 10 || y === chao - 26) ? 1 : 0));
+      // Lixeira verde cilíndrica, suspensa numa haste preta.
+      const haste = mat(rampa([P.concreto, P.asfalto, P.preto]), 0.9);
+      e.capsula([0, chao, -6], [0, chao - 64, -6], 1.8, 1.8, haste, 1);
+      e.capsula([0, chao - 50, -6], [0, chao - 50, -2], 1.4, 1.4, haste, 1); // braçadeira
+      e.capsula([0, chao - 34, 2], [0, chao - 60, 2], 9.5, 9.5, mat(rampa([P.menta, P.folha, P.musgo]), 0.6), 2);
+      e.bola([0, chao - 61, 2], 10, 2.2, 10, haste, 3, 2.6);
+      e.dobrar((_X, y, p) => (p === 2 && (y === chao - 40 || y === chao - 54) ? 1 : 0));
     } else if (tipo === 'banca') {
       e.bola([0, chao - 30, 0], 26, 30, 14, mat(rampa([P.menta, P.folha, P.musgo]), 0.5), 1, 6);
       e.recolorir((X, y, p, Z) => (p === 1 && Z > 8 && y > chao - 52 && y < chao - 20 ? mat(rampaDe([P.vermelho, P.amarelo, P.azul, P.neon_rosa][Math.abs(Math.floor(X / 6)) % 4]), 0.3) : null));

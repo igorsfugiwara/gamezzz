@@ -178,7 +178,6 @@ function centro(): Palco {
     x += w + 2;
   }
   for (let j = 0; j < 90; j += 4) for (let i = 0; i < 120; i++) ret(gl, 400 + i, 70 + j + Math.round(Math.sin(i / 18) * 3), 1, 2, j % 8 ? '#d9d4c7' : '#9c98a8');
-  textoPixel(gl, 'COPAN', 438, 56, 10, P.branco, 'bold', 0, P.preto);
 
   // Meio: Galeria do Rock, Igreja do Rosário (Largo do Paissandu), camelô e muro de pixo.
   const { c: meio, g: gm } = tela(960, ALT);
@@ -191,7 +190,6 @@ function centro(): Palco {
   for (let i = 0; i < 5; i++) ret(gm, 312 + i * 28, 126, 20, 46, ['#d6353f', '#f6c443', '#3df0e6', '#ff4fa3', '#b6ff3d'][i]);
   ret(gm, 560, 50, 70, 122, '#e8d9b0'); ret(gm, 580, 20, 30, 34, '#e8d9b0'); ret(gm, 590, 8, 10, 14, '#c99a1c');
   ret(gm, 583, 26, 24, 4, P.chocolate); ret(gm, 585, 110, 20, 62, P.chocolate); ret(gm, 570, 70, 12, 18, '#5aa9e6'); ret(gm, 608, 70, 12, 18, '#5aa9e6');
-  textoPixel(gm, 'LARGO DO PAISSANDU', 540, 154, 10, P.branco, 'bold', 0, P.preto);
   ret(gm, 840, 132, 70, 6, P.azul); ret(gm, 842, 138, 2, 34, P.cimento); ret(gm, 906, 138, 2, 34, P.cimento);
   for (let i = 0; i < 6; i++) ret(gm, 848 + i * 10, 150, 8, 8, [P.vermelho, P.amarelo, P.neon_verde][i % 3]);
   for (const px of [232, 488, 948]) {

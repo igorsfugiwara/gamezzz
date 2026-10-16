@@ -13,7 +13,7 @@ import { PALETA as P } from '../compartilhado/paleta';
 import { ler, gravar } from '../compartilhado/salvar';
 import { evento } from '../compartilhado/eventos';
 import { compartilhar } from '../compartilhado/compartilhar';
-import { destravarAudio, setMudo, estaMudo, vibrar } from '../compartilhado/som';
+import { destravarAudio, setMudo, estaMudo, setVolume, volumeGeral, vibrar } from '../compartilhado/som';
 import { Tutorial } from '../compartilhado/tutorial';
 import { t, tri, idioma, definirIdioma, type Idioma } from './i18n';
 import {
@@ -23,7 +23,7 @@ import {
   PEDACOS_DA_FITA, liberado,
 } from './regras';
 import {
-  spriteIntegrante, retratoIntegrante, spriteInimigo, spriteTecnico, spritePato, spriteMao,
+  spriteIntegrante, retratoIntegrante, rostoIntegrante, spriteInimigo, spriteTecnico, spritePato, spriteMao,
   spriteCaramelo, spriteItem, spriteQuebravel, piscada, spriteDenao, spritePequenoPoder, spriteVirus, type Sprite, type PoseLuta,
 } from './sprites';
 import { montarPalco, desenharFundo, desenharCamada, desenharClima, LARG, ALT, type Palco } from './cenario';
@@ -54,6 +54,8 @@ function traduzir() {
   document.querySelectorAll<HTMLElement>('[data-t]').forEach((el) => { el.textContent = t(el.dataset.t as Parameters<typeof t>[0]); });
   document.querySelectorAll<HTMLButtonElement>('#idiomas button').forEach((b) => b.classList.toggle('ativo', b.dataset.idioma === idioma()));
   $('b-som').textContent = `${t('jogo.som')}: ${estaMudo() ? 'OFF' : 'ON'}`;
+  $('b-mudo').textContent = estaMudo() ? '🔇' : '🔊';
+  $('b-mudo').setAttribute('aria-pressed', String(estaMudo()));
   $('b-flash').textContent = `${t('jogo.flash')}: ${reduzirFlash ? 'ON' : 'OFF'}`;
 }
 const idiomaSalvo = ler<Idioma | null>(JOGO, 'idioma', null);
@@ -78,9 +80,9 @@ addEventListener('resize', ajustarTela);
 const teclas = new Set<string>();
 const toqueDir = { x: 0, y: 0 };
 const toqueBotao = { soco: false, pulo: false, esp: false };
-const ctrl = { x: 0, y: 0, soco: false, pulo: false, esp: false, start: false };
-const antes = { soco: false, pulo: false, esp: false, start: false };
-const aperto = { soco: false, pulo: false, esp: false, start: false };
+const ctrl = { x: 0, y: 0, soco: false, pulo: false, esp: false, start: false, voltar: false };
+const antes = { soco: false, pulo: false, esp: false, start: false, voltar: false };
+const aperto = { soco: false, pulo: false, esp: false, start: false, voltar: false };
 
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
@@ -134,6 +136,7 @@ function lerControles() {
   pulo = tem('k', 'x', ' ');
   esp = tem('l', 'c');
   start = tem('enter', 'escape', 'p');
+  let voltar = tem('escape', 'backspace');
   for (const gp of navigator.getGamepads?.() ?? []) {
     if (!gp) continue;
     const ax = gp.axes[0] ?? 0, ay = gp.axes[1] ?? 0;
@@ -141,12 +144,12 @@ function lerControles() {
     if (Math.abs(ay) > 0.4) y = Math.sign(ay);
     const b = (i: number) => !!gp.buttons[i]?.pressed;
     if (b(14)) x = -1; if (b(15)) x = 1; if (b(12)) y = -1; if (b(13)) y = 1;
-    soco ||= b(2); pulo ||= b(0); esp ||= b(1) || b(3); start ||= b(9);
+    soco ||= b(2); pulo ||= b(0); esp ||= b(1) || b(3); start ||= b(9); voltar ||= b(8);
   }
   if (toqueDir.x || toqueDir.y) { x = toqueDir.x; y = toqueDir.y; }
   soco ||= toqueBotao.soco; pulo ||= toqueBotao.pulo; esp ||= toqueBotao.esp;
-  Object.assign(ctrl, { x, y, soco, pulo, esp, start });
-  for (const k of ['soco', 'pulo', 'esp', 'start'] as const) { aperto[k] = ctrl[k] && !antes[k]; antes[k] = ctrl[k]; }
+  Object.assign(ctrl, { x, y, soco, pulo, esp, start, voltar });
+  for (const k of ['soco', 'pulo', 'esp', 'start', 'voltar'] as const) { aperto[k] = ctrl[k] && !antes[k]; antes[k] = ctrl[k]; }
 }
 
 // ─── Estado de jogo ───────────────────────────────────────
@@ -1077,7 +1080,8 @@ let anterior = performance.now();
 function quadro(agora: number) {
   const dt = Math.min(1 / 30, (agora - anterior) / 1000);
   anterior = agora;
-  relogio += dt;
+  // Pausado, o mundo congela: ninguém anda nem pisca atrás do menu.
+  if (modo !== 'pausa' && modo !== 'continue') relogio += dt;
   lerControles();
   if (modo === 'jogo') {
     if (aperto.start) alternarPausa();
@@ -1200,7 +1204,7 @@ function desenhar() {
 
   // Sombras primeiro, depois tudo por profundidade.
   const lista: Desenhavel[] = [];
-  for (const q of quebraveis) { sombra(q.x, q.y, 16); lista.push({ y: q.y, f: () => { const s = spriteQuebravel(q.tipo, q.vida < 3); ctx.drawImage(q.pisca > 0 ? piscada(s) : s, Math.round(q.x - camX - 32), Math.round(q.y - s.height + 2)); } }); }
+  for (const q of quebraveis) { sombra(q.x, q.y, 16); lista.push({ y: q.y, f: () => { const s = spriteQuebravel(q.tipo, q.vida < 3); ctx.drawImage(q.pisca > 0 ? piscada(s) : s, Math.round(q.x - camX - s.width / 2), Math.round(q.y - s.height + 2)); } }); }
   for (const it of itens) { sombra(it.x, it.y, 8); lista.push({ y: it.y, f: () => { const s = spriteItem(it.tipo); const b = Math.sin(relogio * 6) > 0 ? -1 : 0; ctx.drawImage(s, Math.round(it.x - camX - s.width / 2), Math.round(it.y - it.z - s.height + 2 + b)); } }); }
   for (const e of inimigos) {
     if (e.estado === 'morto' && e.tipo !== 'fantasma' && e.tipo !== 'virus' && Math.floor(e.morto * 12) % 2 === 1) continue;
@@ -1213,7 +1217,7 @@ function desenhar() {
       if (e.estado === 'prepara' && Math.floor(relogio * 12) % 2 === 0) desenharAviso(e.x, e.y - 128);
     } });
   }
-  if (cachorro) { const d = cachorro; sombra(d.x, d.y, 12); lista.push({ y: d.y, f: () => { const s = spriteCaramelo((Math.floor(relogio * 12) % 4) as 0 | 1 | 2 | 3, d.morde > 0.4); ctx.save(); ctx.translate(Math.round(d.x - camX), Math.round(d.y)); ctx.scale(d.dir, 1); ctx.drawImage(s, -24, -s.height + 2); ctx.restore(); } }); }
+  if (cachorro) { const d = cachorro; sombra(d.x, d.y, 12); lista.push({ y: d.y, f: () => { const s = spriteCaramelo((Math.floor(relogio * 12) % 4) as 0 | 1 | 2 | 3, d.morde > 0.4); ctx.save(); ctx.translate(Math.round(d.x - camX), Math.round(d.y)); ctx.scale(d.dir, 1); ctx.drawImage(s, -s.width / 2, -s.height + 2); ctx.restore(); } }); }
   if (chefe) {
     const c = chefe;
     sombra(c.x, c.y, c.tipo === 'algoritmo' ? 52 : c.tipo === 'mao' ? Math.max(20, 52 - c.z * 0.3) : 30);
@@ -1233,7 +1237,7 @@ function desenhar() {
   if (fase.cenario === 'ensaio') lista.push({ y: 198, f: () => desenharLutador(spriteDenao((Math.floor(relogio * 2) % 2) as 0 | 1), 430, 198, 0, 1, false, 0) });
   sombra(jog.x, jog.y, 15);
   lista.push({ y: jog.y + 0.1, f: () => {
-    if (jog.invul > 0 && jog.estado !== 'especial' && Math.floor(relogio * 20) % 2 === 0) return;
+    if (jog.invul > 0 && jog.estado !== 'especial' && jog.estado !== 'danca' && Math.floor(relogio * 20) % 2 === 0) return;
     const { s, caido } = poseDoJogador();
     desenharLutador(s, jog.x, jog.y, jog.z, jog.dir, caido, jog.pisca);
   } });
@@ -1387,11 +1391,11 @@ function barra(x: number, y: number, w: number, h: number, frac: number, cor: st
 
 function desenharHud() {
   const j = jog;
-  // Retrato: recorte da cabeça do sprite.
-  const s = spriteIntegrante(j.quem, 'guarda', 0, false, !!fase.distancia);
+  // Retrato: o rosto do modelo, quase de frente, enquadrado.
+  const s = rostoIntegrante(j.quem, 1, !!fase.distancia);
   ctx.fillStyle = P.preto; ctx.fillRect(6, 6, 30, 30);
   ctx.fillStyle = P.asfalto; ctx.fillRect(7, 7, 28, 28);
-  ctx.drawImage(s, 12, 4, 30, 30, 6, 6, 30, 30);
+  ctx.drawImage(s, 2, 2, 28, 28, 7, 7, 28, 28);
   texto(integrante(j.quem).nome, 42, 6, P.amarelo);
   barra(42, 17, 120, 7, j.vida / j.max, j.vida < 30 ? P.vermelho : P.amarelo);
   const cheio = j.mosh >= 100;
@@ -1492,11 +1496,11 @@ function abrirSelecao(n = progresso.liberada) {
     b.title = travado ? (ig.secreto === 'notaS' ? t('sel.travadoS') : t('sel.travado')) : preso ? t('sel.preso') : ig.nome;
     b.setAttribute('aria-label', travado ? t('sel.secreto') : ig.nome);
     const c = document.createElement('canvas');
-    c.width = 32; c.height = 32;
+    c.width = 64; c.height = 64;
     const g = c.getContext('2d')!;
     g.imageSmoothingEnabled = false;
-    if (!travado) g.drawImage(spriteIntegrante(ig.id, 'guarda'), 10, 2, 32, 32, 0, 0, 32, 32);
-    else { g.fillStyle = P.asfalto; g.fillRect(0, 0, 32, 32); g.fillStyle = P.cimento; g.font = '16px monospace'; g.fillText('?', 11, 22); }
+    if (!travado) g.drawImage(rostoIntegrante(ig.id, 2), 0, 0);
+    else { g.fillStyle = P.asfalto; g.fillRect(0, 0, 64, 64); g.fillStyle = P.cimento; g.font = '32px monospace'; g.fillText('?', 22, 44); }
     b.appendChild(c);
     b.addEventListener('click', () => { escolhido = ig.id; sfx.menu(); atualizarSelecao(); });
     b.dataset.quem = ig.id;
@@ -1535,6 +1539,7 @@ function navegarSelecao() {
     escolhido = lista[(i + ctrl.x + lista.length) % lista.length].id;
     sfx.menu(); atualizarSelecao(); seletorTrava = 0.22;
   }
+  if (aperto.voltar) { sfx.menu(); abrirMapa(faseEscolhida); return; }
   if (aperto.soco || aperto.start) escolher();
 }
 function escolher() {
@@ -1568,6 +1573,7 @@ function atualizarLegenda() {
 let mapaTrava = 0;
 function navegarMapa() {
   mapaTrava -= 1 / 60;
+  if (aperto.voltar) { voltarTitulo(); return; }
   if (ctrl.x && mapaTrava <= 0) moverMapa(ctrl.x);
   if (aperto.soco || aperto.start) bora();
 }
@@ -1576,6 +1582,13 @@ function moverMapa(d: number) {
   if (novo !== noMapa) { noMapa = novo; sfx.menu(); atualizarLegenda(); }
   mapaTrava = 0.25;
 }
+function voltarTitulo() {
+  sfx.menu();
+  modo = 'titulo';
+  mostrar('titulo');
+}
+$('b-mapa-voltar').addEventListener('click', voltarTitulo);
+$('b-sel-voltar').addEventListener('click', () => { sfx.menu(); abrirMapa(faseEscolhida); });
 $('b-mapa-esq').addEventListener('click', () => moverMapa(-1));
 $('b-mapa-dir').addEventListener('click', () => moverMapa(1));
 $('b-bora').addEventListener('click', () => bora());
@@ -1667,7 +1680,14 @@ function alternarPausa() {
   else if (modo === 'pausa') { modo = 'jogo'; mostrar(null); tutorial.retomar?.(); }
 }
 $('b-voltar').addEventListener('click', alternarPausa);
-$('b-som').addEventListener('click', () => { setMudo(!estaMudo()); gravar(JOGO, 'mudo', estaMudo()); ajustarVolume(); traduzir(); });
+function alternarMudo() { setMudo(!estaMudo()); gravar(JOGO, 'mudo', estaMudo()); ajustarVolume(); traduzir(); }
+$('b-som').addEventListener('click', alternarMudo);
+$('b-mudo').addEventListener('click', (ev) => { ev.stopPropagation(); alternarMudo(); (ev.currentTarget as HTMLElement).blur(); });
+window.addEventListener('keydown', (ev) => { if (ev.key.toLowerCase() === 'm' && !ev.repeat) alternarMudo(); });
+const controleVolume = $<HTMLInputElement>('volume');
+setVolume(ler(JOGO, 'volume', 1));
+controleVolume.value = String(Math.round(volumeGeral() * 100));
+controleVolume.addEventListener('input', () => { setVolume(Number(controleVolume.value) / 100); gravar(JOGO, 'volume', volumeGeral()); });
 $('b-flash').addEventListener('click', () => { reduzirFlash = !reduzirFlash; gravar(JOGO, 'flash', reduzirFlash); traduzir(); });
 $('b-sair').addEventListener('click', () => { chip.parar(); tutorial.pausar?.(); abrirMapa(fase.n); });
 

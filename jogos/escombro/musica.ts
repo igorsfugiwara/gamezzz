@@ -7,7 +7,7 @@
  *
  * No chefão o filtro abre: a banda "entra de verdade".
  */
-import { contextoDeAudio, estaMudo } from '../compartilhado/som';
+import { contextoDeAudio, estaMudo, saidaDeAudio } from '../compartilhado/som';
 
 export type Faixa = 'cicatrizes' | 'sofrer' | 'rasgando' | 'vidaVazia';
 
@@ -88,7 +88,7 @@ function montarCadeia(c: AudioContext) {
   const comp = c.createDynamicsCompressor();
   comp.threshold.value = -20;
   comp.ratio.value = 4;
-  passaAlta.connect(passaBaixa).connect(comp).connect(ganho).connect(c.destination);
+  passaAlta.connect(passaBaixa).connect(comp).connect(ganho).connect(saidaDeAudio(c));
   // Chiado de vinil: estalinhos esparsos num buffer que se repete.
   const ruido = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
   const d = ruido.getChannelData(0);
