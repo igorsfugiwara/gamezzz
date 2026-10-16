@@ -468,22 +468,22 @@ export function spriteItem(item: TipoItem): Sprite {
 export function spriteQuebravel(tipo: TipoQuebravel, rachado = false): Sprite {
   return emCache(`esc-queb-${tipo}-${rachado}`, () => {
     const grande = tipo === 'orelhao';
-    const e = new Estudio(0.6, grande ? 130 : 64, grande ? 172 : 96, grande ? 65 : 32);
-    const chao = grande ? 166 : 94;
+    const e = new Estudio(0.6, grande ? 96 : 64, grande ? 112 : 96, grande ? 48 : 32);
+    const chao = grande ? 108 : 94;
     if (tipo === 'orelhao') {
       // Orelhão duplo de SP, na escala de gente: duas cúpulas laranja no mesmo poste.
       const ferro = mat(rampa([P.neblina, P.cimento, P.concreto]), 0.8);
-      // Medidas de gente (118 px ≈ 1,75 m): a boca da cúpula fica na altura do ombro.
-      e.capsula([0, chao, -4], [0, chao - 150, -4], 3, 3, ferro, 1);
-      e.capsula([-27, chao - 150, -4], [27, chao - 150, -4], 2.4, 2.4, ferro, 1);
+      // Na altura de um integrante médio (≈104 px do chão ao topo da cúpula).
+      e.capsula([0, chao, -4], [0, chao - 98, -4], 2.4, 2.4, ferro, 1);
+      e.capsula([-21, chao - 98, -4], [21, chao - 98, -4], 2, 2, ferro, 1);
       // A cúpula é um ovo cortado embaixo e na frente; por dentro, escuro.
-      const casca = (y: number, Z: number) => y > chao - 92 || (Z > 4 && y > chao - 128);
+      const casca = (y: number, Z: number) => y > chao - 60 || (Z > 3 && y > chao - 84);
       for (const s of [-1, 1]) {
-        e.bola([s * 27, chao - 120, 0], 25, 34, 22, mat(rampa([P.pessego, P.laranja, P.vermelho]), 0.9), 2 + (s > 0 ? 1 : 0), 2.3, (_X, y, Z) => !casca(y, Z));
-        e.bola([s * 27, chao - 118, -4], 22, 30, 17, mat(rampa([P.vinho, P.noite, P.preto]), 0.2), 5, 2.3); // fundo
-        e.bola([s * 27, chao - 112, 2], 5, 8, 3, mat(rampa(PRETO), 0.5), 4, 4); // aparelho
-        e.capsula([s * 27 + 4, chao - 104, 3], [s * 27 + 6, chao - 96, 3], 0.9, 0.9, mat(rampa(PRETO), 0.3), 4); // fio
-        e.capsula([s * 27 - 8, chao - 100, 1], [s * 27 + 8, chao - 100, 1], 1.6, 1.6, mat(rampa([P.cimento, P.concreto, P.asfalto]), 0.4), 4); // prateleira
+        e.bola([s * 21, chao - 80, 0], 19, 25, 17, mat(rampa([P.pessego, P.laranja, P.vermelho]), 0.9), 2 + (s > 0 ? 1 : 0), 2.3, (_X, y, Z) => !casca(y, Z));
+        e.bola([s * 21, chao - 78, -3], 16.5, 22, 13, mat(rampa([P.vinho, P.noite, P.preto]), 0.2), 5, 2.3); // fundo
+        e.bola([s * 21, chao - 74, 1.5], 4, 6.5, 2.5, mat(rampa(PRETO), 0.5), 4, 4); // aparelho
+        e.capsula([s * 21 + 3, chao - 68, 2], [s * 21 + 4.5, chao - 62, 2], 0.8, 0.8, mat(rampa(PRETO), 0.3), 4); // fio
+        e.capsula([s * 21 - 6, chao - 64, 0.5], [s * 21 + 6, chao - 64, 0.5], 1.3, 1.3, mat(rampa([P.cimento, P.concreto, P.asfalto]), 0.4), 4); // prateleira
       }
     } else if (tipo === 'lixeira') {
       // Lixeira verde cilíndrica, suspensa numa haste preta.

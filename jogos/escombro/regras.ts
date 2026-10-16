@@ -359,9 +359,9 @@ export const GOLPES: Record<Golpe, FichaGolpe> = {
 export const COMBOS: readonly { seq: string; golpe: Golpe; nome: Tri; texto: Tri }[] = [
   { seq: 'SSS', golpe: 'moinho', nome: { pt: 'Moinho', en: 'Windmill', de: 'Windmühle' }, texto: { pt: 'Jab, direto e moinho de braço.', en: 'Jab, cross and windmill.', de: 'Jab, Gerade und Windmühle.' } },
   { seq: 'CCC', golpe: 'giratorio', nome: { pt: 'Giratório', en: 'Spin kick', de: 'Drehkick' }, texto: { pt: 'Chute, joelhada e chute giratório.', en: 'Kick, knee and spinning kick.', de: 'Kick, Knie und Drehkick.' } },
-  { seq: 'SSC', golpe: 'bicuda', nome: { pt: 'Bicuda', en: 'High kick', de: 'Hoher Tritt' }, texto: { pt: 'Dois socos e um chute alto na cara.', en: 'Two punches, then a high kick.', de: 'Zwei Schläge, dann ein hoher Tritt.' } },
-  { seq: 'SCC', golpe: 'voadoraRoda', nome: { pt: 'Voadora de roda', en: 'Pit flying kick', de: 'Pit-Flugkick' }, texto: { pt: 'Soco, chute e uma voadora girando.', en: 'Punch, kick and a spinning flying kick.', de: 'Schlag, Kick und ein Dreh-Flugkick.' } },
-  { seq: 'CCS', golpe: 'gancho', nome: { pt: 'Gancho', en: 'Uppercut', de: 'Aufwärtshaken' }, texto: { pt: 'Dois chutes e um gancho de baixo pra cima.', en: 'Two kicks and an uppercut.', de: 'Zwei Kicks und ein Aufwärtshaken.' } },
+  { seq: 'SSC', golpe: 'bicuda', nome: { pt: 'Crowd Kill', en: 'Crowd Kill', de: 'Crowd Kill' }, texto: { pt: 'Dois socos e um chute alto, na altura da cara.', en: 'Two punches and a head-high kick.', de: 'Zwei Schläge und ein Tritt auf Kopfhöhe.' } },
+  { seq: 'SCC', golpe: 'voadoraRoda', nome: { pt: 'Side to Side', en: 'Side to Side', de: 'Side to Side' }, texto: { pt: 'Soco, chute e uma voadora girando de lado a lado.', en: 'Punch, kick and a spinning flying kick.', de: 'Schlag, Tritt und ein Dreh-Flugkick.' } },
+  { seq: 'CCS', golpe: 'gancho', nome: { pt: 'Two Step', en: 'Two Step', de: 'Two Step' }, texto: { pt: 'Dois chutes no passo e um gancho de baixo pra cima.', en: 'Two stepping kicks and an uppercut.', de: 'Zwei Tritte im Schritt und ein Aufwärtshaken.' } },
 ];
 
 /** Golpe que sai de uma sequência (1 a 3 entradas). */

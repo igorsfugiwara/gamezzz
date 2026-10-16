@@ -276,7 +276,8 @@ function iniciarFase(n: number) {
   avisar(n === 0 ? tri(fase.nome) : `${t('jogo.round', { n })} · ${fase.ano}`, 2.2, true);
   cartao(tri(fase.historia), 5);
   evento(JOGO, 'fase_inicio', { fase: n, quem: jog.quem });
-  if (n === 0) tutorial.iniciar();
+  combosFeitos.clear();
+  if (n === 0) { tutorial.iniciar(); aulaCombos.iniciar(); }
   // Teste (?relogio&chefe): pula direto para o chefão.
   if (RELOGIO_TIMER && new URLSearchParams(location.search).has('chefe') && fase.chefe) {
     ondaIdx = fase.ondas.length;
@@ -332,6 +333,22 @@ const tutorial = new Tutorial(JOGO, [
   { id: 'comida', texto: () => t('tut.comida'), lugar: 'topo', quando: jogando0, alvo: () => { const q = quebraveis[0] ?? itens[0]; return q ? naCena(q.x, q.y - 30, 30) : null; }, ok: () => itemPego, segundos: 12 },
   { id: 'fim', texto: () => t('tut.fim'), lugar: 'topo', quando: jogando0, segundos: 3 },
 ], undefined, () => ({ pular: idioma() === 'pt' ? 'Pular tutorial' : idioma() === 'de' ? 'Tutorial überspringen' : 'Skip tutorial', entendi: 'OK', de: idioma() === 'pt' ? 'de' : idioma() === 'de' ? 'von' : 'of' }));
+
+/**
+ * Aula de combos no estúdio do Denão, depois do tutorial básico. É guardada à
+ * parte: quem já tinha feito o tutorial antes dos combos também passa por ela.
+ */
+const combosFeitos = new Set<string>();
+const aulaPronta = () => jogando0() && tutorial.passou('fim');
+const aulaCombos = new Tutorial(`${JOGO}-combos`, [
+  { id: 'moinho', texto: () => t('tut.combo1'), lugar: 'topo', quando: aulaPronta, ok: () => combosFeitos.has('SSS') },
+  { id: 'giratorio', texto: () => t('tut.combo2'), lugar: 'topo', quando: aulaPronta, ok: () => combosFeitos.has('CCC') },
+  { id: 'crowdkill', texto: () => t('tut.combo3'), lugar: 'topo', quando: aulaPronta, ok: () => combosFeitos.has('SSC') },
+  { id: 'sidetoside', texto: () => t('tut.combo4'), lugar: 'topo', quando: aulaPronta, ok: () => combosFeitos.has('SCC') },
+  { id: 'twostep', texto: () => t('tut.combo5'), lugar: 'topo', quando: aulaPronta, ok: () => combosFeitos.has('CCS') },
+], undefined, () => ({ pular: idioma() === 'pt' ? 'Pular aula' : idioma() === 'de' ? 'Überspringen' : 'Skip lesson', entendi: 'OK', de: idioma() === 'pt' ? 'de' : idioma() === 'de' ? 'von' : 'of' }));
+/** A aula ainda está rolando (os bonecos voltam a ficar de pé). */
+const emAula = () => fase.n === 0 && aulaCombos.ativo && !aulaCombos.passou('twostep');
 
 // ─── Ondas e câmera ───────────────────────────────────────
 function atualizarOndas(dt: number) {
@@ -500,7 +517,7 @@ function golpe(seq: string, fila = '') {
   if (g === 'voadoraRoda') jog.vz = 230;
   if (seq.endsWith('C')) chutes++;
   const nomeado = seq.length === 3 ? comboNomeado(seq) : null;
-  if (nomeado) anuncio = { texto: `${tri(nomeado.nome).toUpperCase()}!`, vida: 1.2 };
+  if (nomeado) { anuncio = { texto: `${tri(nomeado.nome).toUpperCase()}!`, vida: 1.2 }; combosFeitos.add(seq); }
   sfx.golpe();
 }
 
@@ -1088,6 +1105,7 @@ function vencerFase() {
     progresso = concluirFase(progresso, 0, { nota: 'A', tempo: tempoFase, pontos });
     salvarProgresso();
     tutorial.concluir();
+    aulaCombos.concluir();
     setTimeout(() => abrirMapa(1), 2200);
     return;
   }
@@ -1132,7 +1150,7 @@ function quadro(agora: number) {
 }
 /** `?relogio` troca o requestAnimationFrame por timer: dá para testar com a aba escondida. */
 const RELOGIO_TIMER = new URLSearchParams(location.search).has('relogio');
-if (RELOGIO_TIMER) Object.assign(window, { __escNocaute: () => { if (chefe) { chefe.vida = 1; ferirChefe(5); } }, __esc: () => ({ modo, camX, ondaIdx, inimigos: inimigos.length, alvos: inimigos.map((e) => ({ x: Math.round(e.x), y: Math.round(e.y), vida: e.vida, estado: e.estado })), quebraveis: quebraveis.length, itens: itens.length, chefe: chefe && { vida: chefe.vida, acao: chefe.acao }, jog: { x: jog.x, y: jog.y, z: jog.z, vida: jog.vida, mosh: jog.mosh, estado: jog.estado, invul: jog.invul, pisca: jog.pisca, seq: jog.seq, golpe: jog.golpe }, anuncio: anuncio.vida > 0 ? anuncio.texto : '' }) });
+if (RELOGIO_TIMER) Object.assign(window, { __escNocaute: () => { if (chefe) { chefe.vida = 1; ferirChefe(5); } }, __esc: () => ({ modo, camX, ondaIdx, inimigos: inimigos.length, alvos: inimigos.map((e) => ({ x: Math.round(e.x), y: Math.round(e.y), vida: e.vida, estado: e.estado })), quebraveis: quebraveis.length, itens: itens.length, chefe: chefe && { vida: chefe.vida, acao: chefe.acao }, jog: { x: jog.x, y: jog.y, z: jog.z, vida: jog.vida, mosh: jog.mosh, estado: jog.estado, invul: jog.invul, pisca: jog.pisca, seq: jog.seq, golpe: jog.golpe }, anuncio: anuncio.vida > 0 ? anuncio.texto : '', aula: [...combosFeitos] }) });
 const proximoQuadro = () => (RELOGIO_TIMER ? setTimeout(() => quadro(performance.now()), 16) : requestAnimationFrame(quadro));
 
 function passo(dt: number) {
@@ -1154,7 +1172,9 @@ function passo(dt: number) {
     if (proximoRaio <= 0) { proximoRaio = aleatorio(7, 13); flash = reduzirFlash ? 0 : 0.35; setTimeout(() => sfx.quebra(), 280); }
   }
   // Sala de ensaio: acaba com os dois bonecos no chão e o amplificador quebrado.
-  if (fase.n === 0 && !terminou && ondaIdx > 0 && !filaSpawn.length && inimigos.every((e) => e.estado === 'morto') && !quebraveis.length && (itemPego || !itens.length)) vencerFase();
+  if (fase.n === 0 && !terminou && ondaIdx > 0 && !filaSpawn.length && inimigos.every((e) => e.estado === 'morto') && !quebraveis.length && (itemPego || !itens.length) && !emAula()) vencerFase();
+  // Na aula de combos, o Denão põe o boneco de papelão de pé de novo.
+  if (emAula()) for (const e of inimigos) if (e.tipo === 'papelao' && e.estado === 'morto' && e.morto > 1.4) Object.assign(e, { estado: 'parado', vida: e.max, morto: 0, t: 0, z: 0, vx: 0, vz: 0, pisca: 0.3 });
   $('b-esp').classList.toggle('pronto', jog.mosh >= 100);
 }
 
@@ -1722,8 +1742,8 @@ function carregar(n: number) {
 
 // Pausa
 function alternarPausa() {
-  if (modo === 'jogo') { modo = 'pausa'; mostrar('pausa'); tutorial.pausar?.(); }
-  else if (modo === 'pausa') { modo = 'jogo'; mostrar(null); tutorial.retomar?.(); }
+  if (modo === 'jogo') { modo = 'pausa'; mostrar('pausa'); tutorial.pausar?.(); aulaCombos.pausar(); }
+  else if (modo === 'pausa') { modo = 'jogo'; mostrar(null); tutorial.retomar?.(); aulaCombos.retomar(); }
 }
 $('b-voltar').addEventListener('click', alternarPausa);
 
@@ -1779,7 +1799,7 @@ setVolume(ler(JOGO, 'volume', 1));
 controleVolume.value = String(Math.round(volumeGeral() * 100));
 controleVolume.addEventListener('input', () => { setVolume(Number(controleVolume.value) / 100); gravar(JOGO, 'volume', volumeGeral()); });
 $('b-flash').addEventListener('click', () => { reduzirFlash = !reduzirFlash; gravar(JOGO, 'flash', reduzirFlash); traduzir(); });
-$('b-sair').addEventListener('click', () => { chip.parar(); tutorial.pausar?.(); abrirMapa(fase.n); });
+$('b-sair').addEventListener('click', () => { chip.parar(); tutorial.pausar?.(); aulaCombos.pausar(); abrirMapa(fase.n); });
 
 // Continue?
 let contagem = 9;

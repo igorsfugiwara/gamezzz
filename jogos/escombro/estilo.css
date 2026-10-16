@@ -131,6 +131,10 @@
   background: rgba(7, 6, 11, 0.94);
 }
 .tela-menu[hidden] { display: none; }
+/* Centraliza sem cortar: quando o conteúdo passa da altura, as molas somem e
+   começa do topo, com rolagem (o "center" puro escondia o título no celular). */
+.tela-menu { justify-content: flex-start; }
+.tela-menu::before, .tela-menu::after { content: ''; margin: auto 0; flex: 0 0 0; }
 .tela-menu--titulo { background: linear-gradient(rgba(7, 6, 11, 0.55), rgba(7, 6, 11, 0.15) 45%, rgba(7, 6, 11, 0.7)); }
 .tela-menu--sobre { background: rgba(7, 6, 11, 0.86); }
 /* Na capa o texto fica por cima da cena animada: contorno preto para ler em qualquer fundo. */
@@ -216,6 +220,22 @@
 .gb-barra i { display: block; height: 100%; width: 0; background: var(--gb1); }
 .botao--gb { background: var(--gb2); color: var(--gb0); border-color: var(--gb0); box-shadow: 0 4px 0 var(--gb1); }
 .botao--gb.botao--forte { background: var(--gb1); color: var(--gb3); }
+
+/* Seleção em tela baixa ou estreita (celular): retrato e ficha lado a lado, rostos numa fileira. */
+@media (max-height: 760px), (max-width: 480px) {
+  .tela-menu--sel { gap: 10px; padding-top: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .sel { flex-wrap: nowrap; gap: 10px; align-items: center; width: min(560px, 100%); }
+  .retrato { width: auto; height: min(262px, 28vh); flex: 0 0 auto; }
+  .sel__info { width: auto; flex: 1 1 auto; min-width: 0; gap: 5px; }
+  .sel__nome { font-size: clamp(14px, 4.4vw, 22px); }
+  .sel__inst { font-size: 9px; }
+  .stat { grid-template-columns: auto 1fr; font-size: 7px; gap: 6px; }
+  .sel__esp { font-size: 12px; }
+  .sel__esp b { font-size: 9px; }
+  .fileira { gap: 6px; flex-wrap: nowrap; }
+  .fileira button { width: min(56px, 13vw); height: min(56px, 13vw); border-width: 2px; }
+  .titulo-menu { font-size: clamp(11px, 3.4vw, 18px); }
+}
 
 /* Golpes (pausa) */
 .tela-menu--golpes { justify-content: flex-start; gap: 10px; }
