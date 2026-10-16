@@ -20,6 +20,29 @@
 .esc:not(.esc--deitado) .palco { flex: 0 0 auto; padding-top: max(10px, env(safe-area-inset-top, 0px)); }
 .esc:not(.esc--deitado) .controles:not([hidden]) { flex: 1 1 auto; }
 
+/* Cartão de história: caixa de diálogo no estilo Game Boy, no alto da tela do jogo. */
+.cartao {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(640px, 92%);
+  margin: 0;
+  padding: 10px 14px;
+  background: #9bbc0f;
+  color: #0f380f;
+  border: 4px solid #0f380f;
+  box-shadow: 0 0 0 3px #9bbc0f;
+  font-family: var(--ui-font);
+  font-size: clamp(13px, 2.2vw, 16px);
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: left;
+  pointer-events: none;
+  z-index: 3;
+}
+.cartao[hidden] { display: none; }
+
 /* ─── Controles de toque ───────────────────────── */
 .controles {
   flex: 0 0 auto;

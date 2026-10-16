@@ -28,7 +28,7 @@ export const VISUAL: Record<Quem, Boneco> = {
   // Igor (Lingão): careca, barba preta, alargador, gordo; bermuda com meia.
   igor: {
     pele: TONS.pele.morena, cabelo: TONS.cabelo.preto, roupa: PRETO, calca: PRETO, estilo: 'careca', barba: true, alargador: true,
-    gordo: true, bermuda: true, tenis: true, meia: true,
+    gordo: true, folgado: true, bermuda: true, tenis: true, meia: true,
   },
   // Pucci: cabelão preto, boné estampado colorido, bigode fino, braço fechado.
   pucci: {
@@ -50,14 +50,27 @@ export const VISUAL: Record<Quem, Boneco> = {
     pele: TONS.pele.clara, cabelo: TONS.cabelo.castanho, roupa: PRETO, calca: PRETO, estilo: 'careca',
     tatuagem: true, tenis: true,
   },
+  // Felipeles (secreto), antigo baterista: careca com tatuagem na cabeça, magro e bombado, braço fechado.
+  felipeles: {
+    pele: TONS.pele.clara, cabelo: TONS.cabelo.castanho, roupa: PRETO, calca: PRETO, estilo: 'careca',
+    tatuagem: true, tatuagemCabeca: true, musculoso: true, tenis: true,
+  },
 };
+
+/** O Denão, dono do estúdio no Ipiranga: cabeludo com entradas, bem gordo, bermuda e bota. */
+export function spriteDenao(quadro: 0 | 1): Sprite {
+  return emCache(`esc-denao-${quadro}`, () => bonecoHD({
+    pele: TONS.pele.clara, cabelo: TONS.cabelo.castanho, roupa: PRETO, calca: PRETO, estilo: 'calvo', gordo: true,
+    bermuda: true, estampa: true, giro: -0.6, respiro: quadro === 1, pose: 'parado',
+  }));
+}
 
 /**
  * Golpes de roda punk (crowdkill): gancho, moinho de braço, chute giratório,
  * two-step para andar, pulo de pé alto e voadora; mais apanhar, especial e a
  * dança da vitória.
  */
-export type PoseLuta = 'guarda' | 'twostep' | 'soco' | 'soco2' | 'moinho' | 'giro' | 'chute' | 'pulo' | 'apanha' | 'especial' | 'danca';
+export type PoseLuta = 'guarda' | 'twostep' | 'soco' | 'soco2' | 'moinho' | 'giro' | 'chute' | 'voadora' | 'pulo' | 'apanha' | 'especial' | 'danca';
 
 /** Jazz Bass sunburst no Igor, Telecaster butterscotch no Renato. */
 const INSTRUMENTO: Partial<Record<Quem, Boneco['instrumento']>> = {
@@ -67,7 +80,7 @@ const INSTRUMENTO: Partial<Record<Quem, Boneco['instrumento']>> = {
 };
 
 function poseDoEspecial(quem: Quem): Partial<Boneco> {
-  if (quem === 'pucci') return { pose: 'baqueta', grito: true };
+  if (quem === 'pucci' || quem === 'felipeles') return { pose: 'baqueta', grito: true };
   if (quem === 'vocal') return { pose: 'microfone', grito: true, quadro: 1 };
   return { instrumento: INSTRUMENTO[quem], pose: 'tocando', quadro: 2 };
 }
@@ -76,16 +89,20 @@ function poseDoEspecial(quem: Quem): Partial<Boneco> {
 const poseFigura = (p: PoseLuta): Pose => (p === 'danca' ? 'maos' : p === 'especial' ? 'guarda' : p);
 
 /** Giro do corpo em cada quadro do chute giratório: de costas, de lado e o chute de frente. */
-const GIRO_CHUTE = [Math.PI, Math.PI * 1.5, 0];
+const GIRO_CHUTE = [Math.PI, Math.PI * 1.5, 0.25, 0];
+/** Voadora giratória: a perna sobe num arco por cima e termina reta (0°), com o corpo girando. */
+const VOADORA = [{ a: -30, g: Math.PI }, { a: 40, g: Math.PI * 1.5 }, { a: 80, g: 1.2 }, { a: 0, g: 0 }];
 
 /** Integrante numa pose; `f` é o quadro (passo do two-step, fase do moinho, do giro, da dança). */
-export function spriteIntegrante(quem: Quem, pose: PoseLuta, f: 0 | 1 | 2 | 3 = 0, respiro = false): Sprite {
-  return emCache(`esc-${quem}-${pose}-${f}-${respiro}`, () => bonecoHD({
-    ...VISUAL[quem], giro: GIRO_LUTA, respiro,
+export function spriteIntegrante(quem: Quem, pose: PoseLuta, f: 0 | 1 | 2 | 3 = 0, respiro = false, mascara = false): Sprite {
+  return emCache(`esc-${quem}-${pose}-${f}-${respiro}-${mascara}`, () => bonecoHD({
+    ...VISUAL[quem], giro: GIRO_LUTA, respiro, mascara,
     ...(pose === 'especial' ? poseDoEspecial(quem)
       : pose === 'danca' ? { pose: 'maos', quadro: f, passo: f % 2 ? 1 : 3, grito: f % 2 === 1 }
         : pose === 'moinho' ? { pose, golpe: Math.min(2, f) as 0 | 1 | 2 }
-          : pose === 'giro' ? { pose, giro: GIRO_LUTA + GIRO_CHUTE[Math.min(2, f)] }
+          : pose === 'giro' ? { pose, giro: GIRO_LUTA + GIRO_CHUTE[f] }
+            : pose === 'voadora' ? { pose, giro: GIRO_LUTA + VOADORA[f].g, anguloChute: VOADORA[f].a, grito: true }
+              : pose === 'chute' ? { pose, golpe: (f === 0 ? 0 : 1) as 0 | 1 }
             : { pose, passo: f, grito: pose === 'apanha' }),
   }));
 }
@@ -108,7 +125,7 @@ function sorteio(semente: number) {
 const FARDA_PM: Tom = [P.neblina, P.cimento, P.concreto];
 const FARDA_GCM: Tom = [P.azul, P.marinho, P.noite];
 
-function visualInimigo(tipo: Exclude<TipoInimigo, 'fantasma'>, semente: number): Boneco {
+function visualInimigo(tipo: Exclude<TipoInimigo, 'fantasma' | 'virus'>, semente: number): Boneco {
   const r = sorteio(semente + tipo.length * 97);
   const de = <T>(l: readonly T[]) => l[Math.floor(r() * l.length)];
   const pele = de(Object.values(TONS.pele));
@@ -117,19 +134,20 @@ function visualInimigo(tipo: Exclude<TipoInimigo, 'fantasma'>, semente: number):
       // Boneco de treino da sala de ensaio: papelão e fita crepe.
       return { pele: [P.caramelo_claro, P.caramelo, P.ruga], cabelo: TONS.cabelo.castanho, roupa: [P.pastel_creme, P.papel, P.neblina], calca: [P.caramelo, P.ruga, P.chocolate], estilo: 'capacete', cobertura: [P.caramelo_claro, P.caramelo, P.ruga], viseira: P.vermelho, tenis: true };
     case 'pm':
-      // Policial militar: farda cinza, boné, colete, cassetete.
-      return { pele, cabelo: TONS.cabelo.preto, roupa: FARDA_PM, calca: FARDA_PM, estilo: 'boneCurto', cobertura: PRETO, jaqueta: true, arma: 'cassetete', barba: r() < 0.35, oculos: r() < 0.3, largo: r() < 0.3 };
+      // PM: farda cinza de manga comprida, colete à prova de bala, boné cinza, coturno, cassetete.
+      return { pele, cabelo: TONS.cabelo.preto, roupa: FARDA_PM, calca: FARDA_PM, estilo: 'boneCurto', cobertura: FARDA_PM, colete: true, gravata: undefined, jaqueta: false, arma: 'cassetete', barba: r() < 0.35, oculos: r() < 0.3, largo: r() < 0.3, mangaLonga: true };
     case 'gcm':
-      // Guarda civil: azul-marinho, boné, colete.
-      return { pele, cabelo: TONS.cabelo.preto, roupa: FARDA_GCM, calca: FARDA_GCM, estilo: 'boneCurto', cobertura: FARDA_GCM, jaqueta: true, barba: r() < 0.3 };
+      // GCM: farda azul-marinho, colete, boné azul-marinho.
+      return { pele, cabelo: TONS.cabelo.preto, roupa: FARDA_GCM, calca: FARDA_GCM, estilo: 'boneCurto', cobertura: FARDA_GCM, colete: true, barba: r() < 0.3, mangaLonga: true };
     case 'choque':
       // Tropa de choque: capacete de viseira fumê, escudo, preto.
-      return { pele, cabelo: TONS.cabelo.preto, roupa: PRETO, calca: PRETO, estilo: 'capacete', cobertura: PRETO, viseira: P.cimento, arma: 'escudo', largo: true, jaqueta: true };
+      return { pele, cabelo: TONS.cabelo.preto, roupa: PRETO, calca: PRETO, estilo: 'capacete', cobertura: PRETO, viseira: P.cimento, arma: 'escudo', largo: true, colete: true, mangaLonga: true };
   }
 }
 
 export function spriteInimigo(tipo: TipoInimigo, semente: number, pose: PoseLuta | 'tonto', passo: 0 | 1 | 2 | 3 = 0): Sprite {
   if (tipo === 'fantasma') return spriteFantasma(pose === 'soco' || pose === 'soco2' ? 1 : pose === 'apanha' || pose === 'tonto' ? 2 : 0);
+  if (tipo === 'virus') return spriteVirus((passo % 2) as 0 | 1, 1, pose === 'apanha' || pose === 'tonto');
   const s = semente % 6;
   return emCache(`esc-ini-${tipo}-${s}-${pose}-${passo}`, () => bonecoHD({
     ...visualInimigo(tipo, s), giro: GIRO_LUTA,
@@ -171,6 +189,53 @@ export function spriteTecnico(pose: PoseLuta | 'tonto' | 'microfone', passo: 0 |
     estilo: 'topete', fones: true, oculos: !bravo, tenis: true, escala: 1.45, giro: GIRO_LUTA, grito: bravo,
     ...(pose === 'tonto' ? { pose: 'apanha', tonto: true } : pose === 'microfone' ? { pose: 'microfone', grito: true } : { pose: poseFigura(pose), passo }),
   }));
+}
+
+/**
+ * A Síndrome do Pequeno Poder: PM vestido de soldadinho de chumbo, quepe alto
+ * com penacho, joelheira, caneleira, cotoveleira e ombreira douradas como
+ * armadura de cavaleiro. Baixinho; o jogo desenha o banquinho embaixo.
+ */
+export function spritePequenoPoder(pose: PoseLuta | 'tonto', passo: 0 | 1 | 2 | 3, bravo: boolean): Sprite {
+  return emCache(`esc-pp-${pose}-${passo}-${bravo}`, () => bonecoHD({
+    pele: bravo ? [P.pessego, P.caramelo, P.vermelho] : TONS.pele.clara, cabelo: TONS.cabelo.preto,
+    roupa: [P.laranja, P.vermelho, P.vinho], calca: FARDA_GCM, estilo: 'quepe', cobertura: [P.concreto, P.asfalto, P.noite],
+    protecoes: true, colete: false, mangaLonga: true, oculos: !bravo, grito: bravo, arma: 'cassetete', escala: 1.15, giro: GIRO_LUTA,
+    ...(pose === 'tonto' ? { pose: 'apanha', tonto: true } : { pose: poseFigura(pose as PoseLuta), passo }),
+  }));
+}
+
+/** Vírus: bola com espinhos e cara de bravo. `q` pulsa; `grande` é o chefão. */
+export function spriteVirus(q: 0 | 1, escala = 1, ferido = false): Sprite {
+  return emCache(`esc-virus-${q}-${escala}-${ferido}`, () => gradeVirus(q, escala, ferido));
+}
+export function gradeVirus(q: 0 | 1, escala = 1, ferido = false): Grade {
+  const L = Math.ceil(56 * escala), A = Math.ceil(56 * escala);
+  const e = new Estudio(0.4, L, A, L / 2 / escala, escala);
+  const corpo = mat(rampa([P.neon_verde, P.folha, P.musgo]), 0.9);
+  const ponta = mat(rampa([P.pastel_rosa, P.neon_rosa, P.vinho]), 1.2);
+  const r = 14 + q;
+  const c: V3 = [0, 28, 0];
+  e.bola(c, r, r, r, corpo, 1);
+  // Espinhos (proteína spike) em volta.
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2, b = ((i * 7) % 5) / 5 - 0.5;
+    const d: V3 = [Math.cos(a) * Math.cos(b), Math.sin(a) * Math.cos(b), Math.sin(b) + 0.2];
+    e.capsula([c[0] + d[0] * r * 0.8, c[1] + d[1] * r * 0.8, c[2] + d[2] * r * 0.8], [c[0] + d[0] * (r + 7), c[1] + d[1] * (r + 7), c[2] + d[2] * (r + 7)], 1.3, 1, corpo, 2);
+    e.bola([c[0] + d[0] * (r + 8), c[1] + d[1] * (r + 8), c[2] + d[2] * (r + 8)], 2.3, 2.3, 2.3, ponta, 3);
+  }
+  e.revelar();
+  e.pintar((X, y, p, Z) => {
+    if (p !== 1 || Z < 6) return null;
+    const dy = y - 26;
+    for (const s of [-1, 1]) {
+      if (Math.abs(X - s * 5) < 2.2 && dy >= 0 && dy <= 3) return ferido ? P.amarelo : P.preto;
+      if (Math.abs(dy - (-2 - s * (X - s * 5) * 0.5)) < 0.8 && Math.abs(X - s * 5) < 3.5) return P.preto;
+    }
+    if (Math.abs(X) < 4 && dy >= 7 && dy <= 8) return P.preto;
+    return null;
+  });
+  return e.grade();
 }
 
 const METAL_AMARELO = mat(rampa([P.amarelo, P.mostarda, P.ruga]), 1.3);
@@ -231,11 +296,11 @@ export function gradePato(quadro: 0 | 1 | 2 | 3): Grade {
  * A Mão Invisível do Mercado (150×120): luva branca translúcida com punho de
  * terno e abotoadura de cifrão. 0 aberta, 1 punho, 2 apontando.
  */
-export function spriteMao(pose: 0 | 1 | 2): Sprite {
+export function spriteMao(pose: 0 | 1 | 2 | 3 | 4): Sprite {
   return emCache(`esc-mao-${pose}`, () => gradeMao(pose));
 }
 
-export function gradeMao(pose: 0 | 1 | 2): Grade {
+export function gradeMao(pose: 0 | 1 | 2 | 3 | 4): Grade {
   const e = new Estudio(0.35, 150, 120, 70);
   const luva = mat(rampa([P.branco, P.pastel_azul, P.ceu]), 1.1);
   const terno = mat(rampa([P.concreto, P.asfalto, P.noite]), 0.5);
@@ -245,13 +310,20 @@ export function gradeMao(pose: 0 | 1 | 2): Grade {
   e.capsula([44, base - 40, 0], [70, base - 54, -4], 15, 16, terno, 1);
   e.capsula([36, base - 37, 0], [42, base - 39, 0], 13.5, 13.5, camisa, 2);
   e.bola([10, base - 30, 0], 26, 14, 18, luva, 3, 2.3); // palma
-  const dedos: [V3, V3][] = pose === 1
+  // 3 e 4: dedos de mago, mexendo como quem faz feitiço (alternam qual dedo sobe).
+  const magia = pose >= 3;
+  const dedos: [V3, V3][] = magia
+    ? [[-14, base - 26, 12], [-14, base - 26, 4], [-14, base - 26, -4], [-14, base - 26, -12]].map((p, i) => {
+      const sobe = (i + pose) % 2 === 0 ? -14 : 6;
+      return [p as V3, [p[0] - [26, 32, 30, 22][i], p[1] + sobe, p[2] * 1.4] as V3];
+    })
+    : pose === 1
     ? [[-12, base - 26, 12], [-12, base - 26, 4], [-12, base - 26, -4], [-12, base - 26, -12]].map((p) => [p as V3, [p[0] - 4, p[1] + 8, p[2]] as V3])
     : pose === 2
       ? [[[-14, base - 30, 10], [-54, base - 34, 12]], ...[[-12, base - 26, 3], [-12, base - 26, -5], [-12, base - 26, -12]].map((p) => [p as V3, [p[0] - 4, p[1] + 8, p[2]] as V3] as [V3, V3])]
       : [[-14, base - 26, 12], [-14, base - 26, 4], [-14, base - 26, -4], [-14, base - 26, -12]].map((p, i) => [p as V3, [p[0] - [30, 36, 34, 26][i], p[1] + 10, p[2] * 1.15] as V3]);
   for (const [a, b] of dedos) e.capsula(a, b, 6, 5, luva, 4);
-  e.capsula([18, base - 26, 18], [pose === 0 ? -6 : 0, base - 16, 26], 6.5, 5, luva, 5); // dedão
+  e.capsula([18, base - 26, 18], [pose === 0 || magia ? -6 : 0, base - (pose === 4 ? 30 : 16), 26], 6.5, 5, luva, 5); // dedão
   e.revelar();
   // Costura da luva e abotoadura de cifrão.
   e.pintar((X, y, p) => (p === 3 && Math.abs(X - 22) < 0.8 && y < base - 20 ? P.ceu : null));
@@ -296,14 +368,42 @@ export function spriteCaramelo(quadro: 0 | 1 | 2 | 3, morde = false): Sprite {
 export function spriteItem(item: TipoItem): Sprite {
   if (item === 'caramelo') return spriteCaramelo(0);
   return emCache(`esc-item-${item}`, () => {
-    const e = new Estudio(0.6, 26, 30, 13);
+    const e = new Estudio(0.6, 28, 30, 14);
     const chao = 28;
-    if (item === 'cafe') {
-      // Cafezinho de padaria: copinho de plástico branco, café preto e fumaça.
+    if (item === 'coxinha') {
+      const massa = mat(rampa([P.amarelo, P.mostarda, P.ruga]), 0.5);
+      e.bola([0, chao - 6, 0], 7, 6.5, 7, massa, 1);
+      e.capsula([0, chao - 9, 0], [0, chao - 18, 0], 5.5, 1.5, massa, 1);
+      e.dobrar((X, y) => ((Math.round(X * 2) + y) % 3 === 0 ? 1 : 0)); // farinha de rosca
+    } else if (item === 'pastel') {
+      const massa = mat(rampa([P.pastel_creme, P.amarelo, P.mostarda]), 0.6);
+      e.bola([0, chao - 4, 0], 11, 4.5, 7, massa, 1, 2.4);
+      e.dobrar((X, y) => (y === chao - 1 && Math.round(X) % 2 === 0 ? 1 : 0));
+    } else if (item === 'caldo') {
       const copo = mat(rampa([P.branco, P.papel, P.neblina]), 0.8);
-      e.capsula([0, chao - 2, 0], [0, chao - 11, 0], 3.6, 4.6, copo, 1);
-      e.bola([0, chao - 11, 0], 4.3, 1, 4.3, mat(rampa([P.ruga, P.chocolate, P.noite]), 0.9), 2, 2);
-      e.dobrar((_X, y, p) => (p === 1 && y % 3 === 0 ? 1 : 0)); // frisos do copinho
+      e.capsula([0, chao - 3, 0], [0, chao - 15, 0], 4.5, 5.5, copo, 1);
+      e.recolorir((_X, y) => (y < chao - 13 ? mat(rampa([P.pastel_verde, P.menta, P.folha]), 0.4) : null));
+      e.capsula([2, chao - 16, 0], [4, chao - 22, 0], 0.7, 0.7, mat(rampaDe(P.vermelho)), 2);
+    } else if (item === 'acai') {
+      e.bola([0, chao - 4, 0], 8, 4.5, 8, mat(rampa([P.branco, P.papel, P.neblina]), 0.6), 1, 2.6);
+      e.bola([0, chao - 9, 0], 7, 3, 7, mat(rampa([P.neon_roxo, '#5b2a7a', '#2a1238']), 0.6), 2);
+      e.dobrar((X, y, p) => (p === 2 && (Math.round(X * 3) + y) % 4 === 0 ? -2 : 0)); // granola
+    } else if (item === 'guarana') {
+      const lata = mat(rampa([P.neon_verde, P.folha, P.musgo]), 1);
+      e.capsula([0, chao - 3, 0], [0, chao - 17, 0], 4.5, 4.5, lata, 1);
+      e.recolorir((_X, y) => (y >= chao - 12 && y <= chao - 9 ? mat(rampaDe(P.vermelho), 1) : null));
+    } else if (item === 'coco') {
+      // Coco verde de praia com canudinho.
+      e.bola([0, chao - 9, 0], 9, 9, 9, mat(rampa([P.neon_verde, P.folha, P.musgo]), 0.7), 1);
+      e.bola([0, chao - 17, 0], 3.5, 1.2, 3.5, mat(rampa([P.pastel_creme, P.papel, P.neblina]), 0.3), 2, 2);
+      e.capsula([1, chao - 17, 0], [4, chao - 27, 0], 0.8, 0.8, mat(rampaDe(P.neon_rosa), 0.6), 3);
+    } else if (item === 'cafe') {
+      // Cafezinho na xícara, com pires.
+      const louca = mat(rampa([P.branco, P.papel, P.neblina]), 1);
+      e.bola([0, chao - 2, 0], 10, 1.4, 9, louca, 1, 2.4);
+      e.capsula([0, chao - 4, 0], [0, chao - 11, 0], 4.2, 5.4, louca, 2);
+      e.bola([0, chao - 11, 0], 4.8, 1, 4.8, mat(rampa([P.ruga, P.chocolate, P.noite]), 1), 3, 2);
+      e.capsula([6, chao - 9, 0], [6.5, chao - 5, 0], 1.6, 1.4, louca, 4); // asa
     } else {
       // Energético: lata preta alta com risco verde-neon.
       const lata = mat(rampa([P.concreto, P.asfalto, P.preto]), 1.3);
@@ -311,8 +411,8 @@ export function spriteItem(item: TipoItem): Sprite {
       e.recolorir((_X, y) => (y <= chao - 21 || y >= chao - 3 ? mat(rampa([P.branco, P.neblina, P.cimento]), 1.2) : null));
     }
     e.revelar();
-    if (item === 'cafe') { e.pinta(11, chao - 16, P.papel); e.pinta(13, chao - 18, P.papel); e.pinta(12, chao - 20, P.neblina); e.pinta(14, chao - 22, P.neblina); }
-    else e.pintar((X, y, p, Z) => (p === 1 && Z > 1 && y > chao - 19 && y < chao - 5 && Math.abs(X - Math.sin(y * 0.9) * 1.6) < 0.8 ? P.neon_verde : null));
+    if (item === 'cafe') { e.pinta(13, chao - 15, P.papel); e.pinta(15, chao - 17, P.papel); e.pinta(14, chao - 19, P.neblina); e.pinta(16, chao - 21, P.neblina); }
+    else if (item === 'energetico') e.pintar((X, y, p, Z) => (p === 1 && Z > 1 && y > chao - 19 && y < chao - 5 && Math.abs(X - Math.sin(y * 0.9) * 1.6) < 0.8 ? P.neon_verde : null));
     return e.grade();
   });
 }
@@ -324,13 +424,21 @@ export function spriteQuebravel(tipo: TipoQuebravel, rachado = false): Sprite {
     const e = new Estudio(0.6, 64, 96, 32);
     const chao = 94;
     if (tipo === 'orelhao') {
-      // Orelhão de SP: cúpula laranja aberta para a frente, no poste, telefone dentro.
-      e.capsula([0, chao, -3], [0, chao - 44, -3], 2, 2, mat(rampa([P.neblina, P.cimento, P.concreto]), 0.8), 1);
-      e.bola([0, chao - 62, 0], 15, 22, 13, mat(rampa([P.pessego, P.laranja, P.vermelho]), 0.9), 2, 2.2, (_X, Y, Z) => Z < 3 || Y < chao - 74);
-      e.bola([0, chao - 58, -4], 4, 8, 3, mat(rampa(PRETO), 0.5), 3, 4);
+      // Orelhão duplo de SP: duas cúpulas laranja no mesmo poste, cada uma com o telefone dentro.
+      const ferro = mat(rampa([P.neblina, P.cimento, P.concreto]), 0.8);
+      e.capsula([0, chao, -2], [0, chao - 50, -2], 2, 2, ferro, 1);
+      e.capsula([-14, chao - 50, -2], [14, chao - 50, -2], 1.6, 1.6, ferro, 1);
+      for (const s of [-1, 1]) {
+        e.bola([s * 13, chao - 64, 0], 11, 15, 10, mat(rampa([P.pessego, P.laranja, P.vermelho]), 0.9), 2 + (s > 0 ? 1 : 0), 2.2);
+        e.bola([s * 13, chao - 60, 6], 3.2, 5, 2, mat(rampa(PRETO), 0.5), 4, 4); // aparelho
+      }
+      // Boca da cúpula: o fundo escuro aparece na frente.
+      e.recolorir((X, y, p, Z) => ((p === 2 || p === 3) && Z > 5 && y > chao - 66 && Math.abs(Math.abs(X) - 13) < 7 ? mat(rampa([P.vermelho, P.vinho, P.noite]), 0.2) : null));
     } else if (tipo === 'lixeira') {
-      e.capsula([0, chao, 0], [0, chao - 26, 0], 1.6, 1.6, mat(rampa([P.neblina, P.cimento, P.concreto]), 0.8), 1);
-      e.capsula([0, chao - 30, 0], [0, chao - 48, 0], 9, 10, mat(rampa([P.pessego, P.laranja, P.vermelho]), 0.6), 2);
+      // Lixeira verde cilíndrica, de tampa preta.
+      e.capsula([0, chao - 3, 0], [0, chao - 34, 0], 10, 10, mat(rampa([P.menta, P.folha, P.musgo]), 0.6), 2, 1);
+      e.bola([0, chao - 35, 0], 10.5, 2.4, 10.5, mat(rampa(PRETO), 0.6), 3, 2.6);
+      e.dobrar((_X, y, p) => (p === 2 && (y === chao - 10 || y === chao - 26) ? 1 : 0));
     } else if (tipo === 'banca') {
       e.bola([0, chao - 30, 0], 26, 30, 14, mat(rampa([P.menta, P.folha, P.musgo]), 0.5), 1, 6);
       e.recolorir((X, y, p, Z) => (p === 1 && Z > 8 && y > chao - 52 && y < chao - 20 ? mat(rampaDe([P.vermelho, P.amarelo, P.azul, P.neon_rosa][Math.abs(Math.floor(X / 6)) % 4]), 0.3) : null));

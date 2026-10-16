@@ -6,7 +6,7 @@ import type { Tri } from './i18n';
 
 // ─── Integrantes ──────────────────────────────────────────
 
-export type Quem = 'igor' | 'pucci' | 'renato' | 'vocal' | 'duxxo';
+export type Quem = 'igor' | 'pucci' | 'renato' | 'vocal' | 'duxxo' | 'felipeles';
 export type Especial = 'grave' | 'blast' | 'microfonia' | 'grito';
 
 export interface Integrante {
@@ -20,7 +20,8 @@ export interface Integrante {
   especial: Especial;
   especialNome: Tri;
   especialTexto: Tri;
-  secreto?: boolean;
+  /** Secreto: 'zerar' libera ao terminar o jogo; 'notaS' ao tirar S em qualquer fase. */
+  secreto?: 'zerar' | 'notaS';
 }
 
 export const INTEGRANTES: Integrante[] = [
@@ -50,16 +51,22 @@ export const INTEGRANTES: Integrante[] = [
   },
   {
     id: 'duxxo', nome: 'DUXXO', instrumento: { pt: 'Guitarra', en: 'Guitar', de: 'Gitarre' },
-    forca: 1.05, vel: 1.05, alcance: 1.05, especial: 'microfonia', secreto: true,
+    forca: 1.05, vel: 1.05, alcance: 1.05, especial: 'microfonia', secreto: 'zerar',
     especialNome: { pt: 'Microfonia', en: 'Feedback', de: 'Rückkopplung' },
     especialTexto: { pt: 'Projétil que atravessa a fila.', en: 'A shot that pierces the whole line.', de: 'Ein Schuss durch die ganze Reihe.' },
   },
 ];
+INTEGRANTES.push({
+  id: 'felipeles', nome: 'FELIPELES', instrumento: { pt: 'Bateria (antigo)', en: 'Drums (former)', de: 'Schlagzeug (früher)' },
+  forca: 1.3, vel: 1.15, alcance: 0.95, especial: 'blast', secreto: 'notaS',
+  especialNome: { pt: 'Blast beat', en: 'Blast beat', de: 'Blast Beat' },
+  especialTexto: { pt: 'Rajada de baquetadas na frente.', en: 'A burst of stick hits in front.', de: 'Trommelfeuer nach vorne.' },
+});
 export const integrante = (id: Quem) => INTEGRANTES.find((i) => i.id === id)!;
 
 // ─── Inimigos ─────────────────────────────────────────────
 
-export type TipoInimigo = 'pm' | 'gcm' | 'choque' | 'fantasma' | 'papelao';
+export type TipoInimigo = 'pm' | 'gcm' | 'choque' | 'fantasma' | 'virus' | 'papelao';
 
 export interface FichaInimigo {
   vida: number;
@@ -80,14 +87,15 @@ export const INIMIGOS: Record<TipoInimigo, FichaInimigo> = {
   pm: { vida: 32, dano: 8, vel: 56, alcance: 36, recarga: 1.5, preparo: 0.46, pontos: 150 },
   choque: { vida: 52, dano: 12, vel: 42, alcance: 34, recarga: 1.9, preparo: 0.6, pontos: 250 },
   fantasma: { vida: 16, dano: 7, vel: 74, alcance: 26, recarga: 1.2, preparo: 0.35, pontos: 80 },
+  virus: { vida: 10, dano: 6, vel: 50, alcance: 20, recarga: 0.9, preparo: 0.25, pontos: 60 },
 };
 
 // ─── Fases ────────────────────────────────────────────────
 
-export type Cenario = 'ensaio' | 'garoa' | 'canteiro' | 'show';
-export type Chefe = 'pato' | 'mao' | 'tecnico';
+export type Cenario = 'ensaio' | 'centro' | 'show' | 'festival' | 'delegacia' | 'pandemia' | 'canteiro';
+export type Chefe = 'algoritmo' | 'tecnico' | 'pequenoPoder' | 'virus' | 'mao';
 export type TipoQuebravel = 'orelhao' | 'lixeira' | 'banca' | 'amp' | 'cone' | 'caixa';
-export type TipoItem = 'cafe' | 'energetico' | 'caramelo';
+export type TipoItem = 'coxinha' | 'pastel' | 'caldo' | 'acai' | 'guarana' | 'coco' | 'energetico' | 'cafe' | 'caramelo';
 
 export interface Onda {
   /** Onde a câmera trava (borda esquerda da tela, em px do mundo). */
@@ -109,16 +117,29 @@ export interface Fase {
   par: number;
   fita: boolean;
   arquivo: { titulo: Tri; texto: Tri } | null;
+  /** Cartão de abertura: onde e quando. */
+  historia: Tri;
+  /** Pandemia: ataque à distância com álcool em gel. */
+  distancia?: boolean;
+  /** O Jota não pode ser escolhido (está na delegacia). */
+  semJota?: boolean;
+  /** Segunda tela: depois das ondas, a luta com o chefe muda de lugar. */
+  segundaTela?: { cenario: Cenario; texto: Tri };
 }
 
 export const FASES: Fase[] = [
   {
-    n: 0, ano: '2016', nome: { pt: 'Sala de ensaio', en: 'Rehearsal room', de: 'Proberaum' }, cenario: 'ensaio',
+    n: 0, ano: '2016', nome: { pt: 'Estúdio do Denão', en: "Denão's studio", de: 'Denãos Studio' }, cenario: 'ensaio',
     comprimento: 480, ondas: [{ x: 0, inimigos: ['papelao', 'papelao'] }],
     quebraveis: [{ x: 380, y: 212, tipo: 'amp', item: 'cafe' }], chefe: null, par: 60, fita: false, arquivo: null,
+    historia: {
+      pt: 'Estúdio do Denão, Ipiranga. 4h da manhã: o único horário que o trabalho deixa.',
+      en: "Denão's studio, Ipiranga, São Paulo. 4 a.m.: the only time work allows.",
+      de: 'Denãos Studio, Ipiranga, São Paulo. 4 Uhr morgens: die einzige Zeit, die die Arbeit lässt.',
+    },
   },
   {
-    n: 1, ano: '2016', nome: { pt: 'O Começo', en: 'The Beginning', de: 'Der Anfang' }, cenario: 'garoa',
+    n: 1, ano: '2016', nome: { pt: 'Centro de SP', en: 'Downtown São Paulo', de: 'Zentrum von São Paulo' }, cenario: 'centro',
     comprimento: 2400,
     ondas: [
       { x: 0, inimigos: ['gcm', 'gcm', 'pm'] },
@@ -129,17 +150,106 @@ export const FASES: Fase[] = [
     quebraveis: [
       { x: 430, y: 186, tipo: 'orelhao', item: 'cafe' },
       { x: 980, y: 250, tipo: 'lixeira', item: 'caramelo' },
-      { x: 1460, y: 190, tipo: 'banca', item: 'cafe' },
-      { x: 1880, y: 240, tipo: 'lixeira', item: 'energetico' },
+      { x: 1460, y: 190, tipo: 'banca', item: 'pastel' },
+      { x: 1880, y: 240, tipo: 'lixeira', item: 'caldo' },
     ],
-    chefe: 'pato', par: 210, fita: true,
+    chefe: 'algoritmo', par: 210, fita: true,
     arquivo: {
       titulo: { pt: 'A primeira formação', en: 'The first line-up', de: 'Die erste Besetzung' },
       texto: { pt: 'Foto da primeira formação e uma faixa de 2016.', en: 'A photo of the first line-up and a track from 2016.', de: 'Ein Foto der ersten Besetzung und ein Song von 2016.' },
     },
+    historia: {
+      pt: 'Centro de São Paulo: Galeria do Rock, Largo do Paissandu. O Algoritmo decide quem aparece.',
+      en: 'Downtown São Paulo: Galeria do Rock, Largo do Paissandu. The Algorithm decides who gets seen.',
+      de: 'Zentrum von São Paulo: Galeria do Rock, Largo do Paissandu. Der Algorithmus entscheidet, wer gesehen wird.',
+    },
   },
   {
-    n: 2, ano: '2017', nome: { pt: 'Escombro', en: 'Rubble', de: 'Trümmer' }, cenario: 'canteiro',
+    n: 2, ano: '2017', nome: { pt: 'Estrada', en: 'On the road', de: 'Auf Tour' }, cenario: 'show',
+    comprimento: 2500,
+    ondas: [
+      { x: 0, inimigos: ['gcm', 'pm', 'gcm'] },
+      { x: 540, inimigos: ['pm', 'pm', 'gcm'] },
+      { x: 1080, inimigos: ['choque', 'pm', 'gcm', 'pm'] },
+      { x: 1620, inimigos: ['choque', 'pm', 'pm', 'gcm', 'gcm'] },
+    ],
+    quebraveis: [
+      { x: 500, y: 240, tipo: 'caixa', item: 'guarana' },
+      { x: 1110, y: 196, tipo: 'amp', item: 'cafe' },
+      { x: 1700, y: 246, tipo: 'caixa', item: 'caramelo' },
+      { x: 2000, y: 200, tipo: 'amp', item: 'energetico' },
+    ],
+    chefe: 'tecnico', par: 230, fita: true,
+    arquivo: {
+      titulo: { pt: 'Bastidor do disco homônimo', en: 'Behind the self-titled record', de: 'Hinter dem Debütalbum' },
+      texto: { pt: 'Fotos e histórias da estrada e da gravação de Escombro (2017).', en: 'Photos and stories from the road and from recording Escombro (2017).', de: 'Fotos und Geschichten von der Tour und den Aufnahmen zu Escombro (2017).' },
+    },
+    historia: {
+      pt: 'Estrada. Casa cheia, som atrasado e um técnico de som que não está nem aí.',
+      en: "On the road. Packed house, late soundcheck and a sound guy who couldn't care less.",
+      de: 'Auf Tour. Volles Haus, später Soundcheck und ein Tontechniker, dem alles egal ist.',
+    },
+  },
+  {
+    n: 3, ano: '2019', nome: { pt: 'União Underground Fest', en: 'União Underground Fest', de: 'União Underground Fest' }, cenario: 'festival',
+    comprimento: 2300, semJota: true,
+    ondas: [
+      { x: 0, inimigos: ['pm', 'pm', 'gcm'] },
+      { x: 520, inimigos: ['choque', 'pm', 'pm'] },
+      { x: 1040, inimigos: ['choque', 'pm', 'choque', 'gcm'] },
+      { x: 1500, inimigos: ['choque', 'choque', 'pm', 'pm', 'pm'] },
+    ],
+    quebraveis: [
+      { x: 460, y: 238, tipo: 'caixa', item: 'coco' },
+      { x: 1000, y: 194, tipo: 'cone', item: 'caramelo' },
+      { x: 1600, y: 244, tipo: 'caixa', item: 'acai' },
+    ],
+    chefe: 'pequenoPoder', par: 260, fita: true,
+    segundaTela: {
+      cenario: 'delegacia',
+      texto: {
+        pt: 'Delegacia. Soltaram o Jota e ele veio junto. "Dê um banquinho pra um segurança e parabéns: você acabou de formar um policial militar."',
+        en: 'Police station. Jota is out, and he is coming along. "Give a security guard a little stool and congratulations: you just made a military cop."',
+        de: 'Polizeiwache. Jota ist frei und kommt mit. „Gib einem Security einen Hocker, und gratuliere: Du hast einen Militärpolizisten gemacht.“',
+      },
+    },
+    arquivo: {
+      titulo: { pt: 'Brasília, 2019', en: 'Brasília, 2019', de: 'Brasília, 2019' },
+      texto: { pt: 'O dia em que a polícia levou o Jota no União Underground Fest.', en: 'The day the police took Jota away at União Underground Fest.', de: 'Der Tag, an dem die Polizei Jota beim União Underground Fest mitnahm.' },
+    },
+    historia: {
+      pt: 'União Underground Fest, Brasília, 2019. Primeiro ano de governo de extrema direita. No meio do show, a polícia levou o Jota.',
+      en: 'União Underground Fest, Brasília, 2019. First year of a far-right government. Mid-show, the police took Jota away.',
+      de: 'União Underground Fest, Brasília, 2019. Erstes Jahr einer rechtsextremen Regierung. Mitten in der Show nahm die Polizei Jota mit.',
+    },
+  },
+  {
+    n: 4, ano: '2020', nome: { pt: 'Cicatrizes', en: 'Scars', de: 'Narben' }, cenario: 'pandemia',
+    comprimento: 2200, distancia: true,
+    ondas: [
+      { x: 0, inimigos: ['virus', 'virus', 'virus', 'virus'] },
+      { x: 480, inimigos: ['virus', 'virus', 'virus', 'virus', 'virus'] },
+      { x: 960, inimigos: ['virus', 'virus', 'virus', 'virus', 'virus', 'virus'] },
+      { x: 1400, inimigos: ['virus', 'virus', 'virus', 'virus', 'virus', 'virus', 'virus'] },
+    ],
+    quebraveis: [
+      { x: 420, y: 240, tipo: 'lixeira', item: 'cafe' },
+      { x: 1000, y: 192, tipo: 'caixa', item: 'coco' },
+      { x: 1550, y: 244, tipo: 'lixeira', item: 'energetico' },
+    ],
+    chefe: 'virus', par: 220, fita: true,
+    arquivo: {
+      titulo: { pt: 'Cicatrizes (2020)', en: 'Cicatrizes (2020)', de: 'Cicatrizes (2020)' },
+      texto: { pt: 'O lançamento da pandemia, gravado e lançado com a cidade fechada.', en: 'The pandemic release, recorded and put out with the city shut down.', de: 'Die Pandemie-Veröffentlichung, aufgenommen und veröffentlicht im Lockdown.' },
+    },
+    historia: {
+      pt: '2020. Cidade vazia, show pela internet. Máscara no rosto e álcool em gel na mão: não deixe o vírus chegar perto.',
+      en: '2020. Empty city, shows streamed online. Mask on, hand sanitizer in hand: keep the virus away.',
+      de: '2020. Leere Stadt, Konzerte im Stream. Maske auf, Desinfektionsgel in der Hand: Halt das Virus fern.',
+    },
+  },
+  {
+    n: 5, ano: '2026', nome: { pt: 'O Mercado', en: 'The Market', de: 'Der Markt' }, cenario: 'canteiro',
     comprimento: 2600,
     ondas: [
       { x: 0, inimigos: ['pm', 'gcm', 'pm'] },
@@ -151,42 +261,42 @@ export const FASES: Fase[] = [
       { x: 470, y: 238, tipo: 'cone', item: 'cafe' },
       { x: 1050, y: 192, tipo: 'caixa', item: 'energetico' },
       { x: 1600, y: 244, tipo: 'cone', item: 'caramelo' },
-      { x: 2080, y: 196, tipo: 'caixa', item: 'energetico' },
+      { x: 2080, y: 196, tipo: 'caixa', item: 'acai' },
     ],
     chefe: 'mao', par: 240, fita: true,
     arquivo: {
-      titulo: { pt: 'Bastidor do disco homônimo', en: 'Behind the self-titled record', de: 'Hinter dem Debütalbum' },
-      texto: { pt: 'Fotos e histórias da gravação de Escombro (2017).', en: 'Photos and stories from recording Escombro (2017).', de: 'Fotos und Geschichten von den Aufnahmen zu Escombro (2017).' },
+      titulo: { pt: 'O disco novo', en: 'The new record', de: 'Die neue Platte' },
+      texto: { pt: 'A fita inteira: o disco novo da Escombro.', en: 'The whole tape: the new Escombro record.', de: 'Das ganze Tape: die neue Escombro-Platte.' },
     },
-  },
-  {
-    n: 3, ano: '2018', nome: { pt: 'Palco Dividido', en: 'Split Stage', de: 'Geteilte Bühne' }, cenario: 'show',
-    comprimento: 2500,
-    ondas: [
-      { x: 0, inimigos: ['gcm', 'pm', 'gcm'] },
-      { x: 540, inimigos: ['choque', 'pm', 'gcm'] },
-      { x: 1080, inimigos: ['choque', 'pm', 'choque', 'gcm'] },
-      { x: 1620, inimigos: ['choque', 'choque', 'pm', 'pm', 'gcm'] },
-    ],
-    quebraveis: [
-      { x: 500, y: 240, tipo: 'caixa', item: 'energetico' },
-      { x: 1110, y: 196, tipo: 'amp', item: 'cafe' },
-      { x: 1700, y: 246, tipo: 'caixa', item: 'caramelo' },
-      { x: 2000, y: 200, tipo: 'amp', item: 'energetico' },
-    ],
-    chefe: 'tecnico', par: 240, fita: true,
-    arquivo: {
-      titulo: { pt: 'Flyers de show', en: 'Show flyers', de: 'Konzertflyer' },
-      texto: { pt: 'Flyers reais dos shows de 2018.', en: 'Real flyers from the 2018 shows.', de: 'Echte Flyer der Shows von 2018.' },
+    historia: {
+      pt: 'A Mão Invisível do Mercado e seus fantasmas: escala 6x1, salário mínimo, três horas de busão.',
+      en: 'The Invisible Hand of the Market and its ghosts: six-day weeks, minimum wage, three hours on the bus.',
+      de: 'Die unsichtbare Hand des Marktes und ihre Geister: Sechstagewoche, Mindestlohn, drei Stunden Bus.',
     },
   },
 ];
 
+/** Quantos pedaços a fita tem (um por fase de rua). */
+export const PEDACOS_DA_FITA = FASES.filter((f) => f.fita).length;
+
 export const ITENS: Record<TipoItem, { vida: number; mosh: number }> = {
-  cafe: { vida: 22, mosh: 10 },
-  energetico: { vida: 38, mosh: 35 },
+  coxinha: { vida: 25, mosh: 0 },
+  pastel: { vida: 22, mosh: 0 },
+  caldo: { vida: 30, mosh: 0 },
+  acai: { vida: 40, mosh: 15 },
+  guarana: { vida: 10, mosh: 40 },
+  coco: { vida: 28, mosh: 5 },
+  cafe: { vida: 18, mosh: 15 },
+  energetico: { vida: 30, mosh: 35 },
   caramelo: { vida: 0, mosh: 0 },
 };
+
+/** Liberado? Duxxo ao zerar; Felipeles ao tirar S em qualquer fase. */
+export function liberado(i: Integrante, p: Progresso): boolean {
+  if (!i.secreto) return true;
+  if (i.secreto === 'zerar') return p.zerou;
+  return Object.values(p.melhores).some((m) => m.nota === 'S');
+}
 
 // ─── Combate ──────────────────────────────────────────────
 

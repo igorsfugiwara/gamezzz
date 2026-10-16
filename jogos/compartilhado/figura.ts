@@ -321,7 +321,8 @@ const CAVEIRA = [
 export function figura(b: Boneco): Grade {
   const k = b.escala ?? 1;
   // Com Telecaster/Jazz Bass, o braço do instrumento passa da largura do boneco: a tela cresce para a direita.
-  const extra = b.instrumento?.tipo === 'telecaster' || b.instrumento?.tipo === 'jazzbass' ? 34 : 0;
+  const golpeLongo = b.pose === 'soco' || b.pose === 'soco2' || b.pose === 'chute' || b.pose === 'giro' || b.pose === 'voadora';
+  const extra = b.instrumento?.tipo === 'telecaster' || b.instrumento?.tipo === 'jazzbass' ? 34 : golpeLongo ? 18 : 0;
   const e = new Estudio(b.giro ?? 0.55, Math.ceil((W + extra) * k), Math.ceil(H * k), CX * k, k);
   const q = b.quadro ?? 0;
   const bang = [0, 2, 5, 2][q];
@@ -351,15 +352,21 @@ export function figura(b: Boneco): Grade {
   const cobertura = mat(rampa(corCobertura), 0.6);
 
   const apanha = pose === 'apanha';
-  const hy = 24 + bob + bang + (apanha ? 1 : 0);
-  const hz = avanco + (apanha ? -3.5 : pose === 'soco' || pose === 'soco2' ? 1.5 : 0);
+  // No pulo de show a cabeça vai pra frente e pra baixo.
+  const pulo = pose === 'pulo';
+  const hy = 24 + bob + bang + (apanha ? 1 : 0) + (pulo ? 3 : 0);
+  const hz = avanco + (apanha ? -3.5 : pose === 'soco' || pose === 'soco2' ? 2.5 : pulo ? 4.5 : 0);
+  /** Tronco inclinado para a frente (pulo) ou para trás (chute). */
+  const incl = pulo ? 2.5 : pose === 'chute' || pose === 'voadora' ? -2 : 0;
+  const mus = b.musculoso ? 1 : 0;
+  const folga = b.folgado ? 1 : 0;
   const ey = hy + (q === 1 || q === 3 ? 1 : 0);
 
   // ── Cabeça: crânio, mandíbula comprida (traço Metalocalypse), nariz, orelha.
   e.bola([0, hy - 0.5, hz], 6.9 + gor * 0.7, 9.4, 7.3 + gor * 0.5, pele, PARTE.cabeca, 2.15);
   e.capsula([0, hy + 4, hz + 1.4], [0, hy + 8.8, hz + 2], 5.4 + gor * 1.1, 4 + gor * 1.4, pele, PARTE.cabeca);
   e.capsula([0, ey + 0.6, hz + 6.2], [0.1, ey + 4.6, hz + 8.1], 0.9, 1.35, pele, PARTE.nariz);
-  const cobreOrelha = b.estilo === 'cabelao' || b.estilo === 'bone' || b.estilo === 'capacete' || b.estilo === 'lenco';
+  const cobreOrelha = b.estilo === 'cabelao' || b.estilo === 'bone' || b.estilo === 'capacete' || b.estilo === 'lenco' || b.estilo === 'calvo';
   // Alargador na orelha.
   if (b.alargador && !cobreOrelha) for (const s of [-1, 1]) e.bola([s * 7.2, ey + 3.8, hz - 1], 1.1, 1.1, 1.1, mat(rampa([P.concreto, P.asfalto, P.preto]), 0.9), PARTE.acessorio);
   if (!cobreOrelha) for (const s of [-1, 1]) e.bola([s * 6.8, ey + 1.6, hz - 1], 1.7, 2.9, 2.2, pele, PARTE.orelha);
@@ -367,10 +374,10 @@ export function figura(b: Boneco): Grade {
 
   // ── Tronco: peito, cintura, ombros e quadril.
   const tronco = b.jaqueta ? couro : roupa;
-  e.bola([0, 47 + bob, 1], 11 * larg + gor * 2.2, 9, 7 + gor * 1.6, tronco, PARTE.tronco, 2.5);
-  e.capsula([0, 49 + bob, 0.8], [0, 62 + bob, 0], 7.6 * larg + gor * 3, 7 * (b.largo ? 1.15 : 1) + gor * 3.2, tronco, PARTE.tronco);
+  e.bola([0, 47 + bob, 1 + incl], 11 * larg + gor * 2.2 + mus * 1.4 + folga * 1.2, 9 + mus * 0.6, 7 + gor * 1.6 + folga, tronco, PARTE.tronco, 2.5);
+  e.capsula([0, 49 + bob, 0.8 + incl * 0.6], [0, (folga ? 69 : 62) + bob, 0], 7.6 * larg + gor * 3 - mus * 0.8 + folga * 1.4, 7 * (b.largo ? 1.15 : 1) + gor * 3.2 - mus * 0.8 + folga * 1.6, tronco, PARTE.tronco);
   if (gor) e.bola([0, 57 + bob, 4], 10, 8.5, 7.5, tronco, PARTE.tronco, 2.2); // barriga
-  for (const s of [-1, 1]) e.bola([s * (10 * larg + gor * 1.6), 43 + bob, 1], 4.6 + gor, 4.4 + gor * 0.6, 4.4 + gor, tronco, PARTE.tronco);
+  for (const s of [-1, 1]) e.bola([s * (10 * larg + gor * 1.6 + mus), 43 + bob, 1 + incl], 4.6 + gor + mus * 1.3, 4.4 + gor * 0.6 + mus, 4.4 + gor + mus, tronco, PARTE.tronco);
   e.bola([0, 67, 0], 8.2 * (b.largo ? 1.12 : 1) + gor * 2.6, 4.8, 5.8 + gor * 2, calca, PARTE.quadril, 2.4);
 
   // ── Caixa de entrega / mochila nas costas, com alças na frente.
@@ -392,24 +399,41 @@ export function figura(b: Boneco): Grade {
     /** Pé fora do chão (chute, pulo): o centro da bota. */
     let noAlto: V3 | null = null;
     const chuta = pose === 'chute' || pose === 'giro';
-    if (chuta && s < 0) { joelho = [s * 5, 72, 10]; tornozelo = [s * 5, 70, 19.5]; noAlto = [s * 5, 69.5, 23]; }
-    else if (chuta) { joelho = [s * 6, 86.5, -3.5]; tornozelo = [s * 6.5, 104, -7]; }
-    else if (pose === 'pulo') {
-      // Pulo de show de hardcore: joelho lá em cima e o pé alto, dobrado pra trás.
-      const z0 = s < 0 ? 6 : 1;
-      joelho = [s * 5.5, 75, z0 + 6]; tornozelo = [s * 5.8, 82, z0 - 5]; noAlto = [s * 5.8, 79, z0 - 8.5];
+    const armado = pose === 'chute' && (b.golpe ?? 1) === 0;
+    if (chuta && s < 0 && armado) { joelho = [s * 5, 70, 12]; tornozelo = [s * 5, 84, 10]; noAlto = [s * 5, 86.5, 13.5]; } // perna armada
+    else if (chuta && s < 0) { joelho = [s * 5, 69, 13.5]; tornozelo = [s * 5, 66, 27]; noAlto = [s * 5, 65.5, 30.5]; } // perna toda esticada
+    else if (chuta) { joelho = [s * 6, 86.5, -3.5]; tornozelo = [s * 6.5, 104, -8]; }
+    else if (pose === 'voadora') {
+      // Voadora giratória: a perna de perto varre um arco (ângulo em graus, 0 = reta pra frente).
+      const a = ((b.anguloChute ?? 0) * Math.PI) / 180;
+      const d: V3 = [0, -Math.sin(a), Math.cos(a)];
+      const q0: V3 = [s * 5, 67, 0];
+      // No alto do arco a perna abre para o lado (senão some atrás do corpo).
+      const lado = Math.max(0, Math.sin(a)) * 10;
+      if (s < 0) { joelho = [q0[0] - lado * 0.5, q0[1] + d[1] * 15, d[2] * 15 + lado * 0.3]; tornozelo = [q0[0] - lado, q0[1] + d[1] * 29, d[2] * 29 + lado * 0.6]; noAlto = [q0[0] - lado, q0[1] + d[1] * 32.5, d[2] * 32.5 + lado * 0.6]; }
+      else { joelho = [s * 5.5, 76, 9]; tornozelo = [s * 5.8, 84, -2]; noAlto = [s * 5.8, 82, -5.5]; } // a outra encolhida
+    } else if (pose === 'pulo') {
+      // Pulo de show de hardcore: joelho lá na frente do corpo e o pé alto, dobrado pra trás.
+      const z0 = s < 0 ? 8 : 3;
+      joelho = [s * 5.5, 74, z0 + 10]; tornozelo = [s * 5.8, 82, z0 - 1]; noAlto = [s * 5.8, 79.5, z0 - 4.5];
     } else if (pose === 'twostep' && ((passo === 1 && s < 0) || (passo === 3 && s > 0))) {
       // Two-step: a perna da vez chuta baixo pra frente.
       joelho = [s * 5, 83, 9]; tornozelo = [s * 5.2, 95, 16]; noAlto = [s * 5.2, 95.5, 19.5];
     }
     const parte = s < 0 ? PARTE.pernaE : PARTE.pernaD;
     if (b.bermuda) {
-      e.capsula(quad, lerp(quad, joelho, 0.95), 5.4 + gor * 1.4, 4.6 + gor * 1.2, calca, parte);
+      // Bermuda folgada: larga e passando do joelho.
+      e.capsula(quad, lerp(quad, joelho, folga ? 1.12 : 0.95), 5.4 + gor * 1.4 + folga * 2.2, 4.6 + gor * 1.2 + folga * 2.4, calca, parte);
       e.capsula(lerp(quad, joelho, 0.9), tornozelo, 3.6 + gor, 2.7 + gor * 0.6, pele, parte);
       e.bola(lerp(joelho, tornozelo, 0.3), 2.8 + gor, 3.6, 3.2 + gor, pele, parte); // panturrilha
     } else {
       e.capsula(quad, joelho, 4.8 + gor * 1.4, 3.9 + gor, calca, parte);
       e.capsula(joelho, tornozelo, 3.9 + gor, 3.1 + gor * 0.6, calca, parte);
+    }
+    if (b.protecoes) {
+      const armadura = mat(rampa([P.branco, P.amarelo, P.mostarda]), 1.5);
+      e.bola([joelho[0], joelho[1], joelho[2] + 3], 3.8, 3.8, 3, armadura, PARTE.acessorio, 2.4);
+      e.capsula(lerp(joelho, tornozelo, 0.25), lerp(joelho, tornozelo, 0.85), 3.6, 3.2, armadura, PARTE.acessorio, 0.7);
     }
     const sobe = ar ? 4 : 0;
     const pe = s < 0 ? PARTE.peE : PARTE.peD;
@@ -456,7 +480,8 @@ export function figura(b: Boneco): Grade {
   /** Braço esticado no soco, punho bem à frente da cara. */
   const estica = (s: number): Braco => {
     const o = ombro(s);
-    return { o, c: [o[0] * 0.6, 43 + bob, 8], p: [s * 2.5, 42.5 + bob, 16.5], m: [s * 2, 42.5 + bob, 20.5] };
+    // O ombro vai junto no soco: o braço inteiro estica, bem longe do corpo.
+    return { o: [o[0] * 0.8, 42 + bob, 3], c: [o[0] * 0.45, 42.5 + bob, 12], p: [s * 2, 42 + bob, 21], m: [s * 1.5, 42 + bob, 25.5] };
   };
   const bracos: Record<number, Braco> = { [-1]: caido(-1), [1]: caido(1) };
   const fg = b.golpe ?? 0;
@@ -468,7 +493,7 @@ export function figura(b: Boneco): Grade {
     if (fg === 0) { bracos[-1] = cima(oe, 0); bracos[1] = baixoAtras(od); }
     else if (fg === 1) { bracos[-1] = { o: oe, c: [oe[0] * 0.6, 40 + bob, 8], p: [-2, 38 + bob, 16], m: [-2, 36.5 + bob, 19.5] }; bracos[1] = cima(od, -4); }
     else { bracos[-1] = { o: oe, c: [oe[0] * 0.8, 50 + bob, 7], p: [-3, 58 + bob, 14], m: [-3, 61 + bob, 16.5] }; bracos[1] = cima(od, 0); }
-  } else if (pose === 'giro') {
+  } else if (pose === 'giro' || pose === 'voadora') {
     // Chute giratório: braços abertos pra dar o giro.
     for (const s of [-1, 1]) { const o = ombro(s); bracos[s] = { o, c: [s * 15, 44 + bob, 0], p: [s * 19, 43 + bob, 1], m: [s * 21.5, 43 + bob, 1] }; }
   } else if (pose === 'pulo') { bracos[-1] = erguido(-1, undefined); bracos[1] = guarda(1); }
@@ -504,17 +529,22 @@ export function figura(b: Boneco): Grade {
     const br = bracos[s];
     const parte = s < 0 ? PARTE.bracoE : PARTE.bracoD;
     const mao = s < 0 ? PARTE.maoE : PARTE.maoD;
-    const g = (b.largo ? 0.8 : 0) + gor * 0.9;
+    const g = (b.largo ? 0.8 : 0) + gor * 0.9 + mus * 0.7;
     e.capsula(br.o, br.c, 3.6 + g, 3.1 + g, pele, parte);
     e.capsula(br.c, br.p, 3.1 + g, 2.6 + g, pele, parte);
     // Músculo: bíceps e antebraço saltados, para a luz desenhar o volume.
     const bi = lerp(br.o, br.c, 0.62), ante = lerp(br.c, br.p, 0.28);
-    e.bola([bi[0], bi[1], bi[2] + 1], 3 + g, 3.4, 3, pele, parte);
-    e.bola([ante[0], ante[1], ante[2] + 0.8], 2.7 + g, 3.2, 2.8, pele, parte);
-    // Manga: curta na camiseta, inteira na jaqueta e no terno.
-    const inteira = b.jaqueta || b.gravata;
+    e.bola([bi[0], bi[1], bi[2] + 1], 3 + g + mus * 1.2, 3.4 + mus, 3 + mus, pele, parte);
+    e.bola([ante[0], ante[1], ante[2] + 0.8], 2.7 + g + mus * 0.6, 3.2 + mus * 0.5, 2.8 + mus * 0.5, pele, parte);
+    // Manga: curta na camiseta (larga e comprida se folgada), inteira na jaqueta e no terno.
+    const inteira = b.jaqueta || b.gravata || b.mangaLonga;
     const manga = b.jaqueta ? couro : roupa;
-    e.capsula(br.o, inteira ? br.c : lerp(br.o, br.c, 0.5), 4.3 + g, 3.9 + g, manga, parte);
+    e.capsula(br.o, inteira ? br.c : lerp(br.o, br.c, folga ? 0.85 : 0.5), 4.3 + g + folga * 1.6, 3.9 + g + folga * 2, manga, parte);
+    if (b.protecoes) {
+      const armadura = mat(rampa([P.branco, P.amarelo, P.mostarda]), 1.5);
+      e.bola([br.c[0], br.c[1], br.c[2] - 1.5], 3.4, 3.4, 3, armadura, PARTE.acessorio, 2.4); // cotoveleira
+      e.bola([br.o[0] * 1.05, br.o[1] - 1.5, br.o[2]], 5.4, 4, 5, armadura, PARTE.acessorio, 2.6); // ombreira de cavaleiro
+    }
     if (inteira) e.capsula(br.c, lerp(br.c, br.p, 0.85), 3.7 + g, 3.2 + g, manga, parte);
     e.bola(br.m, 3.4 + g * 0.5, 3.8 + g * 0.5, 3.5, pele, mao, 2.3);
     if (br.aberta === 'chifre') {
@@ -625,6 +655,21 @@ export function figura(b: Boneco): Grade {
     // Cabelinho arrumado de playboy: risca do lado e topete pra cima.
     e.bola([0, hy - 1.4, hz + 0.3], 7.6, 9.3, 7.7, cabelo, PARTE.cabelo, 2.1, linhaCabelo(6.2));
     e.capsula([-1, hy - 8.5, hz + 3.5], [0.5, hy - 11.5, hz + 7.5], 3.6, 2.6, cabelo, PARTE.cabelo);
+  } else if (b.estilo === 'calvo') {
+    // Cabeludo com entradas: cabelão atrás e dos lados, alto da cabeça careca.
+    e.bola([0, hy - 1.2, hz + 0.2], 7.8, 9.6, 7.9, cabelo, PARTE.cabelo, 2.1, (X, Y, Z) => Z < hz - 1.5 || (Math.abs(X) > 5.8 && Y > hy - 5));
+    const fimTras = hy + 27 - bang;
+    e.bola([0, hy + 11 - bang * 0.5, hz * 0.5 - 5.5], 11, 16, 4.5, cabelo, PARTE.cabelo, 2.2, (X, Y) => Y < fimTras - 3 || Math.round(X * 1.3 + Y) % 3 !== 0);
+    for (const s of [-1, 1]) {
+      const fim = hy + 22;
+      e.capsula([s * 6.8, hy - 1, hz + 1.5], [s * 8.4 + balanco, fim, hz * 0.6 + 2.5], 2.4, 3.2, cabelo, PARTE.cabelo, 1, pontaRala(fim + 3.2));
+    }
+  } else if (b.estilo === 'quepe') {
+    // Quepe de soldadinho de chumbo: alto, com pala e penacho.
+    e.capsula([0, hy - 6.5, hz], [0, hy - 21, hz - 0.5], 7.6, 8.2, cobertura, PARTE.acessorio);
+    e.bola([0, hy - 22, hz - 0.5], 8.2, 1.6, 8.2, mat(rampa([P.amarelo, P.mostarda, P.ruga]), 1.2), PARTE.acessorio, 2.6);
+    e.bola([0, hy - 5.6, hz + 7.5], 6.5, 1.2, 4, mat(rampa([P.concreto, P.asfalto, P.preto]), 1.3), PARTE.acessorio, 2.4);
+    e.capsula([0, hy - 23, hz + 1], [0.5, hy - 31, hz + 3], 2.2, 1.2, mat(rampaDe(P.branco), 0.3), PARTE.acessorio);
   } else if (b.estilo === 'boneCurto') {
     e.bola([0, hy - 1.2, hz + 0.2], 7.5 + gor * 0.7, 9.3, 7.6, cabelo, PARTE.cabelo, 2.1, linhaCabelo(6.4));
   } else if (b.estilo === 'coque') {
@@ -687,6 +732,18 @@ export function figura(b: Boneco): Grade {
   if (b.camisa === 'canarinho') {
     const verde = mat(rampa([P.menta, P.folha, P.musgo]), 0.1);
     e.recolorir((X, y, p, Z) => (p === PARTE.tronco && naFrente(Z) && y < 41 + bob && Math.abs(X) < 5 ? verde : null));
+  }
+  // Colete à prova de bala: placa preta no peito e nas costas, alça no ombro.
+  if (b.colete) {
+    const colete = mat(rampa([P.concreto, P.asfalto, P.preto]), 0.35);
+    e.recolorir((X, y, p) => (p === PARTE.tronco && y >= 39 + bob && y <= 62 + bob && Math.abs(X) < 10.5 ? colete : null));
+    e.dobrar((X, y, p, Z) => {
+      if (p !== PARTE.tronco || Z < 2) return 0;
+      const yy = y - bob;
+      if ((yy === 50 || yy === 56) && Math.abs(X) < 8) return 1; // bolsos
+      if (Math.abs(Math.abs(X) - 3.5) < 0.5 && yy > 40 && yy < 62) return 1; // velcro
+      return 0;
+    });
   }
   // Cinto de tacha com fivela.
   const cinto = mat(rampa(COURO), 0.7);
@@ -863,6 +920,20 @@ export function figura(b: Boneco): Grade {
   if (b.meia && b.bermuda) e.pintar((_X, y, p, _Z, m) => ((p === PARTE.pernaE || p === PARTE.pernaD) && m === pele && y >= 101 ? (y === 103 ? P.concreto : P.papel) : null));
   // Boné estampado.
   if (b.boneEstampado) e.pintar((X, y, p, Z) => (p === PARTE.acessorio && y < hy - 3 && (Math.round(X * 1.3) + y + Math.round(Z)) % 4 === 0 ? [P.neon_verde, P.vermelho, P.amarelo, P.neon_rosa][Math.abs(Math.round(X + Z)) % 4] : null));
+  // Máscara cirúrgica com elástico até a orelha.
+  if (b.mascara) e.pintar((X, y, p, Z) => {
+    if (p !== PARTE.cabeca && p !== PARTE.nariz && p !== PARTE.barba) return null;
+    const dy = y - ey;
+    if (Z > hz + 2 && dy >= 3 && dy <= 11 && Math.abs(X) < 5.8) return dy === 3 || dy === 11 ? P.ceu : (Math.round(X) + dy) % 4 === 0 ? P.pastel_azul : P.branco;
+    if (Z > hz - 1 && Math.abs(Math.abs(X) - 6) < 0.8 && dy >= 1 && dy <= 5) return P.branco;
+    return null;
+  });
+  // Tatuagem na careca.
+  if (b.tatuagemCabeca) e.pintar((X, y, p, Z) => {
+    if (p !== PARTE.cabeca || y > hy - 2.5) return null;
+    const v = Math.sin(X * 0.9 + y * 0.7) * Math.cos(Z * 0.8 - y * 0.4);
+    return v > 0.35 ? mistura(rp[3], '#14203a', 0.6) : null;
+  });
   // Bigode fino e cavanhaque.
   if (b.bigode) e.pintar((X, y, p, Z) => {
     if (p !== PARTE.cabeca || Z < hz + 2.2) return null;

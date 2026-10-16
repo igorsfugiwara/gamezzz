@@ -49,12 +49,12 @@ export const TONS = {
   },
 } as const satisfies Record<string, Record<string, Tom>>;
 
-export type Estilo = 'cabelao' | 'moicano' | 'careca' | 'bone' | 'lenco' | 'capacete' | 'coque' | 'obra' | 'boneCurto' | 'topete';
+export type Estilo = 'cabelao' | 'moicano' | 'careca' | 'bone' | 'lenco' | 'capacete' | 'coque' | 'obra' | 'boneCurto' | 'topete' | 'calvo' | 'quepe';
 export type Pose = 'parado' | 'chifres' | 'maos' | 'microfone' | 'baqueta' | 'tocando'
   // Luta (boneco HD): guarda, soco de frente e de trás, chute, pulo, apanhando.
   | 'guarda' | 'soco' | 'soco2' | 'chute' | 'pulo' | 'apanha'
   // Roda punk: moinho de braço, chute giratório (braços abertos) e o two-step.
-  | 'moinho' | 'giro' | 'twostep';
+  | 'moinho' | 'giro' | 'twostep' | 'voadora';
 
 export interface Boneco {
   pele: Tom;
@@ -103,6 +103,21 @@ export interface Boneco {
   viseira?: string;
   /** Quadro do golpe animado (moinho: 0 em cima, 1 na frente, 2 embaixo). */
   golpe?: 0 | 1 | 2 | 3;
+  /** Voadora giratória: ângulo da perna (graus, 0 = reta pra frente, 90 = pra cima). */
+  anguloChute?: number;
+  /** Corpo bombado: braço, ombro e peito grandes, cintura fina. */
+  musculoso?: boolean;
+  /** Roupa folgada: camiseta e manga largas, bermuda passando do joelho. */
+  folgado?: boolean;
+  tatuagemCabeca?: boolean;
+  /** Máscara cirúrgica (pandemia). */
+  mascara?: boolean;
+  /** Manga comprida da farda (sem ser jaqueta). */
+  mangaLonga?: boolean;
+  /** Colete à prova de bala por cima da farda. */
+  colete?: boolean;
+  /** Joelheira, caneleira, cotoveleira e ombreira brilhando (cavaleiro de armadura). */
+  protecoes?: boolean;
   /** Crachá no peito. */
   cracha?: boolean;
   /** Corpo grande (barriga, braço e perna grossos). */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  FASES, INTEGRANTES, INIMIGOS, PROGRESSO_INICIAL, acerta, concluirFase, danoDoGolpe, formatarTempo, nota, pedacosDaFita,
+  FASES, INTEGRANTES, INIMIGOS, PROGRESSO_INICIAL, acerta, liberado, concluirFase, danoDoGolpe, formatarTempo, nota, pedacosDaFita,
 } from './regras';
 
 describe('acerto de golpe', () => {
@@ -61,6 +61,11 @@ describe('progresso', () => {
     expect(pedacosDaFita(p)).toBe(1);
     const pior = concluirFase(p, 1, { nota: 'C', tempo: 300, pontos: 100 });
     expect(pior.melhores[1].pontos).toBe(5000);
+  });
+  it('o Felipeles sai com um S', () => {
+    const felipe = INTEGRANTES.find((i) => i.id === 'felipeles')!;
+    expect(liberado(felipe, PROGRESSO_INICIAL)).toBe(false);
+    expect(liberado(felipe, concluirFase(PROGRESSO_INICIAL, 1, { nota: 'S', tempo: 90, pontos: 9000 }))).toBe(true);
   });
   it('zerar a última fase libera o secreto', () => {
     const ultima = FASES.length - 1;
