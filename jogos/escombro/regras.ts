@@ -329,7 +329,7 @@ export type Entrada = 'S' | 'C';
  * Cada golpe do combo. Os dois primeiros saem do botão apertado; o terceiro
  * (finalizador, derruba) depende da sequência inteira.
  */
-export type Golpe = 'jab' | 'direto' | 'chute' | 'joelhada' | 'moinho' | 'giratorio' | 'bicuda' | 'voadoraRoda' | 'gancho';
+export type Golpe = 'jab' | 'direto' | 'chute' | 'joelhada' | 'moinho' | 'giratorio' | 'crowdkill' | 'sidetoside' | 'twostep';
 
 export interface FichaGolpe {
   /** Duração em segundos (antes da velocidade de quem bate). */
@@ -341,6 +341,10 @@ export interface FichaGolpe {
   /** Peso no dano: 1 = jab, 2 = finalizador. */
   peso: number;
   derruba: boolean;
+  /** Quantos acertos dentro da janela (moinho, two step...); só o último derruba. */
+  hits?: number;
+  /** Avanço pra frente durante o golpe (px/s). */
+  avanco?: number;
 }
 
 export const GOLPES: Record<Golpe, FichaGolpe> = {
@@ -348,20 +352,21 @@ export const GOLPES: Record<Golpe, FichaGolpe> = {
   direto: { dur: 0.26, ativo: [0.35, 0.75], alcance: 8, peso: 1.1, derruba: false },
   chute: { dur: 0.3, ativo: [0.4, 0.8], alcance: 14, peso: 1.15, derruba: false },
   joelhada: { dur: 0.28, ativo: [0.35, 0.75], alcance: 2, peso: 1.2, derruba: false },
-  moinho: { dur: 0.4, ativo: [0.5, 0.88], alcance: 10, peso: 1.85, derruba: true },
+  // Finalizadores, como na roda de verdade (vídeos de referência do Lingão):
+  moinho: { dur: 0.62, ativo: [0.15, 0.95], alcance: 12, peso: 2.2, derruba: true, hits: 3, avanco: 30 }, // windmill: dobrado, braços em roda
   giratorio: { dur: 0.46, ativo: [0.62, 0.92], alcance: 18, peso: 1.9, derruba: true },
-  bicuda: { dur: 0.4, ativo: [0.45, 0.85], alcance: 20, peso: 1.85, derruba: true },
-  voadoraRoda: { dur: 0.5, ativo: [0.35, 0.85], alcance: 16, peso: 2, derruba: true },
-  gancho: { dur: 0.36, ativo: [0.4, 0.8], alcance: 4, peso: 1.95, derruba: true },
+  crowdkill: { dur: 0.7, ativo: [0.42, 0.95], alcance: 20, peso: 2.3, derruba: true, hits: 2, avanco: 170 }, // arrancada, braçada e chute alto
+  sidetoside: { dur: 0.8, ativo: [0.1, 0.95], alcance: 16, peso: 2.3, derruba: true, hits: 4, avanco: 55 }, // vai e vem varrendo, fecha com voadora
+  twostep: { dur: 0.7, ativo: [0.08, 0.95], alcance: 10, peso: 2.2, derruba: true, hits: 5, avanco: 95 }, // chutinhos alternados avançando
 };
 
 /** Os combos com nome (aparecem na tela e na página de golpes da pausa). */
 export const COMBOS: readonly { seq: string; golpe: Golpe; nome: Tri; texto: Tri }[] = [
-  { seq: 'SSS', golpe: 'moinho', nome: { pt: 'Moinho', en: 'Windmill', de: 'Windmühle' }, texto: { pt: 'Jab, direto e moinho de braço.', en: 'Jab, cross and windmill.', de: 'Jab, Gerade und Windmühle.' } },
+  { seq: 'SSS', golpe: 'moinho', nome: { pt: 'Moinho', en: 'Windmill', de: 'Windmühle' }, texto: { pt: 'Jab, direto e o moinho: dobrado, os braços girando em roda.', en: 'Jab, cross and the windmill: bent over, arms spinning.', de: 'Jab, Gerade und die Windmühle: gebückt, Arme kreisen.' } },
   { seq: 'CCC', golpe: 'giratorio', nome: { pt: 'Giratório', en: 'Spin kick', de: 'Drehkick' }, texto: { pt: 'Chute, joelhada e chute giratório.', en: 'Kick, knee and spinning kick.', de: 'Kick, Knie und Drehkick.' } },
-  { seq: 'SSC', golpe: 'bicuda', nome: { pt: 'Crowd Kill', en: 'Crowd Kill', de: 'Crowd Kill' }, texto: { pt: 'Dois socos e um chute alto, na altura da cara.', en: 'Two punches and a head-high kick.', de: 'Zwei Schläge und ein Tritt auf Kopfhöhe.' } },
-  { seq: 'SCC', golpe: 'voadoraRoda', nome: { pt: 'Side to Side', en: 'Side to Side', de: 'Side to Side' }, texto: { pt: 'Soco, chute e uma voadora girando de lado a lado.', en: 'Punch, kick and a spinning flying kick.', de: 'Schlag, Tritt und ein Dreh-Flugkick.' } },
-  { seq: 'CCS', golpe: 'gancho', nome: { pt: 'Two Step', en: 'Two Step', de: 'Two Step' }, texto: { pt: 'Dois chutes no passo e um gancho de baixo pra cima.', en: 'Two stepping kicks and an uppercut.', de: 'Zwei Tritte im Schritt und ein Aufwärtshaken.' } },
+  { seq: 'SSC', golpe: 'crowdkill', nome: { pt: 'Crowd Kill', en: 'Crowd Kill', de: 'Crowd Kill' }, texto: { pt: 'Dois socos e a arrancada pra cima da galera: braçada e chute alto.', en: 'Two punches, then charge the crowd: haymaker and high kick.', de: 'Zwei Schläge, dann in die Menge: Schwinger und hoher Tritt.' } },
+  { seq: 'SCC', golpe: 'sidetoside', nome: { pt: 'Side to Side', en: 'Side to Side', de: 'Side to Side' }, texto: { pt: 'Soco, chute e o vai e vem: base baixa varrendo os braços, fechando com voadora.', en: 'Punch, kick and the side to side: low stance, arms sweeping, then a flying kick.', de: 'Schlag, Tritt und hin und her: tief, Arme fegen, dann Flugkick.' } },
+  { seq: 'CCS', golpe: 'twostep', nome: { pt: 'Two Step', en: 'Two Step', de: 'Two Step' }, texto: { pt: 'Dois chutes, soco e o passinho: chutinhos alternados avançando.', en: 'Two kicks, a punch and the two step: quick alternating kicks moving in.', de: 'Zwei Tritte, Schlag und der Two Step: schnelle Wechseltritte nach vorn.' } },
 ];
 
 /** Golpe que sai de uma sequência (1 a 3 entradas). */
@@ -372,7 +377,7 @@ export function golpeDoCombo(seq: string): Golpe {
   const nomeado = COMBOS.find((c) => c.seq === seq);
   if (nomeado) return nomeado.golpe;
   // As misturas sem nome (SCS, CSC, CSS) fecham pelo último botão.
-  return ultima === 'S' ? 'moinho' : 'bicuda';
+  return ultima === 'S' ? 'moinho' : 'crowdkill';
 }
 
 /** Combo com nome dessa sequência de três, se houver. */

@@ -351,8 +351,9 @@ const CAVEIRA = [
 export function figura(b: Boneco): Grade {
   const k = b.escala ?? 1;
   // Com Telecaster/Jazz Bass, o braço do instrumento passa da largura do boneco: a tela cresce para a direita.
-  const golpeLongo = b.pose === 'soco' || b.pose === 'soco2' || b.pose === 'chute' || b.pose === 'giro' || b.pose === 'voadora' || b.pose === 'joelhada' || b.pose === 'gancho';
-  const extra = b.instrumento?.tipo === 'telecaster' || b.instrumento?.tipo === 'jazzbass' ? 46 : golpeLongo ? 18 : 0;
+  const golpeLongo = b.pose === 'soco' || b.pose === 'soco2' || b.pose === 'chute' || b.pose === 'giro' || b.pose === 'voadora' || b.pose === 'joelhada' || b.pose === 'gancho'
+    || b.pose === 'moinho' || b.pose === 'investida' || b.pose === 'lado' || b.pose === 'passinho';
+  const extra = b.instrumento?.tipo === 'telecaster' || b.instrumento?.tipo === 'jazzbass' ? 46 : b.pose === 'lado' ? 26 : golpeLongo ? 18 : 0;
   const e = new Estudio(b.giro ?? 0.55, Math.ceil((W + extra) * k), Math.ceil(H * k), CX * k, k);
   const q = b.quadro ?? 0;
   const bang = [0, 2, 5, 2][q];
@@ -361,7 +362,8 @@ export function figura(b: Boneco): Grade {
   const noAr = b.pose === 'twostep' ? 0 : passo === 1 ? -1 : passo === 3 ? 1 : 0; // lado (X) da perna no ar
   const fg = b.golpe ?? 0;
   /** Agachar (ginga da guarda, gancho armando): o quadril desce e os joelhos dobram. */
-  const agacha = b.pose === 'guarda' ? [0, 1, 2, 1][b.ginga ?? 0] : b.pose === 'gancho' ? (fg === 0 ? 3 : -1) : 0;
+  const agacha = b.pose === 'guarda' ? [0, 1, 2, 1][b.ginga ?? 0] : b.pose === 'gancho' ? (fg === 0 ? 3 : -1)
+    : b.pose === 'moinho' ? 3 : b.pose === 'lado' ? 4 : b.pose === 'investida' ? 1 : 0;
   const bob = (noAr || (b.pose === 'twostep' && passo % 2 === 1) ? -1 : b.respiro ? 1 : 0) + agacha;
   const balanco = passo === 1 ? 1 : passo === 3 ? -1 : q === 1 ? 1 : q === 3 ? -1 : 0;
   const pose = b.pose ?? (b.instrumento ? 'tocando' : 'parado');
@@ -400,14 +402,32 @@ export function figura(b: Boneco): Grade {
             : pose === 'voadora' ? [-2, 0, 0, 0]
               : pose === 'joelhada' ? [4, 1, 5.5, 1.5]
                 : pose === 'gancho' ? (fg === 0 ? [3.5, 3, 4.5, 1.5] : [-2, -4.5, 0, -1.5])
-                  : pose === 'moinho' ? (fg === 0 ? [-1.5, 0, -1, 0] : fg === 1 ? [3, 0, 3.5, 1] : [5, 0, 5.5, 2.5])
+                  : pose === 'moinho' ? [0, 0, 2, 2]
+                    : pose === 'investida' ? [2, 2.5, 3, 1]
+                      : pose === 'lado' ? [1, fg === 0 ? -3 : 3, 2, 1]
+                        : pose === 'passinho' ? [-3.5, fg === 0 ? 1.5 : -1.5, -3, 0]
                     : apanha ? [-3, 0, -3.5, 1]
                       : pose === 'twostep' ? [1.5, 0, 1.5, 0]
                         : pose === 'guarda' ? [1, 0, 1, 0]
                           : [0, 0, 0, 0];
   const [incl, torce, cabZ, cabY] = desvio;
-  const hy = 24 + bob + bang + cabY;
-  const hz = avanco + cabZ;
+  /**
+   * Dobra de verdade: o tronco gira pra frente em torno do quadril (moinho
+   * com a cara no chão, arrancada do crowdkill). A cabeça vai junto, em pé.
+   */
+  const dobra = pose === 'moinho' ? 0.95 : pose === 'investida' ? 0.45 : pose === 'lado' ? 0.3 : 0;
+  const piv = 66 + agacha;
+  const cd = Math.cos(dobra), sd = Math.sin(dobra);
+  const T = (p: V3): V3 => {
+    if (!dobra) return p;
+    const dy = p[1] - piv;
+    return [p[0], piv + dy * cd + p[2] * sd, p[2] * cd - dy * sd];
+  };
+  /** Raios (vertical, profundidade) de uma peça do tronco depois da dobra. */
+  const raios = (ry: number, rz: number): [number, number] => (dobra ? [Math.hypot(ry * cd, rz * sd), Math.hypot(ry * sd, rz * cd)] : [ry, rz]);
+  const cabeca = T([0, 24 + bob + bang + cabY, avanco + cabZ]);
+  const hy = cabeca[1];
+  const hz = cabeca[2];
   const mus = b.musculoso ? 1 : b.magro ? -0.8 : 0;
   const folga = b.folgado ? 1 : 0;
   const ey = hy + (q === 1 || q === 3 ? 1 : 0) + (pulo ? 2 : 0); // no pulo, olhando pra baixo
@@ -420,14 +440,15 @@ export function figura(b: Boneco): Grade {
   // Alargador na orelha.
   if (b.alargador && !cobreOrelha) for (const s of [-1, 1]) e.bola([s * 7.2, ey + 3.8, hz - 1], 1.1, 1.1, 1.1, mat(rampa([P.concreto, P.asfalto, P.preto]), 0.9), PARTE.acessorio);
   if (!cobreOrelha) for (const s of [-1, 1]) e.bola([s * 6.8, ey + 1.6, hz - 1], 1.7, 2.9, 2.2, pele, PARTE.orelha);
-  e.capsula([0, hy + 8, hz * 0.4 - 1.5], [0, 41 + bob, -1 + incl * 0.8], 3.3 * larg + gor * 1.4, 3.7 * larg + gor * 1.6, pele, PARTE.pescoco);
+  e.capsula(dobra ? [0, hy + 6, hz - 3.5] : [0, hy + 8, hz * 0.4 - 1.5], T([0, 41 + bob, -1 + incl * 0.8]), 3.3 * larg + gor * 1.4, 3.7 * larg + gor * 1.6, pele, PARTE.pescoco);
 
   // ── Tronco: peito, cintura, ombros e quadril.
   const tronco = b.jaqueta ? couro : roupa;
-  e.bola([0, 47 + bob, 1 + incl], 11 * larg + gor * 2.2 + mus * 1.4 + folga * 1.2, 9 + mus * 0.6, 7 + gor * 1.6 + folga, tronco, PARTE.tronco, 2.5);
-  e.capsula([0, 49 + bob, 0.8 + incl * 0.6], [0, (folga || b.camisaPraFora ? 69 : 62) + bob, 0], 7.6 * larg + gor * 3 - mus * 0.8 + folga * 1.4, 7 * (b.largo ? 1.15 : 1) + gor * 3.2 - mus * 0.8 + folga * 1.6, tronco, PARTE.tronco);
-  if (gor) e.bola([0, 57 + bob, 4 + incl * 0.4], 10, 8.5, 7.5, tronco, PARTE.tronco, 2.2); // barriga
-  for (const s of [-1, 1]) e.bola([s * (10 * larg + gor * 1.6 + mus), 43 + bob, 1 + incl - s * torce], 4.6 + gor + mus * 1.3, 4.4 + gor * 0.6 + mus, 4.4 + gor + mus, b.regata ? pele : tronco, b.regata ? (s < 0 ? PARTE.bracoE : PARTE.bracoD) : PARTE.tronco);
+  const [ryPeito, rzPeito] = raios(9 + mus * 0.6, 7 + gor * 1.6 + folga);
+  e.bola(T([0, 47 + bob, 1 + incl]), 11 * larg + gor * 2.2 + mus * 1.4 + folga * 1.2, ryPeito, rzPeito, tronco, PARTE.tronco, 2.5);
+  e.capsula(T([0, 49 + bob, 0.8 + incl * 0.6]), T([0, (folga || b.camisaPraFora ? 69 : 62) + bob, 0]), 7.6 * larg + gor * 3 - mus * 0.8 + folga * 1.4, 7 * (b.largo ? 1.15 : 1) + gor * 3.2 - mus * 0.8 + folga * 1.6, tronco, PARTE.tronco);
+  if (gor) e.bola(T([0, 57 + bob, 4 + incl * 0.4]), 10, ...raios(8.5, 7.5), tronco, PARTE.tronco, 2.2); // barriga
+  for (const s of [-1, 1]) e.bola(T([s * (10 * larg + gor * 1.6 + mus), 43 + bob, 1 + incl - s * torce]), 4.6 + gor + mus * 1.3, 4.4 + gor * 0.6 + mus, 4.4 + gor + mus, b.regata ? pele : tronco, b.regata ? (s < 0 ? PARTE.bracoE : PARTE.bracoD) : PARTE.tronco);
   e.bola([0, 67 + agacha, 0], 8.2 * (b.largo ? 1.12 : 1) + gor * 2.6, 4.8, 5.8 + gor * 2, calca, PARTE.quadril, 2.4);
 
   // ── Caixa de entrega / mochila nas costas, com alças na frente.
@@ -470,6 +491,22 @@ export function figura(b: Boneco): Grade {
       // (menos que as mãos); o de perto vai mais, o de lá fica encolhido.
       if (s < 0) { joelho = [s * 5.5, 71, 19]; tornozelo = [s * 5.8, 85, 17]; noAlto = [s * 5.8, 87.5, 20.5]; }
       else { joelho = [s * 5.5, 70, 15]; tornozelo = [s * 5.8, 82, 9]; noAlto = [s * 5.8, 82.5, 12.5]; }
+    } else if (pose === 'moinho') {
+      // Windmill: passada larga (um pé bem na frente, outro bem atrás) e joelhos dobrados.
+      const z = s < 0 ? 11 : -10;
+      joelho = [s * 7, 85 + agacha * 0.5, z + (s < 0 ? 5 : 2)]; tornozelo = [s * 8, 104, z];
+    } else if (pose === 'lado') {
+      // Side to side: base bem aberta pros lados e agachada (visto mais de frente).
+      joelho = [s * 11, 86.5 + agacha * 0.5, zBase + 3 + agacha * 0.6]; tornozelo = [s * 13, 104, zBase];
+    } else if (pose === 'investida') {
+      // Arrancada: joelho da frente lá em cima, a de trás estica empurrando o chão.
+      if (s < 0) { joelho = [s * 5.5, 78, 15]; tornozelo = [s * 5.8, 92, 11]; noAlto = [s * 5.8, 94, 14.5]; }
+      else { joelho = [s * 6, 86, -6]; tornozelo = [s * 6.5, 102, -15]; }
+    } else if (pose === 'passinho') {
+      // Two step: uma perna chuta baixo pra frente, a outra quica dobrada.
+      const chuta = fg === 0 ? s < 0 : s > 0;
+      if (chuta) { joelho = [s * 5, 83, 9]; tornozelo = [s * 5.2, 97, 18]; noAlto = [s * 5.2, 98.5, 22]; }
+      else { joelho = [s * 6, 87.5, zBase + 2]; tornozelo = [s * 6.5, 104, zBase - 3]; }
     } else if (pose === 'joelhada' && s < 0) {
       // Joelhada no clinch: o joelho sobe na altura da barriga, canela pendurada.
       joelho = [s * 5, 66, 17]; tornozelo = [s * 5.2, 82, 13]; noAlto = [s * 5.2, 84.5, 16.5];
@@ -522,7 +559,7 @@ export function figura(b: Boneco): Grade {
 
   // ── Braços: ombro → cotovelo → pulso → mão, no espaço do corpo.
   type Braco = { o: V3; c: V3; p: V3; m: V3; aberta?: 'chifre' | 'baqueta' };
-  const ombro = (s: number): V3 => [s * (10.8 * larg + gor * 1.8), 42 + bob, incl - s * torce];
+  const ombro = (s: number): V3 => T([s * (10.8 * larg + gor * 1.8), 42 + bob, incl - s * torce]);
   const caido = (s: number): Braco => {
     const o = ombro(s);
     const frente = noAr === -s; // o braço vai junto com a perna do outro lado
@@ -556,13 +593,42 @@ export function figura(b: Boneco): Grade {
   };
   const bracos: Record<number, Braco> = { [-1]: caido(-1), [1]: caido(1) };
   if (pose === 'moinho') {
-    // Moinho de braço (windmill): o de perto gira de cima pra frente e desce; o outro roda ao contrário.
-    const oe = ombro(-1), od = ombro(1);
-    const cima = (o: V3, z: number): Braco => ({ o, c: [o[0], 32 + bob, z], p: [o[0] * 0.8, 22 + bob, z + 1], m: [o[0] * 0.7, 18.5 + bob, z + 1.5] });
-    const baixoAtras = (o: V3): Braco => ({ o, c: [o[0], 54 + bob, -4], p: [o[0], 62 + bob, -8], m: [o[0], 65 + bob, -9] });
-    if (fg === 0) { bracos[-1] = cima(oe, 0); bracos[1] = baixoAtras(od); }
-    else if (fg === 1) { bracos[-1] = { o: oe, c: [oe[0] * 0.6, 40 + bob, 8], p: [-2, 38 + bob, 16], m: [-2, 36.5 + bob, 19.5] }; bracos[1] = cima(od, -4); }
-    else { bracos[-1] = { o: oe, c: [oe[0] * 0.8, 50 + bob, 7], p: [-3, 58 + bob, 14], m: [-3, 61 + bob, 16.5] }; bracos[1] = cima(od, 0); }
+    // Windmill: dobrado, os dois braços rodam esticados em círculo vertical,
+    // um lá em cima e o outro raspando no chão (opostos), girando pra frente.
+    const R = 21;
+    const ang = [Math.PI, Math.PI / 2, 0, -Math.PI / 2][fg];
+    for (const s of [-1, 1]) {
+      const o = ombro(s);
+      const a = s < 0 ? ang : ang + Math.PI;
+      const m: V3 = [o[0] + s * 3, o[1] + Math.cos(a) * R, o[2] + Math.sin(a) * R];
+      const c = lerp(o, m, 0.5);
+      bracos[s] = { o, c: [c[0] + s * 2, c[1], c[2]], p: lerp(o, m, 0.86), m };
+    }
+  } else if (pose === 'investida') {
+    // Crowdkill: o braço de trás armado lá atrás pra braçada; o da frente abre caminho.
+    const od = ombro(1), oe = ombro(-1);
+    bracos[1] = { o: od, c: [13, od[1] - 2, od[2] - 8], p: [12, od[1] - 9, od[2] - 14], m: [11, od[1] - 11, od[2] - 16.5] };
+    bracos[-1] = { o: oe, c: [oe[0] * 0.7, oe[1] + 6, oe[2] + 9], p: [-4, oe[1] + 8, oe[2] + 16], m: [-3.5, oe[1] + 8, oe[2] + 19.5] };
+  } else if (pose === 'lado') {
+    // Side to side: os dois braços varrem na altura do peito pro mesmo lado.
+    const lado = fg === 0 ? 1 : -1;
+    for (const s of [-1, 1]) {
+      const o = ombro(s);
+      const fora = s === lado; // o braço desse lado vai aberto; o outro cruza o peito
+      // (o lado esquerdo da tela é a âncora do sprite: o braço de lá abre um pouco menos)
+      const m: V3 = fora ? [s < 0 ? -22 : 29, o[1] + 1, o[2] + 3] : [lado * 10, o[1] + 6, o[2] + 13];
+      const c: V3 = fora ? [s * 20, o[1] + 1, o[2] + 1] : [s * 3, o[1] + 8, o[2] + 10];
+      bracos[s] = { o, c, p: lerp(c, m, 0.8), m };
+    }
+  } else if (pose === 'passinho') {
+    // Two step: braços balançam ao contrário das pernas, como corrida no lugar.
+    for (const s of [-1, 1]) {
+      const o = ombro(s);
+      const frente = fg === 0 ? s > 0 : s < 0;
+      bracos[s] = frente
+        ? { o, c: [s * 11, o[1] + 9, o[2] + 7], p: [s * 6, o[1] + 4, o[2] + 15], m: [s * 5, o[1] + 2, o[2] + 18] }
+        : { o, c: [s * 13, o[1] + 11, o[2] - 5], p: [s * 13, o[1] + 18, o[2] - 9], m: [s * 13, o[1] + 21, o[2] - 9.5] };
+    }
   } else if (pose === 'giro' || pose === 'voadora') {
     // Chute giratório: braços abertos pra dar o giro.
     for (const s of [-1, 1]) { const o = ombro(s); bracos[s] = { o, c: [s * 15, 44 + bob, 0], p: [s * 19, 43 + bob, 1], m: [s * 21.5, 43 + bob, 1] }; }

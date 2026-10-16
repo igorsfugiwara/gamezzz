@@ -71,7 +71,7 @@ export function spriteDenao(quadro: 0 | 1): Sprite {
  * two-step para andar, pulo de pé alto e voadora; mais apanhar, especial e a
  * dança da vitória.
  */
-export type PoseLuta = 'guarda' | 'twostep' | 'soco' | 'soco2' | 'moinho' | 'giro' | 'chute' | 'bicuda' | 'joelhada' | 'gancho' | 'voadora' | 'pulo' | 'apanha' | 'especial' | 'danca';
+export type PoseLuta = 'guarda' | 'twostep' | 'soco' | 'soco2' | 'moinho' | 'giro' | 'chute' | 'bicuda' | 'joelhada' | 'gancho' | 'investida' | 'lado' | 'passinho' | 'voadora' | 'pulo' | 'apanha' | 'especial' | 'danca';
 
 /** Jazz Bass sunburst no Igor, Telecaster butterscotch no Renato. */
 const INSTRUMENTO: Partial<Record<Quem, Boneco['instrumento']>> = {
@@ -94,6 +94,7 @@ function quadroDaPose(p: PoseLuta, f: 0 | 1 | 2 | 3): Partial<Boneco> {
   if (p === 'chute') return { pose: 'chute', golpe: f === 0 ? 0 : 1 };
   if (p === 'bicuda') return { pose: 'chute', golpe: 2 };
   if (p === 'gancho') return { pose: 'gancho', golpe: f === 0 ? 0 : 1 };
+  if (p === 'passinho') return { pose: 'passinho', golpe: (f % 2) as 0 | 1 };
   return { pose: poseFigura(p), passo: f, grito: p === 'apanha' };
 }
 
@@ -108,7 +109,8 @@ export function spriteIntegrante(quem: Quem, pose: PoseLuta, f: 0 | 1 | 2 | 3 = 
     ...VISUAL[quem], giro: GIRO_LUTA, respiro, mascara,
     ...(pose === 'especial' ? poseDoEspecial(quem)
       : pose === 'danca' ? { pose: 'maos', quadro: f, passo: f % 2 ? 1 : 3, grito: f % 2 === 1 }
-        : pose === 'moinho' ? { pose, golpe: Math.min(2, f) as 0 | 1 | 2 }
+        : pose === 'moinho' ? { pose, golpe: f }
+          : pose === 'lado' ? { pose, golpe: (f % 2) as 0 | 1, giro: f % 2 === 0 ? 0.35 : 0.75 } // mais de frente: a varrida aparece
           : pose === 'giro' ? { pose, giro: GIRO_LUTA + GIRO_CHUTE[f] }
             : pose === 'voadora' ? { pose, giro: GIRO_LUTA + VOADORA[f].g, anguloChute: VOADORA[f].a, grito: true }
               : quadroDaPose(pose, f)),

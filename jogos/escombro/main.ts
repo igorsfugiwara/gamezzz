@@ -171,7 +171,7 @@ interface Corpo {
   x: number; y: number; z: number; vx: number; vy: number; vz: number;
   dir: 1 | -1; vida: number; max: number; estado: Estado; t: number; pisca: number;
 }
-interface Jogador extends Corpo { quem: Quem; seq: string; golpe: Golpe; fila: string; janela: number; acertou: Set<object>; invul: number; mosh: number; vidas: number; golpesSofridos: number[]; noAr: boolean }
+interface Jogador extends Corpo { quem: Quem; seq: string; golpe: Golpe; fila: string; sub: number; janela: number; acertou: Set<object>; invul: number; mosh: number; vidas: number; golpesSofridos: number[]; noAr: boolean }
 interface Inimigo extends Corpo { tipo: TipoInimigo; semente: number; recarga: number; lado: 1 | -1; engajado: boolean; morto: number; rotulo?: string }
 interface Item { x: number; y: number; tipo: TipoItem; vz: number; z: number }
 interface Quebravel { x: number; y: number; tipo: TipoQuebravel; item: TipoItem; vida: number; pisca: number }
@@ -255,7 +255,7 @@ function poeira(x: number, y: number, n = 6, cor: string = P.papel) {
 function novoJogador(quem: Quem): Jogador {
   return {
     quem, x: 90, y: 220, z: 0, vx: 0, vy: 0, vz: 0, dir: 1, vida: VIDA_JOGADOR, max: VIDA_JOGADOR, estado: 'parado', t: 0, pisca: 0,
-    seq: '', golpe: 'jab', fila: '', janela: 0, acertou: new Set(), invul: 1, mosh: SEM_MOSH_FASE0, vidas: 3, golpesSofridos: [], noAr: false,
+    seq: '', golpe: 'jab', fila: '', sub: -1, janela: 0, acertou: new Set(), invul: 1, mosh: SEM_MOSH_FASE0, vidas: 3, golpesSofridos: [], noAr: false,
   };
 }
 
@@ -433,15 +433,30 @@ function atualizarJogador(dt: number) {
       if (fase.distancia) { if (j.t > 0.2) j.estado = 'parado'; break; } // pandemia: só o jato de álcool
       const ficha_g = GOLPES[j.golpe];
       const dur = ficha_g.dur / ficha.vel ** 0.35;
-      // Voadora de roda: um pulinho pra frente no meio do combo.
-      if (j.golpe === 'voadoraRoda') { j.x += j.dir * 70 * dt; j.vz -= 900 * dt; j.z = Math.max(0, j.z + j.vz * dt); }
+      const u = j.t / dur;
+      // Deslocamento de cada movimento da roda.
+      const vai = ficha_g.avanco ?? 0;
+      if (j.golpe === 'crowdkill') { if (u < 0.5) j.x += j.dir * vai * dt; } // arrancada pra cima da galera
+      else if (j.golpe === 'sidetoside') {
+        if (u < 0.55) { j.x += j.dir * vai * dt; j.y = clamp(j.y + Math.cos(u * Math.PI * 4) * 80 * dt, CHAO.topo, CHAO.base); } // vai e vem
+        else if (j.vz === 0 && j.z === 0) j.vz = 230; // fecha com a voadora
+      } else if (j.golpe === 'twostep') { j.x += j.dir * vai * dt; j.z = Math.abs(Math.sin(u * Math.PI * 5)) * 5; } // quica no passinho
+      else if (vai) j.x += j.dir * vai * dt;
+      if (j.golpe === 'sidetoside' && (j.vz !== 0 || j.z > 0)) { j.vz -= 900 * dt; j.z = Math.max(0, j.z + j.vz * dt); if (j.z === 0 && j.vz < 0) j.vz = 0; }
       const [a0, a1] = ficha_g.ativo;
-      if (j.t > dur * a0 && j.t < dur * a1) aplicarGolpeDoJogador(danoDe(ficha.forca, j.golpe), ficha_g.derruba, 38 * ficha.alcance + ficha_g.alcance);
+      if (u > a0 && u < a1) {
+        // Vários acertos na janela (moinho, two step...): cada um pega de novo, só o último derruba.
+        const n = ficha_g.hits ?? 1;
+        const sub = Math.min(n - 1, Math.floor(((u - a0) / (a1 - a0)) * n));
+        if (n > 1 && sub !== j.sub) { j.sub = sub; j.acertou = new Set(); }
+        const dano = n > 1 ? Math.max(2, Math.round((danoDe(ficha.forca, j.golpe) / n) * 1.3)) : danoDe(ficha.forca, j.golpe);
+        aplicarGolpeDoJogador(dano, ficha_g.derruba && sub === n - 1, 38 * ficha.alcance + ficha_g.alcance);
+      }
       const apertou: Entrada | null = aperto.soco ? 'S' : aperto.chute ? 'C' : null;
       // Guarda os próximos apertos em fila (quem amassa o botão não perde golpe).
       if (apertou && j.seq.length + j.fila.length < 3) { j.fila += apertou; j.janela = 0.3; }
       if (j.t >= dur) {
-        if (j.golpe === 'voadoraRoda') { j.z = 0; poeira(j.x, j.y, 4); }
+        if (j.z > 0 || j.golpe === 'sidetoside') { j.z = 0; j.vz = 0; poeira(j.x, j.y, 4); }
         if (j.fila && j.seq.length < 3) golpe(j.seq + j.fila[0], j.fila.slice(1));
         else { j.estado = 'parado'; j.janela = j.seq.length < 3 ? 0.35 : 0; }
       }
@@ -513,8 +528,7 @@ let chutes = 0;
 /** Golpe da sequência `seq` (1 a 3 apertos de soco/chute). */
 function golpe(seq: string, fila = '') {
   const g = golpeDoCombo(seq);
-  Object.assign(jog, { estado: 'golpe', seq, golpe: g, t: 0, janela: 0, fila, acertou: new Set() });
-  if (g === 'voadoraRoda') jog.vz = 230;
+  Object.assign(jog, { estado: 'golpe', seq, golpe: g, t: 0, janela: 0, fila, acertou: new Set(), sub: -1, vz: 0 });
   if (seq.endsWith('C')) chutes++;
   const nomeado = seq.length === 3 ? comboNomeado(seq) : null;
   if (nomeado) { anuncio = { texto: `${tri(nomeado.nome).toUpperCase()}!`, vida: 1.2 }; combosFeitos.add(seq); }
@@ -1174,7 +1188,7 @@ function passo(dt: number) {
   // Sala de ensaio: acaba com os dois bonecos no chão e o amplificador quebrado.
   if (fase.n === 0 && !terminou && ondaIdx > 0 && !filaSpawn.length && inimigos.every((e) => e.estado === 'morto') && !quebraveis.length && (itemPego || !itens.length) && !emAula()) vencerFase();
   // Na aula de combos, o Denão põe o boneco de papelão de pé de novo.
-  if (emAula()) for (const e of inimigos) if (e.tipo === 'papelao' && e.estado === 'morto' && e.morto > 1.4) Object.assign(e, { estado: 'parado', vida: e.max, morto: 0, t: 0, z: 0, vx: 0, vz: 0, pisca: 0.3 });
+  if (emAula()) for (const e of inimigos) if (e.tipo === 'papelao' && e.estado === 'morto' && e.morto > 0.7) Object.assign(e, { estado: 'parado', vida: e.max, morto: 0, t: 0, z: 0, vx: 0, vz: 0, pisca: 0.3, x: clamp(e.x, camX + 40, camX + LARG - 40) }); // (antes de 0,9 s, quando o morto sai da lista)
   $('b-esp').classList.toggle('pronto', jog.mosh >= 100);
 }
 
@@ -1198,11 +1212,14 @@ function poseDoJogador(): { s: Sprite; caido: boolean } {
         case 'direto': pose = volta ? 'guarda' : 'soco2'; break;
         case 'chute': pose = 'chute'; p = u < 0.3 || volta ? 0 : 1; break;
         case 'joelhada': pose = volta ? 'guarda' : 'joelhada'; break;
-        case 'moinho': pose = 'moinho'; p = (u < 0.3 ? 0 : u < 0.6 ? 1 : 2) as 0 | 1 | 2; break;
+        case 'moinho': pose = 'moinho'; p = (Math.floor(u * 6) % 4) as 0 | 1 | 2 | 3; break; // um giro e meio dos braços
         case 'giratorio': pose = 'giro'; p = (u < 0.25 ? 0 : u < 0.45 ? 1 : u < 0.7 ? 2 : 3) as 0 | 1 | 2 | 3; break;
-        case 'bicuda': pose = u < 0.3 || volta ? 'chute' : 'bicuda'; break;
-        case 'voadoraRoda': pose = 'voadora'; p = Math.min(3, Math.floor(u * 4)) as 0 | 1 | 2 | 3; break;
-        case 'gancho': pose = 'gancho'; p = u < 0.38 ? 0 : 1; break;
+        case 'crowdkill': pose = u < 0.42 ? 'investida' : u < 0.62 ? 'soco2' : volta ? 'guarda' : 'bicuda'; break;
+        case 'sidetoside':
+          if (u < 0.55) { pose = 'lado'; p = (Math.floor(u * 8) % 2) as 0 | 1; }
+          else { pose = 'voadora'; p = Math.min(3, Math.floor(((u - 0.55) / 0.45) * 4)) as 0 | 1 | 2 | 3; }
+          break;
+        case 'twostep': pose = 'passinho'; p = (Math.floor(u * 10) % 2) as 0 | 1; break;
       }
       break;
     }
@@ -1720,10 +1737,11 @@ function carregar(n: number) {
   const quem = progresso.quem;
   for (const p of ['soco', 'soco2', 'bicuda', 'joelhada', 'pulo', 'apanha', 'especial'] as const) tarefas.push(() => spriteIntegrante(quem, p));
   for (let k = 0; k < 4; k++) tarefas.push(() => spriteIntegrante(quem, 'guarda', k as 0 | 1 | 2 | 3));
-  for (let k = 0; k < 2; k++) { tarefas.push(() => spriteIntegrante(quem, 'chute', k as 0 | 1)); tarefas.push(() => spriteIntegrante(quem, 'gancho', k as 0 | 1)); }
+  for (let k = 0; k < 2; k++) for (const p of ['chute', 'lado', 'passinho'] as const) tarefas.push(() => spriteIntegrante(quem, p, k as 0 | 1));
+  tarefas.push(() => spriteIntegrante(quem, 'investida'));
   for (let k = 0; k < 4; k++) { const f = k as 0 | 1 | 2 | 3; tarefas.push(() => spriteIntegrante(quem, 'twostep', f)); tarefas.push(() => spriteIntegrante(quem, 'danca', f)); }
   const masc = !!f.distancia;
-  for (let k = 0; k < 4; k++) { const fq = k as 0 | 1 | 2 | 3; tarefas.push(() => spriteIntegrante(quem, 'moinho', Math.min(2, k) as 0 | 1 | 2)); tarefas.push(() => spriteIntegrante(quem, 'giro', fq)); tarefas.push(() => spriteIntegrante(quem, 'voadora', fq)); }
+  for (let k = 0; k < 4; k++) { const fq = k as 0 | 1 | 2 | 3; tarefas.push(() => spriteIntegrante(quem, 'moinho', fq)); tarefas.push(() => spriteIntegrante(quem, 'giro', fq)); tarefas.push(() => spriteIntegrante(quem, 'voadora', fq)); }
   if (masc) for (const p of ['guarda', 'soco', 'pulo', 'apanha'] as const) tarefas.push(() => spriteIntegrante(quem, p, 0, false, true));
   if (f.segundaTela) for (const p of ['guarda', 'soco', 'twostep'] as const) tarefas.push(() => spriteIntegrante('vocal', p));
   if (f.chefe === 'pequenoPoder') for (const b of [false, true]) for (const p of ['guarda', 'soco', 'pulo'] as const) tarefas.push(() => spritePequenoPoder(p, 0, b));

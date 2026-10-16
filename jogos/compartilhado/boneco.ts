@@ -56,7 +56,9 @@ export type Pose = 'parado' | 'chifres' | 'maos' | 'microfone' | 'baqueta' | 'to
   // Roda punk: moinho de braço, chute giratório (braços abertos) e o two-step.
   | 'moinho' | 'giro' | 'twostep' | 'voadora'
   // Combos: joelhada no clinch e gancho de baixo pra cima.
-  | 'joelhada' | 'gancho';
+  | 'joelhada' | 'gancho'
+  // Roda punk de verdade: arrancada do crowdkill, braçada do side to side, passinho do two step.
+  | 'investida' | 'lado' | 'passinho';
 
 export interface Boneco {
   pele: Tom;
