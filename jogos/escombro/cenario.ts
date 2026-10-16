@@ -86,39 +86,57 @@ function pixo(g: CanvasRenderingContext2D, texto: string, x: number, y: number, 
   for (let i = 0; i < texto.length; i++) if (texto[i] !== ' ' && rnd() < 0.4) ret(g, x + i * tam * 0.62 + 3, y + tam + 1, 1, 3 + rnd() * 8, cor);
 }
 
-/** As três setas antifascistas, apontando para baixo-esquerda, dentro do círculo. */
+/**
+ * As três setas antifascistas (Frente de Ferro): três setas paralelas
+ * apontando para baixo-esquerda, com a ponta encostando no círculo.
+ * Cada pixel é testado em coordenadas giradas: `u` ao longo da seta, `v`
+ * de lado.
+ */
 export function tresSetas(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, cor: string) {
-  for (let y = -r - 1; y <= r + 1; y++) for (let x = -r - 1; x <= r + 1; x++) {
-    const d = Math.hypot(x, y);
-    if (d <= r + 1 && d > r - 2.5) ret(g, cx + x, cy + y, 1, 1, d > r ? P.preto : cor);
-  }
-  for (let k = -1; k <= 1; k++) {
-    // Haste diagonal de cima-direita para baixo-esquerda, deslocada perpendicularmente.
-    const ox = k * r * 0.34, oy = k * r * 0.34;
-    for (let t = -r * 0.62; t <= r * 0.55; t += 0.5) {
-      const x = cx + ox - t * 0.7071, y = cy - oy + t * 0.7071;
-      ret(g, x - 1, y - 1, 3, 3, cor);
+  const aro = Math.max(2, r * 0.13);
+  const passo = r * 0.4; // distância entre as setas
+  const haste = Math.max(1.2, r * 0.075); // meia largura da haste
+  const cabeca = r * 0.2; // meia largura da ponta
+  const baseCabeca = r * 0.3, ponta = r * 0.74;
+  for (let y = -r - 2; y <= r + 2; y++) for (let x = -r - 2; x <= r + 2; x++) {
+    const px = x + 0.5, py = y + 0.5;
+    const d = Math.hypot(px, py);
+    if (d > r + 1.5) continue;
+    if (d > r) { ret(g, cx + x, cy + y, 1, 1, P.preto); continue; } // contorno de fora
+    if (d > r - aro) { ret(g, cx + x, cy + y, 1, 1, cor); continue; } // aro
+    // Direção da seta: baixo-esquerda (−1, 1)/√2; lado: (1, 1)/√2.
+    const u = (-px + py) * Math.SQRT1_2, v = (px + py) * Math.SQRT1_2;
+    let dentro = false;
+    for (const k of [-1, 0, 1]) {
+      const dv = Math.abs(v - k * passo);
+      const limite = r - aro - 1.5;
+      if (u < baseCabeca && dv <= haste && d < limite) dentro = true; // haste, cortada pelo aro
+      if (u >= baseCabeca && u <= ponta && dv <= cabeca * (ponta - u) / (ponta - baseCabeca)) dentro = true; // ponta
     }
-    // Ponta da seta (baixo-esquerda).
-    const px = cx + ox - r * 0.55 * 0.7071, py = cy - oy + r * 0.55 * 0.7071;
-    for (let i = 0; i < 5; i++) { ret(g, px + i, py - 1, 1, 2, cor); ret(g, px, py - i - 1, 2, 1, cor); }
+    ret(g, cx + x, cy + y, 1, 1, dentro ? cor : P.preto);
   }
 }
 
-/** Logo ANTIFA: estrela vermelha com a faixa preta escrita ANTIFA. */
+/** Logo ANTIFA: estrela vermelha de ponta pra cima e ANTIFA em branco, contornado, por cima. */
 export function antifa(g: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
   ret(g, cx - r - 3, cy - r - 3, r * 2 + 6, r * 2 + 6, P.preto);
-  g.fillStyle = P.vermelho;
-  const seg = (2 * Math.PI) / 5;
-  for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
-    // Estrela de 5 pontas: o raio varia com o ângulo.
-    const a = Math.atan2(y, x) + Math.PI / 2;
-    const u = ((((a % seg) + seg) % seg) - seg / 2) / (seg / 2); // -1..1 dentro da ponta
-    const rr = r * (1 - 0.6 * Math.abs(u));
-    if (Math.hypot(x, y) <= rr) g.fillRect(cx + x, cy + y, 1, 1);
+  // Estrela de 5 pontas como polígono: pontas externas a partir de −90° (para cima).
+  const pts: [number, number][] = [];
+  for (let k = 0; k < 10; k++) {
+    const a = -Math.PI / 2 + (k * Math.PI) / 5;
+    const rr = k % 2 === 0 ? r : r * 0.4;
+    pts.push([Math.cos(a) * rr, Math.sin(a) * rr]);
   }
-  ret(g, cx - r - 4, cy - 4, r * 2 + 8, 11, P.preto);
-  textoPixel(g, 'ANTIFA', cx - r - 2, cy - 5, 10, P.branco);
+  const dentro = (x: number, y: number) => {
+    let c = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [xi, yi] = pts[i], [xj, yj] = pts[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  };
+  for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (dentro(x + 0.5, y + 0.5)) ret(g, cx + x, cy + y, 1, 1, P.vermelho);
+  textoPixel(g, 'ANTIFA', cx - r - 1, cy - 4, Math.max(9, Math.round(r * 0.62)), P.branco, 'bold', 0, P.preto);
 }
 
 const FRASES = [

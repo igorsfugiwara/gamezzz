@@ -50,10 +50,10 @@ export const VISUAL: Record<Quem, Boneco> = {
     pele: TONS.pele.clara, cabelo: TONS.cabelo.castanho, roupa: PRETO, calca: PRETO, estilo: 'careca',
     tatuagem: true, tenis: true,
   },
-  // Felipeles (secreto), antigo baterista: careca com tatuagem na cabeça, magro e bombado, braço fechado.
+  // Felipeles (secreto), antigo baterista: careca com tatuagem na cabeça, magro e bombado, braço fechado; regata e bermuda.
   felipeles: {
     pele: TONS.pele.clara, cabelo: TONS.cabelo.castanho, roupa: PRETO, calca: PRETO, estilo: 'careca',
-    tatuagem: true, tatuagemCabeca: true, musculoso: true, tenis: true,
+    tatuagem: true, tatuagemCabeca: true, musculoso: true, regata: true, bermuda: true, tenis: true, meia: true,
   },
 };
 

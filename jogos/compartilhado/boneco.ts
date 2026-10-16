@@ -112,6 +112,8 @@ export interface Boneco {
   tatuagemCabeca?: boolean;
   /** Máscara cirúrgica (pandemia). */
   mascara?: boolean;
+  /** Regata: sem manga, ombro de fora. */
+  regata?: boolean;
   /** Manga comprida da farda (sem ser jaqueta). */
   mangaLonga?: boolean;
   /** Colete à prova de bala por cima da farda. */

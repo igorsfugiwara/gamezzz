@@ -354,10 +354,10 @@ export function figura(b: Boneco): Grade {
   const apanha = pose === 'apanha';
   // No pulo de show a cabeça vai pra frente e pra baixo.
   const pulo = pose === 'pulo';
-  const hy = 24 + bob + bang + (apanha ? 1 : 0) + (pulo ? 3 : 0);
-  const hz = avanco + (apanha ? -3.5 : pose === 'soco' || pose === 'soco2' ? 2.5 : pulo ? 4.5 : 0);
+  const hy = 24 + bob + bang + (apanha ? 1 : 0) + (pulo ? 6 : 0);
+  const hz = avanco + (apanha ? -3.5 : pose === 'soco' || pose === 'soco2' ? 2.5 : pulo ? 8 : 0);
   /** Tronco inclinado para a frente (pulo) ou para trás (chute). */
-  const incl = pulo ? 2.5 : pose === 'chute' || pose === 'voadora' ? -2 : 0;
+  const incl = pulo ? 5 : pose === 'chute' || pose === 'voadora' ? -2 : 0;
   const mus = b.musculoso ? 1 : 0;
   const folga = b.folgado ? 1 : 0;
   const ey = hy + (q === 1 || q === 3 ? 1 : 0);
@@ -377,7 +377,7 @@ export function figura(b: Boneco): Grade {
   e.bola([0, 47 + bob, 1 + incl], 11 * larg + gor * 2.2 + mus * 1.4 + folga * 1.2, 9 + mus * 0.6, 7 + gor * 1.6 + folga, tronco, PARTE.tronco, 2.5);
   e.capsula([0, 49 + bob, 0.8 + incl * 0.6], [0, (folga ? 69 : 62) + bob, 0], 7.6 * larg + gor * 3 - mus * 0.8 + folga * 1.4, 7 * (b.largo ? 1.15 : 1) + gor * 3.2 - mus * 0.8 + folga * 1.6, tronco, PARTE.tronco);
   if (gor) e.bola([0, 57 + bob, 4], 10, 8.5, 7.5, tronco, PARTE.tronco, 2.2); // barriga
-  for (const s of [-1, 1]) e.bola([s * (10 * larg + gor * 1.6 + mus), 43 + bob, 1 + incl], 4.6 + gor + mus * 1.3, 4.4 + gor * 0.6 + mus, 4.4 + gor + mus, tronco, PARTE.tronco);
+  for (const s of [-1, 1]) e.bola([s * (10 * larg + gor * 1.6 + mus), 43 + bob, 1 + incl], 4.6 + gor + mus * 1.3, 4.4 + gor * 0.6 + mus, 4.4 + gor + mus, b.regata ? pele : tronco, b.regata ? (s < 0 ? PARTE.bracoE : PARTE.bracoD) : PARTE.tronco);
   e.bola([0, 67, 0], 8.2 * (b.largo ? 1.12 : 1) + gor * 2.6, 4.8, 5.8 + gor * 2, calca, PARTE.quadril, 2.4);
 
   // ── Caixa de entrega / mochila nas costas, com alças na frente.
@@ -414,8 +414,8 @@ export function figura(b: Boneco): Grade {
       else { joelho = [s * 5.5, 76, 9]; tornozelo = [s * 5.8, 84, -2]; noAlto = [s * 5.8, 82, -5.5]; } // a outra encolhida
     } else if (pose === 'pulo') {
       // Pulo de show de hardcore: joelho lá na frente do corpo e o pé alto, dobrado pra trás.
-      const z0 = s < 0 ? 8 : 3;
-      joelho = [s * 5.5, 74, z0 + 10]; tornozelo = [s * 5.8, 82, z0 - 1]; noAlto = [s * 5.8, 79.5, z0 - 4.5];
+      const z0 = s < 0 ? 9 : 5;
+      joelho = [s * 5.5, 70, z0 + 12]; tornozelo = [s * 5.8, 80, z0 + 1]; noAlto = [s * 5.8, 78, z0 - 2.5];
     } else if (pose === 'twostep' && ((passo === 1 && s < 0) || (passo === 3 && s > 0))) {
       // Two-step: a perna da vez chuta baixo pra frente.
       joelho = [s * 5, 83, 9]; tornozelo = [s * 5.2, 95, 16]; noAlto = [s * 5.2, 95.5, 19.5];
@@ -496,7 +496,10 @@ export function figura(b: Boneco): Grade {
   } else if (pose === 'giro' || pose === 'voadora') {
     // Chute giratório: braços abertos pra dar o giro.
     for (const s of [-1, 1]) { const o = ombro(s); bracos[s] = { o, c: [s * 15, 44 + bob, 0], p: [s * 19, 43 + bob, 1], m: [s * 21.5, 43 + bob, 1] }; }
-  } else if (pose === 'pulo') { bracos[-1] = erguido(-1, undefined); bracos[1] = guarda(1); }
+  } else if (pose === 'pulo') {
+    // Mãos pra frente, na altura dos joelhos, junto com eles.
+    for (const s of [-1, 1]) { const o = ombro(s); const z = s < 0 ? 0 : -2; bracos[s] = { o: [o[0], o[1], o[2] + incl], c: [o[0] * 0.75, 52 + bob, 9 + z + incl], p: [s * 3.5, 60 + bob, 17 + z], m: [s * 3, 62 + bob, 20.5 + z] }; }
+  }
   else if (pose === 'twostep') {
     // Braços balançando junto com o passo, cotovelo pra fora.
     for (const s of [-1, 1]) {
@@ -539,7 +542,7 @@ export function figura(b: Boneco): Grade {
     // Manga: curta na camiseta (larga e comprida se folgada), inteira na jaqueta e no terno.
     const inteira = b.jaqueta || b.gravata || b.mangaLonga;
     const manga = b.jaqueta ? couro : roupa;
-    e.capsula(br.o, inteira ? br.c : lerp(br.o, br.c, folga ? 0.85 : 0.5), 4.3 + g + folga * 1.6, 3.9 + g + folga * 2, manga, parte);
+    if (!b.regata) e.capsula(br.o, inteira ? br.c : lerp(br.o, br.c, folga ? 0.85 : 0.5), 4.3 + g + folga * 1.6, 3.9 + g + folga * 2, manga, parte);
     if (b.protecoes) {
       const armadura = mat(rampa([P.branco, P.amarelo, P.mostarda]), 1.5);
       e.bola([br.c[0], br.c[1], br.c[2] - 1.5], 3.4, 3.4, 3, armadura, PARTE.acessorio, 2.4); // cotoveleira
