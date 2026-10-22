@@ -38,7 +38,7 @@ export const INTEGRANTES: Integrante[] = [
     especialTexto: { pt: 'Rajada de baquetadas na frente.', en: 'A burst of stick hits in front.', de: 'Trommelfeuer nach vorne.' },
   },
   {
-    id: 'renato', nome: 'RENATO', instrumento: { pt: 'Guitarra', en: 'Guitar', de: 'Gitarre' },
+    id: 'renato', nome: 'TITCHO', instrumento: { pt: 'Guitarra', en: 'Guitar', de: 'Gitarre' },
     forca: 1, vel: 1, alcance: 1.05, especial: 'microfonia',
     especialNome: { pt: 'Microfonia', en: 'Feedback', de: 'Rückkopplung' },
     especialTexto: { pt: 'Projétil que atravessa a fila.', en: 'A shot that pierces the whole line.', de: 'Ein Schuss durch die ganze Reihe.' },
