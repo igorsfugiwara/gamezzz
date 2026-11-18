@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>PINBALL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  /* Maiúsculas acentuadas vêm de outra fonte em pixel (a Press Start 2P desenha Í, É, Ç e Ã como minúsculas). Ver fontes/LEIA-ME.txt. */
+  @font-face { font-family: 'Acentos Pixel'; src: url('/games/fontes/acentos-pixel.woff2') format('woff2'); unicode-range: U+00C0-00D6, U+00D8-00DD; size-adjust: 160%; font-display: swap; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: #08060f;
+    font-family: 'Acentos Pixel', 'Press Start 2P', monospace;
+    color: #f3e4ff;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 30%, rgba(255, 60, 200, 0.07) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 70%, rgba(60, 220, 255, 0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  /* Deitado (o quadro 16:9 do site): placar de um lado, mesa no meio,
+     instruções do outro. Em pé: placar em cima e a mesa ocupa o resto. */
+  .wrap {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(10px, 3vw, 40px);
+    width: 100%;
+    height: 100%;
+    padding: 8px;
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(8px, 2vh, 18px);
+    min-width: 0;
+    width: clamp(120px, 20vw, 220px);
+    font-size: clamp(7px, 1.2vw, 10px);
+    letter-spacing: 1px;
+    color: #b79ad6;
+    line-height: 1.6;
+  }
+  .panel .big { font-size: clamp(12px, 2.4vw, 22px); color: #ffe066; text-shadow: 0 0 10px rgba(255,224,102,.5); letter-spacing: 2px; }
+  .panel b { color: #f3e4ff; font-weight: normal; }
+  .balls { display: flex; gap: 6px; }
+  .balls i { width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #9aa7b8 60%, #4a5260); box-shadow: 0 0 6px rgba(255,255,255,.4); }
+  .balls i.off { opacity: .18; }
+  .keys { color: #8f78ad; font-size: clamp(6px, 1vw, 8px); line-height: 2; }
+  /* A fonte em pixel não tem as setas: elas vêm da fonte do sistema. */
+  .keys kbd.seta { font-family: system-ui, sans-serif; font-size: 1.3em; }
+  .keys kbd { font-family: inherit; color: #f3e4ff; border: 1px solid rgba(255,255,255,.25); border-radius: 3px; padding: 1px 4px; }
+
+  .top { display: none; }
+
+  .stage { position: relative; line-height: 0; flex-shrink: 0; }
+
+  canvas {
+    display: block;
+    border-radius: 14px;
+    box-shadow: 0 0 30px rgba(255, 60, 200, 0.18), 0 0 0 2px rgba(255, 60, 200, 0.35);
+    background: #0d0a1a;
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    justify-content: safe center;
+    overflow-y: auto;
+    gap: clamp(10px, 2.4vh, 20px);
+    background: rgba(10, 6, 20, 0.9);
+    border-radius: 14px;
+    text-align: center;
+    padding: 8%;
+    line-height: 1.6;
+  }
+  .screen[hidden] { display: none; }
+
+  .title {
+    font-size: clamp(16px, 4.4vh, 30px);
+    letter-spacing: 4px;
+    color: #ff6bd6;
+    text-shadow: 0 0 12px rgba(255,80,210,.7), 0 0 34px rgba(255,80,210,.3);
+  }
+  .sub { font-size: clamp(7px, 1.4vh, 10px); color: #a98cc8; letter-spacing: 1px; }
+  .score { font-size: clamp(11px, 2.6vh, 18px); color: #ffe066; }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    color: #f3e4ff;
+    background: rgba(255, 80, 210, 0.1);
+    border: 2px solid rgba(255, 80, 210, 0.5);
+    border-radius: 6px;
+    padding: 12px 18px;
+    font-size: clamp(9px, 1.6vh, 12px);
+    letter-spacing: 1px;
+    transition: background .15s, border-color .15s, transform .08s;
+  }
+  button:hover { background: rgba(255, 80, 210, 0.2); border-color: rgba(255,80,210,.9); }
+  button:active { transform: translateY(1px); }
+  body.touch button { min-height: 44px; }
+
+  .mute { position: absolute; top: 8px; right: 8px; z-index: 2; padding: 6px 8px; font-size: 12px; line-height: 1; }
+
+  @media (orientation: portrait), (max-width: 620px) {
+    .wrap { flex-direction: column; gap: 6px; }
+    .panel { display: none; }
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(10px, 4vw, 24px);
+      font-size: clamp(7px, 2.4vw, 10px);
+      color: #b79ad6;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+    .top b { color: #ffe066; font-weight: normal; }
+  }
+
+  @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+</style>
+</head>
+<body>
+  <button class="mute" id="btn-mute" aria-label="Som">🔊</button>
+  <div class="wrap">
+    <div class="top">
+      <span>PONTOS <b id="t-score">0</b></span>
+      <span>BOLAS <b id="t-balls">3</b></span>
+      <span>× <b id="t-mult">1</b></span>
+    </div>
+
+    <div class="panel">
+      <div>PONTOS<div class="big" id="p-score">0</div></div>
+      <div>RECORDE <b id="p-best">0</b></div>
+      <div>BOLAS<div class="balls" id="p-balls"><i></i><i></i><i></i></div></div>
+      <div>MULTIPLICADOR <b id="p-mult">×1</b></div>
+    </div>
+
+    <div class="stage">
+      <canvas id="cv" width="420" height="780" aria-label="Mesa de pinball"></canvas>
+
+      <div class="screen" id="scr-start">
+        <div class="title">PINBALL</div>
+        <div class="sub" id="hint-start">segure espaço para lançar · Z e M nos flípers</div>
+        <button id="btn-play">JOGAR</button>
+      </div>
+
+      <div class="screen" id="scr-over" hidden>
+        <div class="title">FIM DE JOGO</div>
+        <div class="score">PONTOS <span id="over-score">0</span></div>
+        <div class="sub" id="over-best"></div>
+        <button id="btn-again">JOGAR DE NOVO</button>
+      </div>
+    </div>
+
+    <div class="panel keys" id="keys">
+      <div><kbd>Z</kbd> <kbd class="seta">←</kbd> flíper esquerdo</div>
+      <div><kbd>M</kbd> <kbd class="seta">→</kbd> flíper direito</div>
+      <div><kbd>ESPAÇO</kbd> <kbd class="seta">↓</kbd> segure e solte para lançar</div>
+      <div><kbd>P</kbd> pausa</div>
+      <div style="margin-top:10px">Derrube os 3 alvos para subir o multiplicador.</div>
+    </div>
+  </div>
+
+<script src="tutorial.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  // ================================================================ mesa
+  // Tudo em unidades da mesa (420 × 780); o canvas só escala.
+  const W = 420, H = 780;
+  const R = 9;                 // raio da bola
+  const G = 1500;              // gravidade (mesa inclinada)
+  const SUB = 6;               // subpassos por quadro de 1/120 s
+  const DT = 1 / 120 / SUB;
+  const VMAX = 2000;
+
+  const segs = [];             // paredes: { a, b, e, tipo, kick? }
+  const seg = (ax, ay, bx, by, e = 0.45, extra = {}) => segs.push({ a: { x: ax, y: ay }, b: { x: bx, y: by }, e, ...extra });
+
+  // Arco do topo: meio círculo de (20,190) a (400,190), em segmentos.
+  const ARCO = { cx: 210, cy: 190, r: 190 };
+  for (let k = 0; k < 24; k++) {
+    const a1 = Math.PI + (k / 24) * Math.PI, a2 = Math.PI + ((k + 1) / 24) * Math.PI;
+    seg(ARCO.cx + Math.cos(a1) * ARCO.r, ARCO.cy + Math.sin(a1) * ARCO.r,
+        ARCO.cx + Math.cos(a2) * ARCO.r, ARCO.cy + Math.sin(a2) * ARCO.r, 0.4, { tipo: 'arco' });
+  }
+  seg(20, 190, 20, 800, 0.45, { tipo: 'parede' });            // parede esquerda
+  seg(400, 190, 400, 800, 0.45, { tipo: 'parede' });          // parede direita (fora da canaleta)
+  seg(368, 262, 368, 800, 0.45, { tipo: 'parede' });          // parede da canaleta de lançamento
+  seg(368, 762, 400, 762, 0.2, { tipo: 'mola' });             // fundo da canaleta (a mola)
+  // Portão: depois que a bola sai da canaleta, ela não volta para lá.
+  const PORTAO = { a: { x: 368, y: 262 }, b: { x: 400, y: 232 }, e: 0.4, tipo: 'portao' };
+
+  // Guias que levam a bola aos flípers (entre elas e a parede ficam as saídas laterais).
+  // Cada guia termina bem em cima do eixo do flíper: se parasse ao lado, a
+  // bola ficava presa no degrau entre a ponta da guia e o eixo.
+  seg(46, 600, 133, 682, 0.35, { tipo: 'guia' });
+  seg(342, 600, 255, 682, 0.35, { tipo: 'guia' });
+
+  // Estilingues: o lado inclinado chuta a bola.
+  const ESTILINGUES = [
+    { p: [{ x: 64, y: 470 }, { x: 64, y: 556 }, { x: 112, y: 590 }], chute: [0, 2] },
+    { p: [{ x: 324, y: 470 }, { x: 324, y: 556 }, { x: 276, y: 590 }], chute: [0, 2] },
+  ];
+  ESTILINGUES.forEach((s, n) => {
+    for (let k = 0; k < 3; k++) {
+      const a = s.p[k], b = s.p[(k + 1) % 3];
+      const chuta = k === 2;   // p[2]→p[0], o lado inclinado
+      seg(a.x, a.y, b.x, b.y, chuta ? 0.6 : 0.45, { tipo: chuta ? 'estilingue' : 'guia', id: n });
+    }
+  });
+
+  const BUMPERS = [
+    { x: 140, y: 258, r: 24, luz: 0, pts: 100 },
+    { x: 250, y: 258, r: 24, luz: 0, pts: 100 },
+    { x: 195, y: 340, r: 24, luz: 0, pts: 100 },
+    // Chutador no alto da parede esquerda: a bola que dá a volta no arco desce
+    // colada na parede e, sem ele, ia direto para a saída lateral.
+    { x: 46, y: 330, r: 15, luz: 0, pts: 50 },
+  ];
+
+  // Alvos que caem: três barrinhas no alto; derrubar as três sobe o multiplicador.
+  const ALVOS = [
+    { x: 150, y: 150, w: 30, de_pe: true, luz: 0 },
+    { x: 195, y: 150, w: 30, de_pe: true, luz: 0 },
+    { x: 240, y: 150, w: 30, de_pe: true, luz: 0 },
+  ];
+
+  // Luzes de passagem no alto: acender as duas dá bônus.
+  const ROLL = [
+    { x: 92, y: 230, aceso: false, txt: 'P' },
+    { x: 298, y: 230, aceso: false, txt: 'B' },
+  ];
+
+  const FLIPERS = [
+    { px: 134, py: 690, len: 52, repouso: 0.52, cima: -0.48, ang: 0.52, w: 0, lado: 1, ativo: false },
+    { px: 254, py: 690, len: 52, repouso: Math.PI - 0.52, cima: Math.PI + 0.48, ang: Math.PI - 0.52, w: 0, lado: -1, ativo: false },
+  ];
+  const FLIP_VEL = 26;         // rad/s
+  const FLIP_R = 7;
+
+  // ================================================================ estado
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const $ = (id) => document.getElementById(id);
+
+  let bola = null;             // { x, y, vx, vy, naCanaleta }
+  let estado = 'menu';         // menu | jogando | pausa | fim
+  let pontos = 0, bolas = 3, mult = 1;
+  let carga = 0, carregando = false;
+  let salvaAte = 0;            // bola salva: perdeu logo depois de lançar, volta
+  let aviso = { txt: '', ate: 0 };
+  let tempo = 0;
+  let escala = 1, dpr = 1;
+  let lancou = 0, flipou = 0;  // tutorial
+
+  function lerRecorde() { try { return Number(localStorage.getItem('pinball:recorde')) || 0; } catch { return 0; } }
+  function gravarRecorde(v) { try { localStorage.setItem('pinball:recorde', String(v)); } catch { /* sem storage */ } }
+
+  // ================================================================ som
+  let audio = null, mudo = false;
+  try { mudo = localStorage.getItem('pinball:mudo') === '1'; } catch { /* ok */ }
+  function bip(freq, dur = 0.06, tipo = 'square', vol = 0.035) {
+    if (mudo) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = tipo; o.frequency.setValueAtTime(freq, audio.currentTime);
+      o.frequency.exponentialRampToValueAtTime(Math.max(40, freq * 0.6), audio.currentTime + dur);
+      g.gain.setValueAtTime(vol, audio.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
+      o.connect(g).connect(audio.destination);
+      o.start(); o.stop(audio.currentTime + dur);
+    } catch { /* sem áudio */ }
+  }
+  function atualizarMudo() { $('btn-mute').textContent = mudo ? '🔇' : '🔊'; }
+
+  // ================================================================ física
+  function colideSegmento(s) {
+    const ax = s.a.x, ay = s.a.y, bx = s.b.x, by = s.b.y;
+    const dx = bx - ax, dy = by - ay;
+    const t = Math.max(0, Math.min(1, ((bola.x - ax) * dx + (bola.y - ay) * dy) / (dx * dx + dy * dy)));
+    const cx = ax + dx * t, cy = ay + dy * t;
+    let nx = bola.x - cx, ny = bola.y - cy;
+    const d = Math.hypot(nx, ny);
+    if (d >= R || d === 0) return false;
+    nx /= d; ny /= d;
+    bola.x = cx + nx * R; bola.y = cy + ny * R;
+    const vn = bola.vx * nx + bola.vy * ny;
+    if (vn < 0) {
+      bola.vx -= (1 + s.e) * vn * nx;
+      bola.vy -= (1 + s.e) * vn * ny;
+      // Um pouco de atrito ao longo da parede.
+      const tx = -ny, ty = nx, vt = bola.vx * tx + bola.vy * ty;
+      bola.vx -= vt * 0.01 * tx; bola.vy -= vt * 0.01 * ty;
+    }
+    if (s.tipo === 'estilingue' && vn < -60) {
+      bola.vx += nx * 520; bola.vy += ny * 520;
+      ESTILINGUES[s.id].luz = 1;
+      somar(10);
+      bip(330, 0.05, 'square');
+    }
+    return true;
+  }
+
+  function colideBumper(b) {
+    const dx = bola.x - b.x, dy = bola.y - b.y, d = Math.hypot(dx, dy);
+    if (d >= b.r + R || d === 0) return;
+    const nx = dx / d, ny = dy / d;
+    bola.x = b.x + nx * (b.r + R); bola.y = b.y + ny * (b.r + R);
+    const v = Math.max(560, Math.hypot(bola.vx, bola.vy) * 0.9);
+    bola.vx = nx * v; bola.vy = ny * v;
+    b.luz = 1;
+    somar(b.pts);
+    bip(520 + Math.random() * 120, 0.08, 'square');
+  }
+
+  function colideAlvo(a) {
+    if (!a.de_pe) return;
+    const s = { a: { x: a.x - a.w / 2, y: a.y }, b: { x: a.x + a.w / 2, y: a.y }, e: 0.5 };
+    if (!colideSegmento(s)) return;
+    a.de_pe = false; a.luz = 1;
+    somar(500);
+    bip(880, 0.1, 'triangle', 0.05);
+    if (ALVOS.every((x) => !x.de_pe)) {
+      mult = Math.min(5, mult + 1);
+      avisar(`MULTIPLICADOR ×${mult}`);
+      [660, 880, 1100].forEach((f, k) => setTimeout(() => bip(f, 0.1, 'square'), k * 90));
+      setTimeout(() => ALVOS.forEach((x) => { x.de_pe = true; x.luz = 1; }), 900);
+    }
+  }
+
+  function colideFliper(f) {
+    const ex = f.px + Math.cos(f.ang) * f.len, ey = f.py + Math.sin(f.ang) * f.len;
+    const dx = ex - f.px, dy = ey - f.py;
+    const t = Math.max(0, Math.min(1, ((bola.x - f.px) * dx + (bola.y - f.py) * dy) / (dx * dx + dy * dy)));
+    // O flíper afina na ponta.
+    const raio = FLIP_R * (1 - t * 0.45);
+    const cx = f.px + dx * t, cy = f.py + dy * t;
+    let nx = bola.x - cx, ny = bola.y - cy;
+    const d = Math.hypot(nx, ny);
+    if (d >= R + raio || d === 0) return;
+    nx /= d; ny /= d;
+    bola.x = cx + nx * (R + raio); bola.y = cy + ny * (R + raio);
+    // Velocidade do ponto de contato: ω × r.
+    const rx = cx - f.px, ry = cy - f.py;
+    const pvx = -f.w * ry, pvy = f.w * rx;
+    const rvx = bola.vx - pvx, rvy = bola.vy - pvy;
+    const vn = rvx * nx + rvy * ny;
+    if (vn < 0) {
+      const e = 0.35;
+      bola.vx -= (1 + e) * vn * nx;
+      bola.vy -= (1 + e) * vn * ny;
+    }
+  }
+
+  function moverFlipers() {
+    for (const f of FLIPERS) {
+      const alvo = f.ativo ? f.cima : f.repouso;
+      const antes = f.ang;
+      const dir = Math.sign(alvo - f.ang);
+      f.ang += dir * FLIP_VEL * DT;
+      if ((dir > 0 && f.ang > alvo) || (dir < 0 && f.ang < alvo)) f.ang = alvo;
+      f.w = (f.ang - antes) / DT;
+    }
+  }
+
+  function passoFisica() {
+    moverFlipers();
+    if (!bola) return;
+
+    bola.vy += G * DT;
+    const v = Math.hypot(bola.vx, bola.vy);
+    if (v > VMAX) { bola.vx *= VMAX / v; bola.vy *= VMAX / v; }
+    bola.x += bola.vx * DT;
+    bola.y += bola.vy * DT;
+
+    for (const s of segs) colideSegmento(s);
+    if (!bola.naCanaleta) colideSegmento(PORTAO);
+    for (const b of BUMPERS) colideBumper(b);
+    for (const a of ALVOS) colideAlvo(a);
+    for (const f of FLIPERS) colideFliper(f);
+
+    // Saiu da canaleta: fecha o portão e liga a bola salva.
+    if (bola.naCanaleta && bola.x < 362) {
+      bola.naCanaleta = false;
+      salvaAte = tempo + 6;
+    }
+    for (const r of ROLL) {
+      if (!r.aceso && Math.hypot(bola.x - r.x, bola.y - r.y) < 14) {
+        r.aceso = true; somar(250); bip(990, 0.06, 'triangle');
+        if (ROLL.every((x) => x.aceso)) {
+          somar(1000); avisar('BÔNUS 1000');
+          setTimeout(() => ROLL.forEach((x) => { x.aceso = false; }), 1200);
+        }
+      }
+    }
+
+    if (bola.y > H + 30) perderBola();
+  }
+
+  // ================================================================ regras
+  function somar(p) { if (estado === 'jogando') pontos += p * mult; }
+  function avisar(txt) { aviso = { txt, ate: tempo + 1.8 }; }
+
+  function novaBola() {
+    bola = { x: 384, y: 762 - R - 1, vx: 0, vy: 0, naCanaleta: true };
+    carga = 0;
+  }
+
+  function perderBola() {
+    if (tempo < salvaAte) {
+      avisar('BOLA SALVA!');
+      bip(700, 0.15, 'triangle');
+      novaBola();
+      salvaAte = 0;
+      return;
+    }
+    bolas--;
+    bip(160, 0.4, 'sawtooth', 0.05);
+    if (navigator.vibrate) navigator.vibrate(80);
+    if (bolas <= 0) { fimDeJogo(); return; }
+    mult = 1;
+    avisar(`BOLA ${4 - bolas}`);
+    novaBola();
+  }
+
+  function fimDeJogo() {
+    estado = 'fim';
+    bola = null;
+    const rec = lerRecorde();
+    if (pontos > rec) gravarRecorde(pontos);
+    $('over-score').textContent = pontos.toLocaleString('pt-BR');
+    $('over-best').textContent = pontos > rec ? 'NOVO RECORDE!' : `RECORDE ${rec.toLocaleString('pt-BR')}`;
+    $('scr-over').hidden = false;
+    atualizarPainel();
+  }
+
+  function iniciar() {
+    pontos = 0; bolas = 3; mult = 1;
+    ALVOS.forEach((a) => { a.de_pe = true; });
+    ROLL.forEach((r) => { r.aceso = false; });
+    estado = 'jogando';
+    $('scr-start').hidden = true;
+    $('scr-over').hidden = true;
+    novaBola();
+    avisar('BOLA 1');
+  }
+
+  function lancar() {
+    if (!bola || !bola.naCanaleta || Math.abs(bola.vy) > 5) { carga = 0; return; }
+    // Até a carga fraca sobe a canaleta inteira; a forte dá a volta no arco com folga.
+    bola.vy = -(1420 + carga * 560);
+    carga = 0;
+    lancou++;
+    bip(240, 0.2, 'sawtooth', 0.04);
+  }
+
+  // ================================================================ desenho
+  function neon(cor, blur) { ctx.shadowColor = cor; ctx.shadowBlur = blur; }
+
+  function desenhar() {
+    ctx.setTransform(escala * dpr, 0, 0, escala * dpr, 0, 0);
+    // Fundo da mesa.
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#150c2b'); g.addColorStop(1, '#0b0816');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    // Grade discreta no fundo.
+    ctx.strokeStyle = 'rgba(255,255,255,0.025)'; ctx.lineWidth = 1;
+    for (let y = 40; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+    // Logo no meio da mesa.
+    ctx.save();
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = '#ff6bd6';
+    ctx.font = "26px 'Acentos Pixel', 'Press Start 2P', monospace";
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('GAMEZZZ', 194, 440);
+    ctx.font = "10px 'Acentos Pixel', 'Press Start 2P', monospace";
+    ctx.fillText(`×${mult}`, 194, 476);
+    ctx.restore();
+
+    // Paredes.
+    ctx.lineCap = 'round';
+    for (const s of segs) {
+      const cor = s.tipo === 'estilingue' ? (ESTILINGUES[s.id].luz > 0 ? '#fff6a8' : '#ffe066')
+        : s.tipo === 'guia' ? '#ff6bd6' : s.tipo === 'mola' ? '#9aa7b8' : '#3fd8ff';
+      ctx.strokeStyle = cor;
+      ctx.lineWidth = s.tipo === 'estilingue' ? 5 : 4;
+      neon(cor, s.tipo === 'estilingue' && ESTILINGUES[s.id].luz > 0 ? 22 : 10);
+      ctx.beginPath(); ctx.moveTo(s.a.x, s.a.y); ctx.lineTo(s.b.x, s.b.y); ctx.stroke();
+    }
+    if (bola && !bola.naCanaleta) {
+      ctx.strokeStyle = '#3fd8ff'; ctx.lineWidth = 3; neon('#3fd8ff', 8);
+      ctx.beginPath(); ctx.moveTo(PORTAO.a.x, PORTAO.a.y); ctx.lineTo(PORTAO.b.x, PORTAO.b.y); ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+
+    // Corredores de cima.
+    for (const r of ROLL) {
+      ctx.fillStyle = r.aceso ? '#7dffb0' : 'rgba(125,255,176,0.18)';
+      neon('#7dffb0', r.aceso ? 16 : 0);
+      ctx.beginPath(); ctx.arc(r.x, r.y, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = r.aceso ? '#08060f' : 'rgba(255,255,255,.35)';
+      ctx.font = "7px 'Acentos Pixel', 'Press Start 2P', monospace";
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(r.txt, r.x + 0.5, r.y + 1);
+    }
+
+    // Alvos.
+    for (const a of ALVOS) {
+      if (a.de_pe) {
+        const cor = a.luz > 0 ? '#ffffff' : '#ff8f3f';
+        ctx.fillStyle = cor; neon('#ff8f3f', 14);
+        ctx.fillRect(a.x - a.w / 2, a.y - 5, a.w, 10);
+      } else {
+        ctx.fillStyle = 'rgba(255,143,63,0.18)'; ctx.shadowBlur = 0;
+        ctx.fillRect(a.x - a.w / 2, a.y - 2, a.w, 4);
+      }
+    }
+    ctx.shadowBlur = 0;
+
+    // Bumpers.
+    for (const b of BUMPERS) {
+      const aceso = b.luz > 0;
+      neon('#ff3fc4', aceso ? 34 : 14);
+      ctx.fillStyle = aceso ? '#ffd1f3' : '#5a1a52';
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r + (aceso ? 2 : 0), 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 4; ctx.strokeStyle = '#ff3fc4';
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = aceso ? '#ff3fc4' : '#ffd1f3';
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.38, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Mola da canaleta (encolhe com a carga).
+    const molaY = 762 + carga * 14;
+    ctx.strokeStyle = '#9aa7b8'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let k = 0; k <= 8; k++) ctx.lineTo(372 + (k % 2) * 24, molaY + 4 + k * ((H - molaY - 6) / 8));
+    ctx.stroke();
+    if (carregando && bola && bola.naCanaleta) {
+      ctx.fillStyle = '#ffe066';
+      ctx.fillRect(371, 772 - carga * 160, 4, carga * 160);
+    }
+
+    // Flípers.
+    for (const f of FLIPERS) {
+      const ex = f.px + Math.cos(f.ang) * f.len, ey = f.py + Math.sin(f.ang) * f.len;
+      const nx = -Math.sin(f.ang), ny = Math.cos(f.ang);
+      const r0 = FLIP_R, r1 = FLIP_R * 0.55;
+      neon('#3fd8ff', f.ativo ? 22 : 12);
+      ctx.fillStyle = '#e8fbff';
+      ctx.beginPath();
+      ctx.moveTo(f.px + nx * r0, f.py + ny * r0);
+      ctx.lineTo(ex + nx * r1, ey + ny * r1);
+      ctx.arc(ex, ey, r1, f.ang + Math.PI / 2, f.ang - Math.PI / 2, true);
+      ctx.lineTo(f.px - nx * r0, f.py - ny * r0);
+      ctx.arc(f.px, f.py, r0, f.ang - Math.PI / 2, f.ang + Math.PI / 2, true);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#3fd8ff';
+      ctx.beginPath(); ctx.arc(f.px, f.py, 3, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Luz da bola salva.
+    const salva = bola && !bola.naCanaleta && tempo < salvaAte;
+    ctx.fillStyle = salva ? '#7dffb0' : 'rgba(125,255,176,0.15)';
+    neon('#7dffb0', salva && Math.floor(tempo * 4) % 2 ? 18 : 0);
+    ctx.font = "7px 'Acentos Pixel', 'Press Start 2P', monospace";
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('SALVA', 194, 742);
+    ctx.shadowBlur = 0;
+
+    // Bola.
+    if (bola) {
+      const bg = ctx.createRadialGradient(bola.x - 3, bola.y - 3, 1, bola.x, bola.y, R);
+      bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.5, '#c9d2de'); bg.addColorStop(1, '#5d6676');
+      neon('rgba(255,255,255,0.6)', 10);
+      ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.arc(bola.x, bola.y, R, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    // Aviso no meio da mesa.
+    if (aviso.txt && tempo < aviso.ate) {
+      ctx.fillStyle = '#ffe066'; neon('#ffe066', 16);
+      ctx.font = "13px 'Acentos Pixel', 'Press Start 2P', monospace";
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(aviso.txt, 194, 400);
+      ctx.shadowBlur = 0;
+    }
+    if (estado === 'pausa') {
+      ctx.fillStyle = 'rgba(8,6,15,0.6)'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#ffe066';
+      ctx.font = "16px 'Acentos Pixel', 'Press Start 2P', monospace";
+      ctx.textAlign = 'center';
+      ctx.fillText('PAUSA', W / 2, H / 2);
+    }
+  }
+
+  let ultimoPainel = '';
+  function atualizarPainel() {
+    const chave = `${pontos}|${bolas}|${mult}`;
+    if (chave === ultimoPainel) return;
+    ultimoPainel = chave;
+    const txt = pontos.toLocaleString('pt-BR');
+    $('p-score').textContent = txt; $('t-score').textContent = txt;
+    $('p-mult').textContent = `×${mult}`; $('t-mult').textContent = String(mult);
+    $('t-balls').textContent = String(Math.max(0, bolas));
+    $('p-best').textContent = Math.max(lerRecorde(), estado === 'fim' ? pontos : 0).toLocaleString('pt-BR');
+    [...$('p-balls').children].forEach((el, k) => el.classList.toggle('off', k >= bolas));
+  }
+
+  // ================================================================ laço
+  let ultimo = 0, sobra = 0;
+  function quadro(agora) {
+    const dt = Math.min(0.05, (agora - (ultimo || agora)) / 1000);
+    ultimo = agora;
+    if (estado === 'jogando') {
+      sobra += dt;
+      while (sobra >= 1 / 120) {
+        sobra -= 1 / 120;
+        tempo += 1 / 120;
+        if (carregando && bola && bola.naCanaleta) carga = Math.min(1, carga + 1 / 120 / 1.1);
+        for (let k = 0; k < SUB; k++) passoFisica();
+        for (const b of BUMPERS) b.luz = Math.max(0, b.luz - 1 / 120 / 0.15);
+        for (const a of ALVOS) a.luz = Math.max(0, a.luz - 1 / 120 / 0.2);
+        for (const s of ESTILINGUES) s.luz = Math.max(0, s.luz - 1 / 120 / 0.12);
+      }
+    } else {
+      // No menu os flípers ainda respondem (dá para testar o teclado).
+      for (let k = 0; k < SUB * 2; k++) moverFlipers();
+    }
+    desenhar();
+    atualizarPainel();
+    requestAnimationFrame(quadro);
+  }
+
+  // ================================================================ tamanho
+  function ajustar() {
+    const retrato = window.matchMedia('(orientation: portrait), (max-width: 620px)').matches;
+    const topo = retrato ? document.querySelector('.top').offsetHeight + 14 : 0;
+    const lados = retrato ? 0 : (document.querySelector('.panel').offsetWidth + 40) * 2;
+    const maxW = Math.max(160, window.innerWidth - 16 - lados);
+    const maxH = Math.max(240, window.innerHeight - 16 - topo);
+    escala = Math.min(maxW / W, maxH / H);
+    dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    cv.width = Math.round(W * escala * dpr);
+    cv.height = Math.round(H * escala * dpr);
+    cv.style.width = Math.round(W * escala) + 'px';
+    cv.style.height = Math.round(H * escala) + 'px';
+  }
+
+  // ================================================================ entrada
+  const ESQ = new Set(['z', 'Z', 'ArrowLeft', 'ShiftLeft', 'a', 'A']);
+  const DIR = new Set(['m', 'M', 'ArrowRight', 'ShiftRight', 'l', 'L', '/']);
+  const LANCA = new Set([' ', 'ArrowDown', 'Enter', 's', 'S']);
+
+  function teclaFliper(e, ativo) {
+    const k = e.code === 'ShiftLeft' || e.code === 'ShiftRight' ? e.code : e.key;
+    let usou = false;
+    if (ESQ.has(k)) { if (ativo && !FLIPERS[0].ativo) { bip(140, 0.03, 'square', 0.02); flipou++; } FLIPERS[0].ativo = ativo; usou = true; }
+    if (DIR.has(k)) { if (ativo && !FLIPERS[1].ativo) { bip(150, 0.03, 'square', 0.02); flipou++; } FLIPERS[1].ativo = ativo; usou = true; }
+    return usou;
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.repeat && !LANCA.has(e.key)) { if (teclaFliper(e, true)) e.preventDefault(); return; }
+    if (teclaFliper(e, true)) { e.preventDefault(); return; }
+    if (LANCA.has(e.key)) {
+      e.preventDefault();
+      if (estado === 'menu' || estado === 'fim') { if (e.key === 'Enter' || e.key === ' ') iniciar(); return; }
+      if (estado === 'jogando' && bola && bola.naCanaleta) carregando = true;
+      return;
+    }
+    if ((e.key === 'p' || e.key === 'P' || e.key === 'Escape') && (estado === 'jogando' || estado === 'pausa')) {
+      estado = estado === 'pausa' ? 'jogando' : 'pausa';
+      ultimo = 0;
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    if (teclaFliper(e, false)) { e.preventDefault(); return; }
+    if (LANCA.has(e.key) && carregando) { carregando = false; lancar(); }
+  });
+  // Trocou de aba com o flíper apertado: solta tudo.
+  window.addEventListener('blur', () => { FLIPERS.forEach((f) => { f.ativo = false; }); carregando = false; });
+
+  // Toque: metade esquerda da tela = flíper esquerdo, direita = direito.
+  // Com a bola parada na canaleta, segurar em qualquer lugar carrega a mola.
+  const dedos = new Map();
+  function atualizarToques() {
+    let esq = false, dir = false;
+    for (const lado of dedos.values()) { if (lado === 'e') esq = true; if (lado === 'd') dir = true; }
+    if (esq && !FLIPERS[0].ativo) { flipou++; bip(140, 0.03, 'square', 0.02); }
+    if (dir && !FLIPERS[1].ativo) { flipou++; bip(150, 0.03, 'square', 0.02); }
+    FLIPERS[0].ativo = esq; FLIPERS[1].ativo = dir;
+  }
+  function tocar(e) {
+    if (estado !== 'jogando') return;
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (bola && bola.naCanaleta) { dedos.set(t.identifier, 'mola'); carregando = true; continue; }
+      dedos.set(t.identifier, t.clientX < window.innerWidth / 2 ? 'e' : 'd');
+    }
+    atualizarToques();
+  }
+  function soltar(e) {
+    if (!dedos.size) return;
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (dedos.get(t.identifier) === 'mola') { carregando = false; lancar(); }
+      dedos.delete(t.identifier);
+    }
+    atualizarToques();
+  }
+  document.addEventListener('touchstart', (e) => { if (!e.target.closest('button')) tocar(e); }, { passive: false });
+  document.addEventListener('touchend', soltar, { passive: false });
+  document.addEventListener('touchcancel', soltar, { passive: false });
+
+  // Mouse (computador sem teclado à mão): clique esquerdo/direito na mesa.
+  cv.addEventListener('mousedown', (e) => {
+    if (estado !== 'jogando') return;
+    if (bola && bola.naCanaleta) { carregando = true; return; }
+    const r = cv.getBoundingClientRect();
+    const lado = e.button === 2 || e.clientX > r.left + r.width / 2 ? 1 : 0;
+    FLIPERS[lado].ativo = true; flipou++;
+  });
+  window.addEventListener('mouseup', () => {
+    if (carregando) { carregando = false; lancar(); }
+    FLIPERS.forEach((f) => { if (!dedos.size) f.ativo = false; });
+  });
+  cv.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  $('btn-play').addEventListener('click', iniciar);
+  $('btn-again').addEventListener('click', iniciar);
+  $('btn-mute').addEventListener('click', () => {
+    mudo = !mudo;
+    try { localStorage.setItem('pinball:mudo', mudo ? '1' : '0'); } catch { /* ok */ }
+    atualizarMudo();
+  });
+
+  if (matchMedia('(hover: none)').matches) {
+    document.body.classList.add('touch');
+    $('hint-start').textContent = 'segure para lançar · toque nos lados para os flípers';
+  }
+
+  // ================================================================ tutorial
+  const T = window.TutorialJogo;
+  const comToque = document.body.classList.contains('touch');
+  const naMesa = (x, y, raio) => {
+    const r = cv.getBoundingClientRect();
+    return T.ponto(r.left + x * escala, r.top + y * escala, raio * escala);
+  };
+  const tutorial = T ? new T.Tutorial('pinball', [
+    { id: 'jogar', texto: 'Aperte JOGAR.', alvo: () => $('btn-play'), ok: () => estado === 'jogando' },
+    { id: 'lancar', texto: comToque ? 'Segure o dedo na tela e solte para lançar a bola. Quanto mais tempo, mais forte.' : 'Segure ESPAÇO e solte para lançar a bola. Quanto mais tempo, mais forte.',
+      gesto: comToque ? 'segurar' : 'nenhum', alvo: () => naMesa(384, 740, 16), lugar: 'topo', ok: () => lancou >= 1 },
+    { id: 'flipers', texto: comToque ? 'Toque no lado esquerdo ou direito da tela para bater com os flípers.' : 'Z (ou ←) bate o flíper esquerdo, M (ou →) o direito.',
+      gesto: 'nenhum', alvo: () => naMesa(194, 700, 50), lugar: 'topo', ok: () => flipou >= 2 },
+    { id: 'alvos', texto: 'Derrube os 3 alvos laranja lá em cima para subir o multiplicador.', gesto: 'nenhum', alvo: () => naMesa(195, 150, 50), lugar: 'base', segundos: 5 },
+  ]) : null;
+
+  window.addEventListener('resize', ajustar);
+  window.addEventListener('orientationchange', ajustar);
+  // O canvas só usa a fonte das maiúsculas acentuadas ("BÔNUS") se ela já estiver carregada.
+  if (document.fonts) document.fonts.load("13px 'Acentos Pixel'", 'ÔÉ').catch(() => {});
+  atualizarMudo();
+  ajustar();
+  requestAnimationFrame(quadro);
+  tutorial?.iniciar();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>CAMPO MINADO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  /* Maiúsculas acentuadas vêm de outra fonte em pixel (a Press Start 2P desenha Í, É, Ç e Ã como minúsculas). Ver fontes/LEIA-ME.txt. */
+  @font-face { font-family: 'Acentos Pixel'; src: url('/games/fontes/acentos-pixel.woff2') format('woff2'); unicode-range: U+00C0-00D6, U+00D8-00DD; size-adjust: 160%; font-display: swap; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: #07090f;
+    font-family: 'Acentos Pixel', 'Press Start 2P', monospace;
+    color: #dbeaff;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  body { display: flex; align-items: center; justify-content: center; }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 15% 40%, rgba(70, 160, 255, 0.07) 0%, transparent 60%),
+      radial-gradient(ellipse at 85% 60%, rgba(255, 80, 120, 0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px;
+    width: 100%;
+    height: 100%;
+  }
+
+  .hud {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(10px, 3vw, 28px);
+    font-size: clamp(7px, 1.6vw, 11px);
+    letter-spacing: 1px;
+    color: #7fa6d9;
+    flex-shrink: 0;
+  }
+  .hud b { color: #cfe4ff; font-weight: normal; }
+  .hud .mines b { color: #ff7a93; }
+  .hud .lvl { color: #ffd166; }
+
+  .face {
+    font-family: inherit;
+    font-size: clamp(14px, 3vw, 20px);
+    line-height: 1;
+    padding: 6px 10px;
+    min-height: 0;
+  }
+
+  .stage { position: relative; line-height: 0; }
+
+  canvas {
+    display: block;
+    border: 2px solid rgba(90, 170, 255, 0.4);
+    border-radius: 6px;
+    box-shadow: 0 0 24px rgba(70, 160, 255, 0.14), inset 0 0 40px rgba(0, 0, 0, 0.6);
+    background: #0b1220;
+    cursor: pointer;
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    justify-content: safe center;
+    overflow-y: auto;
+    gap: clamp(8px, 2.2vh, 18px);
+    background: rgba(6, 10, 18, 0.93);
+    border-radius: 6px;
+    text-align: center;
+    padding: 4%;
+    line-height: 1.6;
+    min-width: 260px;
+  }
+  .screen[hidden] { display: none; }
+  /* Fim de jogo: o tabuleiro aparece por baixo, com as minas reveladas. */
+  .screen.glass { background: rgba(6, 10, 18, 0.72); }
+
+  .title {
+    font-size: clamp(14px, 4vw, 30px);
+    letter-spacing: clamp(3px, 1.2vw, 10px);
+    color: #7cc4ff;
+    text-shadow: 0 0 12px rgba(80,170,255,0.6), 0 0 34px rgba(80,170,255,0.28);
+  }
+  .title.win  { color: #7dffb0; text-shadow: 0 0 12px rgba(80,255,150,0.6), 0 0 34px rgba(80,255,150,0.28); }
+  .title.lose { color: #ff6b81; text-shadow: 0 0 12px rgba(255,80,110,0.6), 0 0 34px rgba(255,80,110,0.28); }
+
+  .sub { font-size: clamp(7px, 1.5vw, 10px); color: #7c93b3; letter-spacing: 1px; }
+
+  .levels { display: flex; flex-direction: column; gap: clamp(6px, 1.6vh, 12px); width: min(320px, 82%); }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    color: #dbeaff;
+    background: rgba(80, 170, 255, 0.08);
+    border: 2px solid rgba(80, 170, 255, 0.45);
+    border-radius: 6px;
+    padding: clamp(8px, 1.8vh, 13px) 10px;
+    font-size: clamp(8px, 1.7vw, 11px);
+    letter-spacing: 1px;
+    transition: background .15s, border-color .15s, transform .08s;
+    line-height: 1.5;
+  }
+  button:hover { background: rgba(80, 170, 255, 0.18); border-color: rgba(80,170,255,.85); }
+  button:active { transform: translateY(1px); }
+  button .tag { display: block; font-size: 0.72em; color: #8aa3c4; margin-top: 6px; letter-spacing: 0; }
+
+  .btn-medium { border-color: rgba(255, 209, 102, .5); color: #ffeab8; background: rgba(255,209,102,.07); }
+  .btn-medium:hover { background: rgba(255,209,102,.16); border-color: rgba(255,209,102,.85); }
+  .btn-hard   { border-color: rgba(255, 107, 129, .5); color: #ffd4dc; background: rgba(255,107,129,.07); }
+  .btn-hard:hover { background: rgba(255,107,129,.16); border-color: rgba(255,107,129,.85); }
+
+  .result { font-size: clamp(9px, 2vw, 14px); color: #cfe4ff; }
+  .best   { font-size: clamp(7px, 1.5vw, 10px); color: #ffd166; }
+  .row    { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+  /* Barra de baixo: no toque, a troca entre abrir e marcar bandeira. */
+  .bar { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+  .mode { display: none; min-width: 150px; }
+  .mode.flag { border-color: rgba(255, 107, 129, .8); background: rgba(255,107,129,.16); color: #ffd4dc; }
+  body.touch .mode { display: inline-block; }
+  body.touch button { min-height: 44px; }
+
+  /* Celular deitado: placar e botões vão para o lado e a altura inteira fica
+     com o tabuleiro (empilhados, sobravam casas de 15 px, pequenas para o dedo). */
+  @media (orientation: landscape) and (max-height: 520px) {
+    .wrap {
+      display: grid;
+      grid-template-columns: auto auto;
+      grid-template-areas: 'stage hud' 'stage bar';
+      align-content: center;
+      justify-content: center;
+      column-gap: 14px;
+      row-gap: 10px;
+    }
+    .stage { grid-area: stage; }
+    .hud { grid-area: hud; flex-direction: column; align-self: end; gap: 10px; }
+    .bar { grid-area: bar; flex-direction: column; align-self: start; }
+    .mode { min-width: 0; width: 100%; }
+  }
+
+  @media (orientation: landscape) and (max-height: 430px) {
+    .screen { gap: 5px; line-height: 1.3; }
+    .title { font-size: 14px; letter-spacing: 3px; }
+    .sub { font-size: 7px; }
+    button .tag { display: none; }
+    .levels { gap: 5px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hud">
+      <span class="mines">MINAS <b id="hud-mines">0</b></span>
+      <button class="face" id="btn-face" aria-label="Novo jogo">🙂</button>
+      <span>TEMPO <b id="hud-time">0</b></span>
+      <span class="lvl" id="hud-level">—</span>
+    </div>
+
+    <div class="stage">
+      <canvas id="cv" width="360" height="360" aria-label="Tabuleiro do campo minado"></canvas>
+
+      <div class="screen" id="scr-start">
+        <div class="title">CAMPO MINADO</div>
+        <div class="sub">escolha o tamanho do campo</div>
+        <div class="levels">
+          <button class="btn-easy"   data-level="easy">FÁCIL<span class="tag">9 × 9 · 10 minas</span></button>
+          <button class="btn-medium" data-level="medium">MÉDIO<span class="tag">16 × 16 · 40 minas</span></button>
+          <button class="btn-hard"   data-level="hard">DIFÍCIL<span class="tag">30 × 16 · 99 minas</span></button>
+        </div>
+        <div class="sub" id="hint-start">clique abre · botão direito marca a bandeira</div>
+      </div>
+
+      <div class="screen glass" id="scr-over" hidden>
+        <div class="title" id="over-title">BOOM!</div>
+        <div class="result" id="over-result"></div>
+        <div class="best" id="over-best"></div>
+        <div class="row">
+          <button id="btn-again">JOGAR DE NOVO</button>
+          <button id="btn-menu">TROCAR CAMPO</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="bar">
+      <button class="mode" id="btn-mode" aria-pressed="false">⛏ ABRIR</button>
+      <button id="btn-menu2">CAMPOS</button>
+    </div>
+  </div>
+
+<script src="tutorial.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  const NIVEIS = {
+    easy:   { nome: 'FÁCIL',   cols: 9,  rows: 9,  minas: 10 },
+    medium: { nome: 'MÉDIO',   cols: 16, rows: 16, minas: 40 },
+    hard:   { nome: 'DIFÍCIL', cols: 30, rows: 16, minas: 99 },
+  };
+
+  // Números nas cores do clássico, puxadas para o neon.
+  const COR_NUM = ['', '#5fb4ff', '#5dff9a', '#ff6b81', '#b48cff', '#ff9f43', '#3fe0d0', '#f2f2f2', '#9aa7b8'];
+
+  const cv  = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const $   = (id) => document.getElementById(id);
+
+  // ---------------------------------------------------------------- estado
+  let nivel = { ...NIVEIS.easy, chave: 'easy' };
+  let COLS = 9, ROWS = 9;
+  let celulas = [];          // { mina, n, aberta, bandeira }
+  let estado = 'menu';       // menu | pronto | jogando | ganhou | perdeu
+  let abertas = 0, bandeiras = 0;
+  let inicio = 0, tempo = 0;
+  let explodiu = -1;
+  let modoBandeira = false;
+  let cursor = { x: 0, y: 0, visivel: false };
+  let CEL = 32, dpr = 1;
+  let pressionada = -1;      // célula sob o dedo/mouse (para o efeito de afundar)
+
+  // Contadores para o tutorial.
+  let abriu = 0, marcou = 0;
+
+  // ---------------------------------------------------------------- recorde
+  function lerRecorde(chave) {
+    try { return Number(localStorage.getItem('campo-minado:recorde:' + chave)) || 0; } catch { return 0; }
+  }
+  function gravarRecorde(chave, s) {
+    try { localStorage.setItem('campo-minado:recorde:' + chave, String(s)); } catch { /* sem storage: só não lembra */ }
+  }
+
+  // ---------------------------------------------------------------- som
+  let audio = null;
+  function bip(freq, dur = 0.06, tipo = 'square', vol = 0.04) {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = tipo; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, audio.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
+      o.connect(g).connect(audio.destination);
+      o.start(); o.stop(audio.currentTime + dur);
+    } catch { /* sem áudio */ }
+  }
+  function somBoom() {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const len = audio.sampleRate * 0.5;
+      const buf = audio.createBuffer(1, len, audio.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+      const s = audio.createBufferSource(), g = audio.createGain();
+      g.gain.value = 0.12;
+      s.buffer = buf; s.connect(g).connect(audio.destination); s.start();
+    } catch { /* sem áudio */ }
+  }
+
+  // ---------------------------------------------------------------- tabuleiro
+  const idx = (x, y) => y * COLS + x;
+  function vizinhos(i) {
+    const x = i % COLS, y = (i / COLS) | 0, out = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS) out.push(idx(nx, ny));
+    }
+    return out;
+  }
+
+  // O Difícil é 30 × 16: num celular em pé ele vira 16 × 30 para caber.
+  function escolherGrade() {
+    const deitado = window.innerWidth >= window.innerHeight;
+    const a = Math.max(nivel.cols, nivel.rows), b = Math.min(nivel.cols, nivel.rows);
+    COLS = deitado ? a : b;
+    ROWS = deitado ? b : a;
+  }
+
+  function novoTabuleiro() {
+    escolherGrade();
+    celulas = Array.from({ length: COLS * ROWS }, () => ({ mina: false, n: 0, aberta: false, bandeira: false }));
+    abertas = 0; bandeiras = 0; tempo = 0; explodiu = -1;
+    cursor = { x: COLS >> 1, y: ROWS >> 1, visivel: cursor.visivel };
+    estado = 'pronto';
+    $('btn-face').textContent = '🙂';
+    atualizarHud();
+    ajustar();
+  }
+
+  // As minas só são sorteadas no primeiro clique, longe dele: a primeira
+  // jogada nunca explode e sempre abre uma área (a célula e as vizinhas ficam livres).
+  function plantar(primeira) {
+    const livres = new Set([primeira, ...vizinhos(primeira)]);
+    const candidatas = [];
+    for (let i = 0; i < celulas.length; i++) if (!livres.has(i)) candidatas.push(i);
+    for (let k = candidatas.length - 1; k > 0; k--) {
+      const j = Math.floor(Math.random() * (k + 1));
+      [candidatas[k], candidatas[j]] = [candidatas[j], candidatas[k]];
+    }
+    candidatas.slice(0, nivel.minas).forEach((i) => { celulas[i].mina = true; });
+    celulas.forEach((c, i) => { c.n = vizinhos(i).filter((v) => celulas[v].mina).length; });
+  }
+
+  function abrir(i) {
+    const c = celulas[i];
+    if (c.aberta || c.bandeira) return;
+    if (estado === 'pronto') {
+      plantar(i);
+      estado = 'jogando';
+      inicio = performance.now();
+    }
+    if (estado !== 'jogando') return;
+
+    if (c.mina) { perder(i); return; }
+
+    // Abre em leque a partir dos zeros (pilha, não recursão: o Difícil estoura a pilha).
+    const pilha = [i];
+    let abriuAgora = 0;
+    while (pilha.length) {
+      const k = pilha.pop();
+      const ck = celulas[k];
+      if (ck.aberta || ck.bandeira) continue;
+      ck.aberta = true; abertas++; abriuAgora++;
+      if (ck.n === 0) vizinhos(k).forEach((v) => { if (!celulas[v].aberta) pilha.push(v); });
+    }
+    abriu++;
+    bip(abriuAgora > 1 ? 660 : 520, 0.05, 'triangle');
+    if (abertas === COLS * ROWS - nivel.minas) ganhar();
+  }
+
+  // Clique num número com as bandeiras certas em volta abre o resto dos vizinhos.
+  function acorde(i) {
+    const c = celulas[i];
+    if (!c.aberta || c.n === 0 || estado !== 'jogando') return false;
+    const viz = vizinhos(i);
+    const marcadas = viz.filter((v) => celulas[v].bandeira).length;
+    if (marcadas !== c.n) { bip(180, 0.05); return true; }
+    viz.forEach((v) => { if (estado === 'jogando') abrir(v); });
+    return true;
+  }
+
+  function marcar(i) {
+    const c = celulas[i];
+    if (c.aberta || (estado !== 'jogando' && estado !== 'pronto')) return;
+    c.bandeira = !c.bandeira;
+    bandeiras += c.bandeira ? 1 : -1;
+    marcou++;
+    bip(c.bandeira ? 880 : 440, 0.05, 'square', 0.03);
+    atualizarHud();
+  }
+
+  function perder(i) {
+    estado = 'perdeu';
+    explodiu = i;
+    tempo = (performance.now() - inicio) / 1000;
+    $('btn-face').textContent = '😵';
+    somBoom();
+    if (navigator.vibrate) navigator.vibrate(120);
+    setTimeout(() => {
+      $('over-title').textContent = 'BOOM!';
+      $('over-title').className = 'title lose';
+      $('over-result').textContent = `${abertas} de ${COLS * ROWS - nivel.minas} casas abertas`;
+      const rec = lerRecorde(nivel.chave);
+      $('over-best').textContent = rec ? `RECORDE ${nivel.nome}: ${rec}s` : '';
+      mostrar('scr-over');
+    }, 900);
+  }
+
+  function ganhar() {
+    estado = 'ganhou';
+    tempo = (performance.now() - inicio) / 1000;
+    celulas.forEach((c) => { if (c.mina && !c.bandeira) { c.bandeira = true; bandeiras++; } });
+    $('btn-face').textContent = '😎';
+    [523, 659, 784, 1047].forEach((f, k) => setTimeout(() => bip(f, 0.12, 'square', 0.04), k * 110));
+    const s = Math.max(1, Math.round(tempo));
+    const rec = lerRecorde(nivel.chave);
+    const bateu = !rec || s < rec;
+    if (bateu) gravarRecorde(nivel.chave, s);
+    setTimeout(() => {
+      $('over-title').textContent = 'CAMPO LIMPO!';
+      $('over-title').className = 'title win';
+      $('over-result').textContent = `${nivel.nome} em ${s}s`;
+      $('over-best').textContent = bateu ? 'NOVO RECORDE!' : `RECORDE ${nivel.nome}: ${rec}s`;
+      mostrar('scr-over');
+    }, 700);
+    atualizarHud();
+  }
+
+  // ---------------------------------------------------------------- HUD e telas
+  function atualizarHud() {
+    $('hud-mines').textContent = String(nivel.minas - bandeiras);
+    $('hud-time').textContent = String(Math.min(999, Math.floor(tempo)));
+    $('hud-level').textContent = estado === 'menu' ? '—' : nivel.nome;
+  }
+
+  function mostrar(id) {
+    ['scr-start', 'scr-over'].forEach((s) => { $(s).hidden = s !== id; });
+  }
+
+  function iniciar(chave) {
+    nivel = { ...NIVEIS[chave], chave };
+    mostrar(null);
+    novoTabuleiro();
+  }
+
+  function trocarModo(forcar) {
+    modoBandeira = typeof forcar === 'boolean' ? forcar : !modoBandeira;
+    const b = $('btn-mode');
+    b.classList.toggle('flag', modoBandeira);
+    b.textContent = modoBandeira ? '🚩 BANDEIRA' : '⛏ ABRIR';
+    b.setAttribute('aria-pressed', String(modoBandeira));
+  }
+
+  // ---------------------------------------------------------------- desenho
+  function desenhar() {
+    const W = COLS * CEL, H = ROWS * CEL;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#0b1220';
+    ctx.fillRect(0, 0, W, H);
+    const fim = estado === 'perdeu' || estado === 'ganhou';
+    const pad = Math.max(1, Math.round(CEL * 0.06));
+
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      const i = idx(x, y), c = celulas[i];
+      if (!c) continue;
+      const px = x * CEL, py = y * CEL;
+      if (c.aberta || (fim && c.mina)) {
+        ctx.fillStyle = i === explodiu ? '#5a1424' : '#101a2c';
+        ctx.fillRect(px, py, CEL, CEL);
+        ctx.strokeStyle = 'rgba(90,140,210,0.12)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, CEL - 1, CEL - 1);
+        if (c.mina && !(estado === 'ganhou')) desenharMina(px, py, i === explodiu);
+        else if (c.n) {
+          ctx.fillStyle = COR_NUM[c.n];
+          ctx.shadowColor = COR_NUM[c.n];
+          ctx.shadowBlur = CEL * 0.25;
+          ctx.font = `${Math.floor(CEL * 0.5)}px 'Acentos Pixel', 'Press Start 2P', monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(c.n), px + CEL / 2 + 1, py + CEL / 2 + 2);
+          ctx.shadowBlur = 0;
+        }
+      } else {
+        // Casa fechada: bloco com luz em cima e sombra embaixo.
+        const afundada = i === pressionada && !c.bandeira;
+        const g = ctx.createLinearGradient(px, py, px, py + CEL);
+        g.addColorStop(0, afundada ? '#1c2b47' : '#2b4673');
+        g.addColorStop(1, afundada ? '#18253d' : '#1d3150');
+        ctx.fillStyle = g;
+        ctx.fillRect(px + pad, py + pad, CEL - pad * 2, CEL - pad * 2);
+        if (!afundada) {
+          ctx.fillStyle = 'rgba(160,200,255,0.18)';
+          ctx.fillRect(px + pad, py + pad, CEL - pad * 2, Math.max(1, CEL * 0.08));
+        }
+        if (c.bandeira) desenharBandeira(px, py, fim && !c.mina);
+      }
+    }
+
+    if (cursor.visivel && !fim && estado !== 'menu') {
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 8;
+      ctx.strokeRect(cursor.x * CEL + 1, cursor.y * CEL + 1, CEL - 2, CEL - 2);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  function desenharMina(px, py, explodida) {
+    const cx = px + CEL / 2, cy = py + CEL / 2, r = CEL * 0.22;
+    ctx.strokeStyle = explodida ? '#ffd166' : '#ff6b81';
+    ctx.lineWidth = Math.max(1, CEL * 0.07);
+    for (let k = 0; k < 4; k++) {
+      const a = (k * Math.PI) / 4;
+      ctx.beginPath();
+      ctx.moveTo(cx - Math.cos(a) * r * 1.55, cy - Math.sin(a) * r * 1.55);
+      ctx.lineTo(cx + Math.cos(a) * r * 1.55, cy + Math.sin(a) * r * 1.55);
+      ctx.stroke();
+    }
+    ctx.fillStyle = explodida ? '#ffd166' : '#ff6b81';
+    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = CEL * 0.4;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.arc(cx - r * 0.35, cy - r * 0.35, r * 0.25, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function desenharBandeira(px, py, errada) {
+    const x = px + CEL * 0.36, top = py + CEL * 0.22, base = py + CEL * 0.78;
+    ctx.strokeStyle = '#cfe4ff';
+    ctx.lineWidth = Math.max(1, CEL * 0.06);
+    ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, base); ctx.stroke();
+    ctx.fillStyle = '#ff4d6d';
+    ctx.shadowColor = '#ff4d6d'; ctx.shadowBlur = CEL * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(x, top); ctx.lineTo(x + CEL * 0.36, top + CEL * 0.14); ctx.lineTo(x, top + CEL * 0.28);
+    ctx.closePath(); ctx.fill();
+    ctx.shadowBlur = 0;
+    if (errada) {
+      // Bandeira em casa sem mina, mostrada no fim.
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = Math.max(2, CEL * 0.08);
+      ctx.beginPath();
+      ctx.moveTo(px + CEL * 0.2, py + CEL * 0.2); ctx.lineTo(px + CEL * 0.8, py + CEL * 0.8);
+      ctx.moveTo(px + CEL * 0.8, py + CEL * 0.2); ctx.lineTo(px + CEL * 0.2, py + CEL * 0.8);
+      ctx.stroke();
+    }
+  }
+
+  // ---------------------------------------------------------------- tamanho
+  function ajustar() {
+    if (estado === 'menu' || estado === 'pronto') escolherGrade();
+    if (!celulas.length || celulas.length !== COLS * ROWS) {
+      celulas = Array.from({ length: COLS * ROWS }, () => ({ mina: false, n: 0, aberta: false, bandeira: false }));
+    }
+    const hudEl = document.querySelector('.hud'), barEl = document.querySelector('.bar');
+    const aoLado = matchMedia('(orientation: landscape) and (max-height: 520px)').matches;
+    const lado = aoLado ? Math.max(hudEl.offsetWidth, barEl.offsetWidth) + 34 : 0;
+    const w = Math.max(200, window.innerWidth - 20 - lado);
+    const h = Math.max(160, window.innerHeight - (aoLado ? 20 : hudEl.offsetHeight + barEl.offsetHeight + 40));
+    CEL = Math.max(12, Math.floor(Math.min(w / COLS, h / ROWS, 56)));
+    dpr = Math.min(3, window.devicePixelRatio || 1);
+    cv.width = COLS * CEL * dpr;
+    cv.height = ROWS * CEL * dpr;
+    cv.style.width = COLS * CEL + 'px';
+    cv.style.height = ROWS * CEL + 'px';
+    desenhar();
+  }
+
+  // ---------------------------------------------------------------- entrada
+  function celulaEm(clientX, clientY) {
+    const r = cv.getBoundingClientRect();
+    const x = Math.floor((clientX - r.left) / CEL), y = Math.floor((clientY - r.top) / CEL);
+    if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return -1;
+    return idx(x, y);
+  }
+
+  function jogar(i, comoBandeira) {
+    if (i < 0 || (estado !== 'pronto' && estado !== 'jogando')) return;
+    if (celulas[i].aberta) acorde(i);
+    else if (comoBandeira) marcar(i);
+    else abrir(i);
+    atualizarHud();
+    desenhar();
+  }
+
+  // Mouse: esquerdo abre, direito marca; clique no número faz o acorde.
+  cv.addEventListener('mousedown', (e) => {
+    if (e.button === 0) { pressionada = celulaEm(e.clientX, e.clientY); desenhar(); }
+  });
+  window.addEventListener('mouseup', () => { if (pressionada >= 0) { pressionada = -1; desenhar(); } });
+  cv.addEventListener('click', (e) => {
+    cursor.visivel = false;
+    jogar(celulaEm(e.clientX, e.clientY), modoBandeira);
+  });
+  cv.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (document.body.classList.contains('touch')) return; // no toque, o segurar faz isso
+    jogar(celulaEm(e.clientX, e.clientY), !modoBandeira);
+  });
+
+  // Toque: tocar faz a ação do modo; segurar faz a outra (e vibra).
+  let toque = null;
+  cv.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 1) { toque = null; return; }
+    const t = e.changedTouches[0];
+    const i = celulaEm(t.clientX, t.clientY);
+    toque = { i, x: t.clientX, y: t.clientY, longo: false };
+    pressionada = i; desenhar();
+    toque.timer = setTimeout(() => {
+      if (!toque) return;
+      toque.longo = true;
+      pressionada = -1;
+      if (navigator.vibrate) navigator.vibrate(25);
+      jogar(i, !modoBandeira);
+    }, 380);
+    e.preventDefault();
+  }, { passive: false });
+  cv.addEventListener('touchmove', (e) => {
+    if (!toque) return;
+    const t = e.changedTouches[0];
+    if (Math.hypot(t.clientX - toque.x, t.clientY - toque.y) > 14) {
+      clearTimeout(toque.timer); toque = null; pressionada = -1; desenhar();
+    }
+  }, { passive: true });
+  cv.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (!toque) return;
+    clearTimeout(toque.timer);
+    const t = toque; toque = null; pressionada = -1;
+    if (!t.longo) jogar(t.i, modoBandeira);
+    else desenhar();
+  }, { passive: false });
+
+  // Teclado: setas/WASD andam, espaço/enter abre, F marca.
+  window.addEventListener('keydown', (e) => {
+    const k = e.key;
+    const mov = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] }[k.length === 1 ? k.toLowerCase() : k];
+    if ((estado === 'ganhou' || estado === 'perdeu') && (k === 'Enter' || k === ' ')) {
+      e.preventDefault(); iniciar(nivel.chave); return;
+    }
+    if (estado !== 'pronto' && estado !== 'jogando') return;
+    if (mov) {
+      e.preventDefault();
+      if (cursor.visivel) {
+        cursor.x = Math.max(0, Math.min(COLS - 1, cursor.x + mov[0]));
+        cursor.y = Math.max(0, Math.min(ROWS - 1, cursor.y + mov[1]));
+      }
+      cursor.visivel = true;
+      desenhar();
+      return;
+    }
+    if (k === ' ' || k === 'Enter') { e.preventDefault(); cursor.visivel = true; jogar(idx(cursor.x, cursor.y), false); }
+    if (k === 'f' || k === 'F') { e.preventDefault(); cursor.visivel = true; jogar(idx(cursor.x, cursor.y), true); }
+  });
+
+  document.querySelectorAll('[data-level]').forEach((b) => b.addEventListener('click', () => iniciar(b.dataset.level)));
+  $('btn-again').addEventListener('click', () => iniciar(nivel.chave));
+  $('btn-face').addEventListener('click', () => { if (estado !== 'menu') iniciar(nivel.chave); });
+  const menu = () => { estado = 'menu'; atualizarHud(); mostrar('scr-start'); };
+  $('btn-menu').addEventListener('click', menu);
+  $('btn-menu2').addEventListener('click', menu);
+  $('btn-mode').addEventListener('click', () => trocarModo());
+
+  if (matchMedia('(hover: none)').matches) {
+    document.body.classList.add('touch');
+    $('hint-start').textContent = 'toque abre · segure para a bandeira';
+  }
+
+  // ---------------------------------------------------------------- relógio
+  function loop() {
+    if (estado === 'jogando') {
+      tempo = (performance.now() - inicio) / 1000;
+      $('hud-time').textContent = String(Math.min(999, Math.floor(tempo)));
+    }
+    requestAnimationFrame(loop);
+  }
+
+  // ---------------------------------------------------------------- tutorial
+  const T = window.TutorialJogo;
+  const comToque = document.body.classList.contains('touch');
+  const casaFechadaNoMeio = () => {
+    if (estado !== 'pronto') return null;
+    const r = cv.getBoundingClientRect();
+    return T.ponto(r.left + (Math.floor(COLS / 2) + 0.5) * CEL, r.top + (Math.floor(ROWS / 2) + 0.5) * CEL, CEL * 0.6);
+  };
+  const tutorial = T ? new T.Tutorial('campo-minado', [
+    { id: 'nivel', texto: 'Comece pelo Fácil: 9 × 9 com 10 minas.', alvo: () => document.querySelector('.btn-easy'), ok: () => estado === 'pronto' || estado === 'jogando' },
+    { id: 'abrir', texto: comToque ? 'Toque numa casa para abrir. A primeira nunca tem mina.' : 'Clique numa casa para abrir. A primeira nunca tem mina.',
+      alvo: casaFechadaNoMeio, ok: () => abriu >= 1 },
+    { id: 'numero', texto: 'Cada número diz quantas minas encostam naquela casa, contando as diagonais.', gesto: 'nenhum', lugar: 'topo', segundos: 5 },
+    { id: 'bandeira', texto: comToque ? 'Achou uma mina? Segure a casa para pôr a bandeira (ou troque para 🚩 embaixo).' : 'Achou uma mina? Clique com o botão direito para pôr a bandeira.',
+      gesto: comToque ? 'segurar' : 'nenhum', lugar: 'topo', ok: () => marcou >= 1 },
+    { id: 'acorde', texto: 'Dica: com as bandeiras certas em volta, clicar no número abre o resto de uma vez.', gesto: 'nenhum', lugar: 'topo', segundos: 5 },
+  ]) : null;
+
+  // ---------------------------------------------------------------- partida
+  window.addEventListener('resize', ajustar);
+  window.addEventListener('orientationchange', ajustar);
+  atualizarHud();
+  ajustar();
+  mostrar('scr-start');
+  requestAnimationFrame(loop);
+  // A fonte em pixel chega depois: redesenha os números quando ela estiver pronta.
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(desenhar);
+  tutorial?.iniciar();
+})();
+</script>
+</body>
+</html>

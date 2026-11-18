@@ -9,7 +9,7 @@ export const SITE_URL = (
 export const SITE_NAME = 'gamezzz one';
 
 export const SITE_DESCRIPTION =
-  'Jogos grátis no navegador: xadrez contra IA, Snake, jogo da memória, Pong, Catan e PokéTrunfo. Sem download, sem cadastro, no computador e no celular.';
+  'Jogos grátis no navegador: xadrez contra IA, Campo Minado, Pinball, Snake, jogo da memória, Pong, Catan e PokéTrunfo. Sem download, sem cadastro, no computador e no celular.';
 
 export const ADSENSE_CLIENT = 'ca-pub-1881797135791796';
 
