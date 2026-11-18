@@ -1,0 +1,6 @@
+acentos-pixel.woff2 — Pixelify Sans (peso 600, subconjunto latino do Google Fonts),
+de Stefie Justprince, sob a SIL Open Font License 1.1 (https://openfontlicense.org).
+
+Usada só para as MAIÚSCULAS ACENTUADAS (unicode-range U+00C0–00DD): a Press Start 2P
+desenha Í, É, Ç e Ã com cara de minúscula e o Á sem acento. O resto do texto continua
+na Press Start 2P. O size-adjust de 160% iguala a altura das maiúsculas das duas.

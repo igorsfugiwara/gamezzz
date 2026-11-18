@@ -8,13 +8,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
 <style>
+  /* Maiúsculas acentuadas vêm de outra fonte em pixel (a Press Start 2P desenha Í, É, Ç e Ã como minúsculas). Ver fontes/LEIA-ME.txt. */
+  @font-face { font-family: 'Acentos Pixel'; src: url('/games/fontes/acentos-pixel.woff2') format('woff2'); unicode-range: U+00C0-00D6, U+00D8-00DD; size-adjust: 160%; font-display: swap; }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   html, body {
     height: 100%;
     width: 100%;
     background: #0b0710;
-    font-family: 'Press Start 2P', monospace;
+    font-family: 'Acentos Pixel', 'Press Start 2P', monospace;
     color: #f2e9f7;
     overflow: hidden;
     touch-action: manipulation;

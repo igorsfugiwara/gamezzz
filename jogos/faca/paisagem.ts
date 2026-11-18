@@ -32,7 +32,7 @@ function texto(b: CanvasRenderingContext2D, t: string, x: number, y: number, tam
 }
 
 function escrever(b: CanvasRenderingContext2D, t: string, x: number, y: number, tam: number, cor: string, max: number) {
-  b.font = `${tam}px "Press Start 2P", monospace`;
+  b.font = `${tam}px "Acentos Pixel", "Press Start 2P", monospace`;
   b.textAlign = 'center';
   b.textBaseline = 'middle';
   const esc = Math.min(1, max / Math.max(1, b.measureText(t).width));
@@ -274,7 +274,7 @@ function pousada(b: CanvasRenderingContext2D, r: () => number, letreiro: string)
   b.fillStyle = P.concreto; b.fillRect(70, 30, 4, 122);
   b.fillStyle = P.preto; b.fillRect(14, 16, 120, 30);
   b.fillStyle = P.noite; b.fillRect(16, 18, 116, 26);
-  b.font = '10px "Press Start 2P", monospace'; b.textAlign = 'center'; b.textBaseline = 'middle';
+  b.font = '10px "Acentos Pixel", "Press Start 2P", monospace'; b.textAlign = 'center'; b.textBaseline = 'middle';
   const letras = letreiro.toUpperCase().slice(0, 9);
   const queimada = Math.floor(r() * letras.length);
   [...letras].forEach((ch, i) => {

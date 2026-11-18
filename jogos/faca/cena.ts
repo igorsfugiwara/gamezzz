@@ -116,7 +116,7 @@ function desenharFundo(b: CanvasRenderingContext2D) {
 
 /** Letras do fundo: desenhadas depois do Scale2x, que deformaria a fonte. */
 function textosDoFundo(b: CanvasRenderingContext2D, nomeBanda: string) {
-  b.font = '12px "Press Start 2P", monospace';
+  b.font = '12px "Acentos Pixel", "Press Start 2P", monospace';
   b.textAlign = 'center';
   b.textBaseline = 'middle';
   const nome = nomeBanda.toUpperCase();
@@ -125,7 +125,7 @@ function textosDoFundo(b: CanvasRenderingContext2D, nomeBanda: string) {
   b.fillStyle = P.vermelho; b.fillText(nome, 1, 1);
   b.fillStyle = P.branco; b.fillText(nome, 0, 0);
   b.restore();
-  b.font = '7px "Press Start 2P", monospace';
+  b.font = '7px "Acentos Pixel", "Press Start 2P", monospace';
   b.fillStyle = P.vermelho; b.fillText('SEM RODA', 430, 73);
   b.fillStyle = P.preto; b.fillText('NO BAR!', 430, 81);
 }
@@ -165,7 +165,7 @@ function desenharBateria(b: CanvasRenderingContext2D, x: number, y: number, t: n
   b.fillStyle = P.papel; b.fillRect(x + 6, y - 8, 26, 24);
   b.fillStyle = P.branco; b.fillRect(x + 7, y - 7, 10, 22);
   b.fillStyle = P.preto;
-  b.font = '9px "Press Start 2P", monospace'; b.textAlign = 'center'; b.textBaseline = 'middle';
+  b.font = '9px "Acentos Pixel", "Press Start 2P", monospace'; b.textAlign = 'center'; b.textBaseline = 'middle';
   b.fillText(letras, x + 19, y + 4);
   b.fillStyle = P.cimento; for (const dx of [4, 32]) b.fillRect(x + dx, y - 10, 1, 28);
   b.fillStyle = P.preto; b.fillRect(x + 37, y - 4, 16, 9);

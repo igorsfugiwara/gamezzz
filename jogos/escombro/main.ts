@@ -1474,7 +1474,7 @@ const semAcento = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, 
 
 function texto(s: string, x: number, y: number, cor: string = P.branco, tam = 8, alinha: CanvasTextAlign = 'left') {
   s = semAcento(s);
-  ctx.font = `${tam}px 'Press Start 2P', monospace`;
+  ctx.font = `${tam}px 'Acentos Pixel', 'Press Start 2P', monospace`;
   ctx.textAlign = alinha;
   ctx.textBaseline = 'top';
   ctx.fillStyle = P.preto;
@@ -1975,6 +1975,8 @@ $('b-arq-fechar').addEventListener('click', () => { modo = 'titulo'; mostrar('ti
 
 // ─── Partida ──────────────────────────────────────────────
 document.fonts?.load("8px 'Press Start 2P'").catch(() => undefined);
+// O canvas só usa a fonte das maiúsculas acentuadas se ela já estiver carregada.
+document.fonts?.load("8px 'Acentos Pixel'", 'ÉÇÃÍÜÖÄ').catch(() => undefined);
 jog = novoJogador(progresso.quem);
 palco = montarPalco('centro');
 mostrar('titulo');

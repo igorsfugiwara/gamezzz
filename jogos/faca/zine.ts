@@ -80,14 +80,14 @@ function quebrar(ctx: CanvasRenderingContext2D, texto: string, largura: number):
 }
 
 export async function desenharZine(canvas: HTMLCanvasElement, t: Turne): Promise<void> {
-  try { await document.fonts.load('20px "Press Start 2P"'); } catch { /* segue com a fonte reserva */ }
+  try { await Promise.all([document.fonts.load('20px "Press Start 2P"'), document.fonts.load('20px "Acentos Pixel"', 'ÉÇÃÍ')]); } catch { /* segue com a fonte reserva */ }
   canvas.width = ZINE_L;
   canvas.height = ZINE_A;
   const ctx = canvas.getContext('2d')!;
   const r = aleatorioDe(t.seed);
   const tinta = '#16140f';
   const papel = '#e9e3d3';
-  const pixel = '"Press Start 2P", monospace';
+  const pixel = '"Acentos Pixel", "Press Start 2P", monospace';
   const texto = '"Arial Narrow", "Roboto Condensed", Arial, sans-serif';
 
   ctx.fillStyle = papel;

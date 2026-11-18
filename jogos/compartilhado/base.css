@@ -1,3 +1,6 @@
+/* Maiúsculas acentuadas vêm de outra fonte em pixel (a Press Start 2P desenha Í, É, Ç e Ã como minúsculas). Ver fontes/LEIA-ME.txt. */
+@font-face { font-family: 'Acentos Pixel'; src: url('/games/fontes/acentos-pixel.woff2') format('woff2'); unicode-range: U+00C0-00D6, U+00D8-00DD; size-adjust: 160%; font-display: swap; }
+
 /* Base dos jogos do portal: mesma família visual nos quatro. */
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
@@ -19,7 +22,7 @@
   --neon-rosa: #ff4fa3;
   --neon-ciano: #3df0e6;
   --neon-verde: #b6ff3d;
-  --pixel-font: 'Press Start 2P', ui-monospace, 'Courier New', monospace;
+  --pixel-font: 'Acentos Pixel', 'Press Start 2P', ui-monospace, 'Courier New', monospace;
   --ui-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color-scheme: dark;
 }
