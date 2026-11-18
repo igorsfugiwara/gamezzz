@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SUDOKU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="preload" href="/games/fontes/acentos-pixel.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  /* Maiúsculas acentuadas vêm de outra fonte em pixel (a Press Start 2P desenha Í, É, Ç e Ã como minúsculas). Ver fontes/LEIA-ME.txt. */
+  @font-face { font-family: 'Acentos Pixel'; src: url('/games/fontes/acentos-pixel.woff2') format('woff2'); unicode-range: U+00C0-00D6, U+00D8-00DD; size-adjust: 160%; font-display: swap; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0b0a07;
+    --ouro: #ffc857;
+    --ouro-fraco: rgba(255, 200, 87, 0.45);
+    --texto: #fff3d6;
+    --mudo: #a8936a;
+    --dado: #f2e6c9;
+    --meu: #ffc857;
+    --erro: #ff6b6b;
+    --cel: 40px;
+  }
+
+  html, body {
+    background: var(--bg);
+    font-family: 'Acentos Pixel', 'Press Start 2P', monospace;
+    color: var(--texto);
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 25% 30%, rgba(255, 200, 87, 0.07) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 75%, rgba(255, 120, 60, 0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(12px, 3vw, 36px);
+    width: 100%;
+    height: 100%;
+    padding: 8px;
+  }
+
+  .col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+  .hud {
+    display: flex;
+    gap: clamp(10px, 2.4vw, 22px);
+    font-size: clamp(7px, 1.4vw, 10px);
+    letter-spacing: 1px;
+    color: var(--mudo);
+    align-items: center;
+  }
+  .hud b { color: var(--texto); font-weight: normal; }
+  .hud .lvl { color: var(--ouro); }
+
+  .board-wrap { position: relative; }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(9, var(--cel));
+    grid-template-rows: repeat(9, var(--cel));
+    border: 3px solid var(--ouro-fraco);
+    border-radius: 6px;
+    background: #14110b;
+    box-shadow: 0 0 28px rgba(255, 200, 87, 0.12);
+    overflow: hidden;
+  }
+
+  .c {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--cel) * 0.42);
+    color: var(--meu);
+    border-right: 1px solid rgba(255, 200, 87, 0.12);
+    border-bottom: 1px solid rgba(255, 200, 87, 0.12);
+    cursor: pointer;
+    transition: background .08s;
+  }
+  .c:nth-child(9n) { border-right: none; }
+  .c.bd { border-right: 2px solid var(--ouro-fraco); }
+  .c.bb { border-bottom: 2px solid var(--ouro-fraco); }
+  .c.dado { color: var(--dado); }
+  .c.rel { background: rgba(255, 200, 87, 0.06); }
+  .c.igual { background: rgba(255, 200, 87, 0.16); }
+  .c.sel { background: rgba(255, 200, 87, 0.3); box-shadow: inset 0 0 0 2px var(--ouro); }
+  .c.erro { color: var(--erro); text-shadow: 0 0 8px rgba(255, 107, 107, 0.6); }
+  .c.dica { animation: dica .6s ease; }
+  @keyframes dica { 0% { background: rgba(125, 255, 176, 0.5); } 100% { background: transparent; } }
+  .c.onda { animation: onda .5s ease both; }
+  @keyframes onda { 0% { transform: scale(1); } 40% { transform: scale(1.18); color: #7dffb0; } 100% { transform: scale(1); } }
+
+  .notas {
+    position: absolute;
+    inset: 2px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    font-size: calc(var(--cel) * 0.2);
+    color: var(--mudo);
+    line-height: 1;
+  }
+  .notas span { display: flex; align-items: center; justify-content: center; }
+
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .pad.linha { grid-template-columns: repeat(9, 1fr); gap: 4px; }
+  .pad.linha button { min-width: 0; }
+  .tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%; }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    color: var(--texto);
+    background: rgba(255, 200, 87, 0.07);
+    border: 2px solid var(--ouro-fraco);
+    border-radius: 6px;
+    padding: 10px 8px;
+    font-size: clamp(8px, 1.5vw, 11px);
+    letter-spacing: 1px;
+    line-height: 1.4;
+    transition: background .15s, border-color .15s, transform .08s;
+  }
+  button:hover { background: rgba(255, 200, 87, 0.16); border-color: var(--ouro); }
+  button:active { transform: translateY(1px); }
+  button.on { background: rgba(255, 200, 87, 0.3); border-color: var(--ouro); color: #fff; }
+  button:disabled { opacity: .35; cursor: default; }
+  .pad button { font-size: clamp(12px, 2.4vw, 18px); padding: 0; aspect-ratio: 1; min-width: 40px; position: relative; }
+  .pad button small { position: absolute; right: 3px; bottom: 2px; font-size: 6px; color: var(--mudo); }
+  .pad button.cheio { opacity: .3; }
+  .tools button { font-size: clamp(7px, 1.2vw, 9px); padding: 8px 2px; }
+  .tools button .ic { display: block; font-size: 14px; margin-bottom: 4px; font-family: system-ui, sans-serif; }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    justify-content: safe center;
+    overflow-y: auto;
+    gap: clamp(8px, 2vh, 16px);
+    background: rgba(11, 10, 7, 0.95);
+    border-radius: 6px;
+    text-align: center;
+    padding: 6%;
+    line-height: 1.6;
+    z-index: 3;
+  }
+  .screen[hidden] { display: none; }
+  .title {
+    font-size: clamp(16px, 4vw, 30px);
+    letter-spacing: 6px;
+    color: var(--ouro);
+    text-shadow: 0 0 12px rgba(255, 200, 87, .6), 0 0 34px rgba(255, 200, 87, .25);
+  }
+  .sub { font-size: clamp(7px, 1.3vw, 10px); color: var(--mudo); letter-spacing: 1px; }
+  .levels { display: flex; flex-direction: column; gap: 8px; width: min(300px, 90%); }
+  .levels button .tag { display: block; font-size: .72em; color: var(--mudo); margin-top: 5px; letter-spacing: 0; }
+  .btn-dia { border-color: #7dffb0; background: rgba(125, 255, 176, .08); }
+  .btn-dia:hover { border-color: #7dffb0; background: rgba(125, 255, 176, .18); }
+  .result { font-size: clamp(10px, 2vw, 14px); }
+  .best { font-size: clamp(7px, 1.4vw, 10px); color: var(--ouro); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+  body.touch button { min-height: 40px; }
+
+  @media (orientation: portrait), (max-aspect-ratio: 1/1) {
+    .wrap { flex-direction: column; gap: 10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .c, button { transition: none; }
+    .c.dica, .c.onda { animation: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="col">
+      <div class="hud">
+        <span class="lvl" id="hud-level">—</span>
+        <span>TEMPO <b id="hud-time">0:00</b></span>
+        <span>ERROS <b id="hud-err">0</b></span>
+      </div>
+      <div class="board-wrap">
+        <div class="board" id="board" role="grid" aria-label="Tabuleiro do sudoku"></div>
+
+        <div class="screen" id="scr-start">
+          <div class="title">SUDOKU</div>
+          <div class="sub">complete cada linha, coluna e quadrado com 1 a 9</div>
+          <div class="levels">
+            <button class="btn-dia" data-level="dia">DESAFIO DO DIA<span class="tag" id="tag-dia">o mesmo para todo mundo</span></button>
+            <button data-level="facil">FÁCIL<span class="tag">40 números dados</span></button>
+            <button data-level="medio">MÉDIO<span class="tag">32 números dados</span></button>
+            <button data-level="dificil">DIFÍCIL<span class="tag">26 números dados</span></button>
+          </div>
+          <button id="btn-continuar" hidden>CONTINUAR PARTIDA</button>
+        </div>
+
+        <div class="screen" id="scr-pause" hidden>
+          <div class="title">PAUSA</div>
+          <button id="btn-resume">CONTINUAR</button>
+        </div>
+
+        <div class="screen" id="scr-win" hidden>
+          <div class="title">RESOLVIDO!</div>
+          <div class="result" id="win-result"></div>
+          <div class="best" id="win-best"></div>
+          <div class="row">
+            <button id="btn-share" hidden>COPIAR RESULTADO</button>
+            <button id="btn-new">NOVO JOGO</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="pad" id="pad"></div>
+      <div class="tools">
+        <button id="btn-undo" aria-label="Desfazer"><span class="ic">↶</span>VOLTA</button>
+        <button id="btn-erase" aria-label="Apagar"><span class="ic">⌫</span>APAGA</button>
+        <button id="btn-notes" aria-pressed="false" aria-label="Notas"><span class="ic">✎</span>NOTAS</button>
+        <button id="btn-hint" aria-label="Dica"><span class="ic">💡</span>DICA</button>
+      </div>
+      <div class="row">
+        <button id="btn-pause">PAUSA</button>
+        <button id="btn-menu">MENU</button>
+      </div>
+    </div>
+  </div>
+
+<script src="tutorial.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  const $ = (id) => document.getElementById(id);
+  const NIVEIS = {
+    facil:   { nome: 'FÁCIL',   dados: 40 },
+    medio:   { nome: 'MÉDIO',   dados: 32 },
+    dificil: { nome: 'DIFÍCIL', dados: 26 },
+    dia:     { nome: 'DO DIA',  dados: 30 },
+  };
+
+  // ================================================================ sorteio
+  // PRNG com semente: o desafio do dia sai igual em qualquer aparelho.
+  function mulberry32(a) {
+    return () => {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function hash(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+  function embaralhar(arr, rnd) {
+    for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+    return arr;
+  }
+
+  // ================================================================ resolvedor
+  // Grade de 81 números (0 = vazio). Máscaras de bits por linha, coluna e quadrado.
+  const BOX = Array.from({ length: 81 }, (_, i) => Math.floor(Math.floor(i / 9) / 3) * 3 + Math.floor((i % 9) / 3));
+
+  // Conta soluções até `limite` (2 basta para saber se é única).
+  function contarSolucoes(g, limite = 2, rnd = null, saida = null) {
+    const lin = new Array(9).fill(0), col = new Array(9).fill(0), qua = new Array(9).fill(0);
+    for (let i = 0; i < 81; i++) {
+      if (!g[i]) continue;
+      const b = 1 << g[i];
+      if ((lin[(i / 9) | 0] & b) || (col[i % 9] & b) || (qua[BOX[i]] & b)) return 0;
+      lin[(i / 9) | 0] |= b; col[i % 9] |= b; qua[BOX[i]] |= b;
+    }
+    const grade = g.slice();
+    let achadas = 0;
+    const digitos = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    function busca() {
+      // Casa vazia com menos candidatos primeiro.
+      let melhor = -1, melhorMask = 0, menor = 10;
+      for (let i = 0; i < 81; i++) {
+        if (grade[i]) continue;
+        const usado = lin[(i / 9) | 0] | col[i % 9] | qua[BOX[i]];
+        let n = 0;
+        for (let d = 1; d <= 9; d++) if (!(usado & (1 << d))) n++;
+        if (n < menor) { menor = n; melhor = i; melhorMask = usado; if (n <= 1) break; }
+      }
+      if (melhor < 0) {
+        achadas++;
+        if (saida && achadas === 1) saida.push(...grade);
+        return achadas >= limite;
+      }
+      if (menor === 0) return false;
+      const ordem = rnd ? embaralhar(digitos.slice(), rnd) : digitos;
+      const r = (melhor / 9) | 0, c = melhor % 9, q = BOX[melhor];
+      for (const d of ordem) {
+        const b = 1 << d;
+        if (melhorMask & b) continue;
+        grade[melhor] = d; lin[r] |= b; col[c] |= b; qua[q] |= b;
+        if (busca()) return true;
+        grade[melhor] = 0; lin[r] &= ~b; col[c] &= ~b; qua[q] &= ~b;
+      }
+      return false;
+    }
+    busca();
+    return achadas;
+  }
+
+  function gerar(dados, rnd) {
+    const solucao = [];
+    contarSolucoes(new Array(81).fill(0), 1, rnd, solucao);
+    const puzzle = solucao.slice();
+    // Tira números em pares simétricos enquanto a solução continuar única.
+    const ordem = embaralhar([...Array(41).keys()], rnd);
+    let restam = 81;
+    for (const i of ordem) {
+      if (restam <= dados) break;
+      const j = 80 - i;
+      if (restam - (i === j ? 1 : 2) < dados) continue;
+      const a = puzzle[i], b = puzzle[j];
+      puzzle[i] = 0; puzzle[j] = 0;
+      if (contarSolucoes(puzzle, 2) !== 1) { puzzle[i] = a; puzzle[j] = b; continue; }
+      restam -= i === j ? 1 : 2;
+    }
+    // Se a simetria travou antes da meta, tira casas avulsas.
+    for (const i of embaralhar([...Array(81).keys()], rnd)) {
+      if (restam <= dados) break;
+      if (!puzzle[i]) continue;
+      const a = puzzle[i];
+      puzzle[i] = 0;
+      if (contarSolucoes(puzzle, 2) !== 1) { puzzle[i] = a; continue; }
+      restam--;
+    }
+    return { puzzle, solucao };
+  }
+
+  // ================================================================ estado
+  let jogo = null;  // { chave, dia?, puzzle, solucao, valores, notas[81] (bitmask), erros, inicio, gasto, terminou }
+  let sel = 40;
+  let modoNotas = false;
+  let historico = [];
+  let pausado = false;
+  let pintados = 0, notou = 0; // tutorial
+
+  function hoje() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  const ler = (k, padrao) => { try { const v = localStorage.getItem('sudoku:' + k); return v === null ? padrao : JSON.parse(v); } catch { return padrao; } };
+  const gravar = (k, v) => { try { localStorage.setItem('sudoku:' + k, JSON.stringify(v)); } catch { /* sem storage */ } };
+
+  function salvarPartida() {
+    if (!jogo || jogo.terminou) { gravar('partida', null); return; }
+    gravar('partida', { ...jogo, gasto: tempoGasto() });
+  }
+
+  function tempoGasto() {
+    if (!jogo) return 0;
+    return jogo.gasto + (pausado || jogo.terminou ? 0 : (performance.now() - jogo.inicio) / 1000);
+  }
+
+  function novo(chave) {
+    const dia = chave === 'dia' ? hoje() : null;
+    const rnd = dia ? mulberry32(hash('gamezzz-sudoku-' + dia)) : Math.random;
+    const { puzzle, solucao } = gerar(NIVEIS[chave].dados, rnd);
+    jogo = { chave, dia, puzzle, solucao, valores: puzzle.slice(), notas: new Array(81).fill(0), erros: 0, inicio: performance.now(), gasto: 0, terminou: false };
+    comecar();
+  }
+
+  function comecar() {
+    historico = [];
+    pausado = false;
+    sel = jogo.valores.findIndex((v) => !v);
+    if (sel < 0) sel = 40;
+    jogo.inicio = performance.now();
+    mostrar(null);
+    $('hud-level').textContent = NIVEIS[jogo.chave].nome;
+    desenhar();
+    salvarPartida();
+  }
+
+  // ================================================================ jogadas
+  function pode(i) { return jogo && !jogo.terminou && !pausado && !jogo.puzzle[i]; }
+
+  function registrar(i) { historico.push({ i, v: jogo.valores[i], n: jogo.notas[i] }); if (historico.length > 300) historico.shift(); }
+
+  function colocar(d) {
+    if (!pode(sel)) return;
+    if (modoNotas) {
+      if (jogo.valores[sel]) return;
+      registrar(sel);
+      jogo.notas[sel] ^= 1 << d;
+      notou++;
+    } else {
+      registrar(sel);
+      if (jogo.valores[sel] === d) { jogo.valores[sel] = 0; }
+      else {
+        jogo.valores[sel] = d;
+        jogo.notas[sel] = 0;
+        pintados++;
+        if (d !== jogo.solucao[sel]) jogo.erros++;
+        else limparNotasVizinhas(sel, d);
+      }
+    }
+    desenhar();
+    conferirFim();
+    salvarPartida();
+  }
+
+  // Ao acertar um número, ele sai das notas da linha, coluna e quadrado.
+  function limparNotasVizinhas(i, d) {
+    const r = (i / 9) | 0, c = i % 9;
+    for (let k = 0; k < 81; k++) {
+      if ((k / 9 | 0) === r || k % 9 === c || BOX[k] === BOX[i]) jogo.notas[k] &= ~(1 << d);
+    }
+  }
+
+  function apagar() {
+    if (!pode(sel) || (!jogo.valores[sel] && !jogo.notas[sel])) return;
+    registrar(sel);
+    jogo.valores[sel] = 0; jogo.notas[sel] = 0;
+    desenhar(); salvarPartida();
+  }
+
+  function desfazer() {
+    if (!jogo || jogo.terminou || pausado) return;
+    const h = historico.pop();
+    if (!h) return;
+    jogo.valores[h.i] = h.v; jogo.notas[h.i] = h.n;
+    sel = h.i;
+    desenhar(); salvarPartida();
+  }
+
+  // Dica: preenche a casa selecionada (ou a primeira vazia/errada) com o número certo.
+  function dica() {
+    if (!jogo || jogo.terminou || pausado) return;
+    let i = sel;
+    if (jogo.puzzle[i] || jogo.valores[i] === jogo.solucao[i]) {
+      i = jogo.valores.findIndex((v, k) => v !== jogo.solucao[k]);
+      if (i < 0) return;
+    }
+    registrar(i);
+    jogo.valores[i] = jogo.solucao[i];
+    jogo.notas[i] = 0;
+    limparNotasVizinhas(i, jogo.solucao[i]);
+    jogo.dicas = (jogo.dicas || 0) + 1;
+    sel = i;
+    desenhar();
+    const el = $('board').children[i];
+    el.classList.remove('dica'); void el.offsetWidth; el.classList.add('dica');
+    conferirFim(); salvarPartida();
+  }
+
+  function conferirFim() {
+    if (jogo.valores.some((v, i) => v !== jogo.solucao[i])) return;
+    jogo.gasto = tempoGasto();
+    jogo.terminou = true;
+    const s = Math.round(jogo.gasto);
+    const chaveRec = jogo.chave === 'dia' ? 'dia:' + jogo.dia : 'recorde:' + jogo.chave;
+    const rec = ler(chaveRec, 0);
+    const bateu = !rec || s < rec;
+    if (bateu) gravar(chaveRec, s);
+    salvarPartida();
+    // Onda pelas casas, linha por linha.
+    [...$('board').children].forEach((el, k) => { el.style.animationDelay = `${((k / 9) | 0) * 45 + (k % 9) * 20}ms`; el.classList.add('onda'); });
+    setTimeout(() => {
+      $('win-result').textContent = `${NIVEIS[jogo.chave].nome} em ${fmt(s)} · ${jogo.erros} erro${jogo.erros === 1 ? '' : 's'}${jogo.dicas ? ` · ${jogo.dicas} dica${jogo.dicas === 1 ? '' : 's'}` : ''}`;
+      $('win-best').textContent = jogo.chave === 'dia' ? `Desafio de ${jogo.dia.split('-').reverse().join('/')}` : bateu ? 'NOVO RECORDE!' : `RECORDE ${fmt(rec)}`;
+      $('btn-share').hidden = jogo.chave !== 'dia';
+      mostrar('scr-win');
+    }, 1100);
+  }
+
+  // ================================================================ desenho
+  function fmt(s) { s = Math.floor(s); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+
+  function montar() {
+    const b = $('board');
+    for (let i = 0; i < 81; i++) {
+      const c = document.createElement('div');
+      c.className = 'c';
+      if (i % 9 === 2 || i % 9 === 5) c.classList.add('bd');
+      if (((i / 9) | 0) === 2 || ((i / 9) | 0) === 5) c.classList.add('bb');
+      c.setAttribute('role', 'gridcell');
+      c.addEventListener('pointerdown', (e) => { e.preventDefault(); sel = i; desenhar(); });
+      b.appendChild(c);
+    }
+    const pad = $('pad');
+    for (let d = 1; d <= 9; d++) {
+      const bt = document.createElement('button');
+      bt.dataset.d = String(d);
+      bt.innerHTML = `${d}<small></small>`;
+      bt.addEventListener('click', () => colocar(d));
+      pad.appendChild(bt);
+    }
+  }
+
+  function desenhar() {
+    if (!jogo) return;
+    const cels = $('board').children;
+    const v = jogo.valores, alvo = v[sel];
+    const sr = (sel / 9) | 0, sc = sel % 9;
+    const contagem = new Array(10).fill(0);
+    for (let i = 0; i < 81; i++) if (v[i] && v[i] === jogo.solucao[i]) contagem[v[i]]++;
+    for (let i = 0; i < 81; i++) {
+      const el = cels[i];
+      const r = (i / 9) | 0, c = i % 9;
+      el.classList.toggle('dado', !!jogo.puzzle[i]);
+      el.classList.toggle('sel', i === sel);
+      el.classList.toggle('rel', i !== sel && (r === sr || c === sc || BOX[i] === BOX[sel]));
+      el.classList.toggle('igual', i !== sel && !!alvo && v[i] === alvo);
+      el.classList.toggle('erro', !jogo.puzzle[i] && !!v[i] && v[i] !== jogo.solucao[i]);
+      if (v[i]) {
+        el.textContent = String(v[i]);
+      } else if (jogo.notas[i]) {
+        let h = '<div class="notas">';
+        for (let d = 1; d <= 9; d++) h += `<span>${jogo.notas[i] & (1 << d) ? d : ''}</span>`;
+        el.innerHTML = h + '</div>';
+      } else el.textContent = '';
+    }
+    $('hud-err').textContent = String(jogo.erros);
+    [...$('pad').children].forEach((bt) => {
+      const d = Number(bt.dataset.d);
+      const falta = 9 - contagem[d];
+      bt.classList.toggle('cheio', falta === 0);
+      bt.querySelector('small').textContent = falta > 0 ? String(falta) : '';
+    });
+  }
+
+  function mostrar(id) {
+    ['scr-start', 'scr-pause', 'scr-win'].forEach((s) => { $(s).hidden = s !== id; });
+  }
+
+  function menu() {
+    if (jogo && !jogo.terminou) { jogo.gasto = tempoGasto(); pausado = true; salvarPartida(); }
+    const salva = ler('partida', null);
+    $('btn-continuar').hidden = !salva;
+    const feito = ler('dia:' + hoje(), 0);
+    $('tag-dia').textContent = feito ? `feito hoje em ${fmt(feito)}` : 'o mesmo para todo mundo';
+    mostrar('scr-start');
+  }
+
+  // ================================================================ tamanho
+  function ajustar() {
+    const deitado = !matchMedia('(orientation: portrait), (max-aspect-ratio: 1/1)').matches;
+    const pad = $('pad');
+    pad.classList.toggle('linha', !deitado);
+    const hud = document.querySelector('.hud').offsetHeight;
+    let cel;
+    if (deitado) {
+      const lado = Math.min(260, window.innerWidth * 0.3);
+      cel = Math.min((window.innerHeight - hud - 40) / 9, (window.innerWidth - lado - 60) / 9);
+    } else {
+      const baixo = document.querySelector('.wrap > .col:last-child').offsetHeight;
+      cel = Math.min((window.innerWidth - 22) / 9, (window.innerHeight - hud - baixo - 50) / 9);
+    }
+    cel = Math.max(26, Math.min(64, Math.floor(cel)));
+    document.documentElement.style.setProperty('--cel', cel + 'px');
+    const largura = deitado ? Math.min(260, Math.max(180, window.innerWidth * 0.26)) : cel * 9 + 6;
+    document.querySelectorAll('.wrap > .col:last-child').forEach((el) => { el.style.width = largura + 'px'; });
+    pad.style.width = '100%';
+  }
+
+  // ================================================================ entrada
+  window.addEventListener('keydown', (e) => {
+    if (!jogo || jogo.terminou) return;
+    const k = e.key;
+    if ((e.ctrlKey || e.metaKey) && (k === 'z' || k === 'Z')) { e.preventDefault(); desfazer(); return; }
+    if (k === 'p' || k === 'P' || k === 'Escape') { e.preventDefault(); alternarPausa(); return; }
+    if (pausado) return;
+    const mov = { ArrowUp: -9, ArrowDown: 9, ArrowLeft: -1, ArrowRight: 1 }[k];
+    if (mov) {
+      e.preventDefault();
+      const r = (sel / 9) | 0, c = sel % 9;
+      if (mov === -1 && c > 0) sel--; else if (mov === 1 && c < 8) sel++;
+      else if (mov === -9 && r > 0) sel -= 9; else if (mov === 9 && r < 8) sel += 9;
+      desenhar(); return;
+    }
+    if (/^[1-9]$/.test(k)) { e.preventDefault(); colocar(Number(k)); return; }
+    if (k === 'Backspace' || k === 'Delete' || k === '0') { e.preventDefault(); apagar(); return; }
+    if (k === 'n' || k === 'N') { e.preventDefault(); alternarNotas(); return; }
+    if (k === 'h' || k === 'H') { e.preventDefault(); dica(); }
+  });
+
+  function alternarNotas() {
+    modoNotas = !modoNotas;
+    $('btn-notes').classList.toggle('on', modoNotas);
+    $('btn-notes').setAttribute('aria-pressed', String(modoNotas));
+  }
+
+  function alternarPausa() {
+    if (!jogo || jogo.terminou) return;
+    if (!pausado) { jogo.gasto = tempoGasto(); pausado = true; mostrar('scr-pause'); salvarPartida(); }
+    else { pausado = false; jogo.inicio = performance.now(); mostrar(null); }
+  }
+
+  document.querySelectorAll('[data-level]').forEach((b) => b.addEventListener('click', () => {
+    b.disabled = true;
+    // Gerar o Difícil leva alguns décimos: deixa o botão reagir antes.
+    setTimeout(() => { novo(b.dataset.level); b.disabled = false; }, 30);
+  }));
+  $('btn-continuar').addEventListener('click', () => {
+    const salva = ler('partida', null);
+    if (!salva) return;
+    jogo = salva;
+    comecar();
+  });
+  $('btn-undo').addEventListener('click', desfazer);
+  $('btn-erase').addEventListener('click', apagar);
+  $('btn-notes').addEventListener('click', alternarNotas);
+  $('btn-hint').addEventListener('click', dica);
+  $('btn-pause').addEventListener('click', alternarPausa);
+  $('btn-resume').addEventListener('click', alternarPausa);
+  $('btn-menu').addEventListener('click', menu);
+  $('btn-new').addEventListener('click', menu);
+  $('btn-share').addEventListener('click', async () => {
+    const txt = `Sudoku do dia ${jogo.dia.split('-').reverse().join('/')} no gamezzz one: ${fmt(jogo.gasto)}, ${jogo.erros} erro(s). Tenta bater: ${location.origin}/jogos/sudoku`;
+    try { await navigator.clipboard.writeText(txt); $('btn-share').textContent = 'COPIADO!'; } catch { $('btn-share').textContent = 'NÃO DEU PARA COPIAR'; }
+    setTimeout(() => { $('btn-share').textContent = 'COPIAR RESULTADO'; }, 1800);
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && jogo && !jogo.terminou && !pausado) alternarPausa(); });
+
+  if (matchMedia('(hover: none)').matches) document.body.classList.add('touch');
+
+  // ================================================================ relógio
+  setInterval(() => { if (jogo) $('hud-time').textContent = fmt(tempoGasto()); }, 250);
+
+  // ================================================================ tutorial
+  const T = window.TutorialJogo;
+  const tutorial = T ? new T.Tutorial('sudoku', [
+    { id: 'nivel', texto: 'Comece pelo Fácil. O Desafio do Dia é o mesmo para todo mundo.', alvo: () => document.querySelector('[data-level=facil]'), ok: () => !!jogo && !jogo.terminou && $('scr-start').hidden },
+    { id: 'regra', texto: 'Cada linha, cada coluna e cada quadrado 3 × 3 precisa ter os números de 1 a 9, sem repetir.', gesto: 'nenhum', lugar: 'topo', segundos: 6 },
+    { id: 'pintar', texto: 'Toque numa casa vazia e depois num número embaixo (ou digite 1 a 9).', alvo: () => $('pad'), ok: () => pintados >= 1 },
+    { id: 'notas', texto: 'Na dúvida, ligue NOTAS para anotar os candidatos pequenininhos na casa.', alvo: () => $('btn-notes'), ok: () => notou >= 1 },
+    { id: 'dica', texto: 'Travou? DICA preenche uma casa. VOLTA desfaz a última jogada.', alvo: () => $('btn-hint'), gesto: 'nenhum', segundos: 5 },
+  ]) : null;
+
+  montar();
+  ajustar();
+  window.addEventListener('resize', ajustar);
+  window.addEventListener('orientationchange', ajustar);
+  menu();
+  tutorial?.iniciar();
+})();
+</script>
+</body>
+</html>

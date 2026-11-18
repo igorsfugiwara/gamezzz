@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>PACIÊNCIA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="preload" href="/games/fontes/acentos-pixel.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  /* Maiúsculas acentuadas vêm de outra fonte em pixel (a Press Start 2P desenha Í, É, Ç e Ã como minúsculas). Ver fontes/LEIA-ME.txt. */
+  @font-face { font-family: 'Acentos Pixel'; src: url('/games/fontes/acentos-pixel.woff2') format('woff2'); unicode-range: U+00C0-00D6, U+00D8-00DD; size-adjust: 160%; font-display: swap; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root { --w: 80px; --h: 112px; }
+
+  html, body {
+    background: #061410;
+    font-family: 'Acentos Pixel', 'Press Start 2P', monospace;
+    color: #e6fff2;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 40%, rgba(40, 160, 100, 0.22) 0%, transparent 70%),
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.012) 0 2px, transparent 2px 6px);
+    pointer-events: none;
+  }
+
+  .hud {
+    position: absolute;
+    top: 6px;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: clamp(8px, 2.4vw, 22px);
+    font-size: clamp(7px, 1.3vw, 10px);
+    letter-spacing: 1px;
+    color: #7fbf9f;
+    z-index: 5;
+    flex-wrap: wrap;
+    padding: 0 6px;
+  }
+  .hud b { color: #e6fff2; font-weight: normal; }
+
+  .mesa { position: absolute; inset: 0; }
+
+  .vaga {
+    position: absolute;
+    width: var(--w);
+    height: var(--h);
+    border-radius: calc(var(--w) * 0.09);
+    border: 2px dashed rgba(125, 255, 176, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(125, 255, 176, 0.25);
+    font-size: calc(var(--w) * 0.36);
+    font-family: system-ui, sans-serif;
+  }
+  .vaga.monte { cursor: pointer; border-style: solid; }
+
+  .carta {
+    position: absolute;
+    width: var(--w);
+    height: var(--h);
+    border-radius: calc(var(--w) * 0.09);
+    background: #f6efdc;
+    box-shadow: 0 1px 3px rgba(0,0,0,.5);
+    transition: left .18s ease, top .18s ease, transform .18s ease;
+    font-family: system-ui, 'Segoe UI', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    will-change: left, top;
+  }
+  .carta.arrasto, .carta.sem-anim { transition: none; }
+  .carta.arrasto { box-shadow: 0 10px 24px rgba(0,0,0,.6); }
+  .carta .canto {
+    position: absolute;
+    top: 4%;
+    left: 7%;
+    line-height: .95;
+    font-size: calc(var(--w) * 0.26);
+    text-align: center;
+  }
+  .carta .canto i { display: block; font-style: normal; font-size: .85em; }
+  .carta .canto.b { top: auto; left: auto; bottom: 4%; right: 7%; transform: rotate(180deg); }
+  .carta .meio {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--w) * 0.5);
+  }
+  .carta.vermelha { color: #d6283f; }
+  .carta.preta { color: #1b1b28; }
+  .carta.fechada {
+    background:
+      repeating-linear-gradient(45deg, #2b0f4a 0 6%, #3d1a66 6% 12%),
+      #2b0f4a;
+    border: 2px solid #b48cff;
+    box-shadow: inset 0 0 0 3px #1a0830, 0 1px 3px rgba(0,0,0,.5);
+  }
+  .carta.fechada > * { display: none; }
+  .carta.dica { box-shadow: 0 0 0 3px #ffd166, 0 0 18px #ffd166; }
+  .carta.treme { animation: treme .25s; }
+  @keyframes treme { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+  .barra {
+    position: absolute;
+    bottom: 8px;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    z-index: 5;
+  }
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    color: #e6fff2;
+    background: rgba(125, 255, 176, 0.08);
+    border: 2px solid rgba(125, 255, 176, 0.45);
+    border-radius: 6px;
+    padding: 9px 12px;
+    font-size: clamp(7px, 1.3vw, 10px);
+    letter-spacing: 1px;
+    line-height: 1.4;
+    transition: background .15s, border-color .15s, transform .08s;
+  }
+  button:hover { background: rgba(125, 255, 176, 0.18); border-color: #7dffb0; }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .35; cursor: default; }
+  button.destaque { border-color: #ffd166; color: #ffe9b0; background: rgba(255, 209, 102, 0.12); animation: pulsa 1.2s infinite; }
+  @keyframes pulsa { 50% { box-shadow: 0 0 16px rgba(255, 209, 102, .5); } }
+  body.touch button { min-height: 40px; }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    justify-content: safe center;
+    overflow-y: auto;
+    gap: clamp(10px, 2.2vh, 18px);
+    background: rgba(4, 14, 10, 0.88);
+    text-align: center;
+    padding: 6%;
+    line-height: 1.6;
+  }
+  .screen[hidden] { display: none; }
+  .title { font-size: clamp(16px, 4vw, 30px); letter-spacing: 4px; color: #7dffb0; text-shadow: 0 0 12px rgba(125,255,176,.6), 0 0 34px rgba(125,255,176,.25); }
+  .sub { font-size: clamp(7px, 1.3vw, 10px); color: #7fbf9f; letter-spacing: 1px; }
+  .levels { display: flex; flex-direction: column; gap: 10px; width: min(320px, 86%); }
+  .levels button { padding: 12px 10px; font-size: clamp(9px, 1.6vw, 12px); }
+  .levels button .tag { display: block; font-size: .72em; color: #7fbf9f; margin-top: 5px; letter-spacing: 0; }
+  .result { font-size: clamp(10px, 2vw, 14px); }
+  .best { font-size: clamp(7px, 1.4vw, 10px); color: #ffd166; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .carta { transition: none; }
+    .carta.treme, button.destaque { animation: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="hud">
+    <span id="hud-mode">—</span>
+    <span>TEMPO <b id="hud-time">0:00</b></span>
+    <span>JOGADAS <b id="hud-moves">0</b></span>
+  </div>
+
+  <div class="mesa" id="mesa"></div>
+
+  <div class="barra">
+    <button id="btn-undo">VOLTAR</button>
+    <button id="btn-hint">DICA</button>
+    <button id="btn-auto" hidden>COMPLETAR</button>
+    <button id="btn-menu">MENU</button>
+  </div>
+
+  <div class="screen" id="scr-start">
+    <div class="title">PACIÊNCIA</div>
+    <div class="sub">monte as quatro pilhas de Ás a Rei, por naipe</div>
+    <div class="levels">
+      <button data-mode="1">VIRA 1<span class="tag">mais fácil · compra uma carta por vez</span></button>
+      <button data-mode="3">VIRA 3<span class="tag">clássico · compra de três em três</span></button>
+    </div>
+    <div class="sub" id="hint-start">arraste as cartas · clique para mandar sozinha</div>
+  </div>
+
+  <div class="screen" id="scr-win" hidden>
+    <div class="title">VENCEU!</div>
+    <div class="result" id="win-result"></div>
+    <div class="best" id="win-best"></div>
+    <button id="btn-again">JOGAR DE NOVO</button>
+  </div>
+
+<script src="tutorial.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  const $ = (id) => document.getElementById(id);
+  const NAIPES = ['♠', '♥', '♦', '♣'];
+  const VERMELHO = [false, true, true, false];
+  const NOMES = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+  // ================================================================ estado
+  let st = null;         // { monte, descarte, fund[4], tab[7], modo, jogadas, inicio, gasto, terminou }
+  let historico = [];
+  let W = 80, H = 112, GAP = 10, X0 = 0, Y0 = 0, PASSO_F = 10, PASSO_A = 26;
+  const els = new Map(); // id → div
+  let moveu = 0, comprou = 0; // tutorial
+
+  const ler = (k, p) => { try { const v = localStorage.getItem('paciencia:' + k); return v === null ? p : JSON.parse(v); } catch { return p; } };
+  const gravar = (k, v) => { try { localStorage.setItem('paciencia:' + k, JSON.stringify(v)); } catch { /* sem storage */ } };
+
+  function novaPartida(modo) {
+    const baralho = [];
+    for (let n = 0; n < 4; n++) for (let v = 1; v <= 13; v++) baralho.push({ id: n * 13 + v - 1, n, v, aberta: false });
+    for (let i = baralho.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [baralho[i], baralho[j]] = [baralho[j], baralho[i]]; }
+    const tab = [[], [], [], [], [], [], []];
+    for (let c = 0; c < 7; c++) for (let k = 0; k <= c; k++) tab[c].push(baralho.pop());
+    tab.forEach((col) => { col[col.length - 1].aberta = true; });
+    st = { monte: baralho, descarte: [], fund: [[], [], [], []], tab, modo, jogadas: 0, inicio: performance.now(), gasto: 0, terminou: false, comecou: false };
+    historico = [];
+    $('hud-mode').textContent = modo === 3 ? 'VIRA 3' : 'VIRA 1';
+    $('scr-start').hidden = true;
+    $('scr-win').hidden = true;
+    criarCartas();
+    posicionar(true);
+  }
+
+  const copia = () => JSON.parse(JSON.stringify({ monte: st.monte, descarte: st.descarte, fund: st.fund, tab: st.tab, jogadas: st.jogadas }));
+  function salvarHist() { historico.push(copia()); if (historico.length > 200) historico.shift(); }
+
+  function tempo() { return st ? st.gasto + (st.terminou || !st.comecou ? 0 : (performance.now() - st.inicio) / 1000) : 0; }
+  function comecar() { if (!st.comecou) { st.comecou = true; st.inicio = performance.now(); } }
+
+  // ================================================================ regras
+  const topo = (pilha) => pilha[pilha.length - 1];
+
+  function podeNaFundacao(carta, f) {
+    const t = topo(st.fund[f]);
+    return t ? t.n === carta.n && carta.v === t.v + 1 : carta.v === 1;
+  }
+  function podeNoTableau(carta, c) {
+    const t = topo(st.tab[c]);
+    if (!t) return carta.v === 13;
+    return t.aberta && VERMELHO[t.n] !== VERMELHO[carta.n] && carta.v === t.v - 1;
+  }
+
+  // Onde a carta está: { pilha: 'tab'|'descarte'|'fund', i, k }
+  function onde(id) {
+    for (let c = 0; c < 7; c++) { const k = st.tab[c].findIndex((x) => x.id === id); if (k >= 0) return { pilha: 'tab', i: c, k }; }
+    let k = st.descarte.findIndex((x) => x.id === id); if (k >= 0) return { pilha: 'descarte', i: 0, k };
+    for (let f = 0; f < 4; f++) { k = st.fund[f].findIndex((x) => x.id === id); if (k >= 0) return { pilha: 'fund', i: f, k }; }
+    k = st.monte.findIndex((x) => x.id === id); if (k >= 0) return { pilha: 'monte', i: 0, k };
+    return null;
+  }
+  function pilhaDe(o) { return o.pilha === 'tab' ? st.tab[o.i] : o.pilha === 'fund' ? st.fund[o.i] : o.pilha === 'descarte' ? st.descarte : st.monte; }
+
+  // Só pode pegar: carta aberta do tableau (com as de cima), topo do descarte, topo da fundação.
+  function podePegar(o) {
+    const p = pilhaDe(o);
+    if (o.pilha === 'tab') return p[o.k].aberta;
+    if (o.pilha === 'monte') return false;
+    return o.k === p.length - 1;
+  }
+
+  function mover(o, destino) {
+    const origem = pilhaDe(o);
+    const cartas = origem.splice(o.k);
+    const alvo = destino.pilha === 'tab' ? st.tab[destino.i] : st.fund[destino.i];
+    alvo.push(...cartas);
+    // Vira a carta que ficou por cima no tableau.
+    if (o.pilha === 'tab' && origem.length && !topo(origem).aberta) topo(origem).aberta = true;
+    st.jogadas++;
+    moveu++;
+    comecar();
+  }
+
+  function tentarDestino(o, destino) {
+    const p = pilhaDe(o);
+    const carta = p[o.k];
+    const qtd = p.length - o.k;
+    if (destino.pilha === 'fund') return qtd === 1 && podeNaFundacao(carta, destino.i);
+    if (destino.pilha === 'tab') return destino.i !== (o.pilha === 'tab' ? o.i : -1) && podeNoTableau(carta, destino.i);
+    return false;
+  }
+
+  // Toque/clique: manda para a fundação se puder; senão para o melhor lugar no tableau.
+  function melhorDestino(o) {
+    const p = pilhaDe(o);
+    if (o.k === p.length - 1 && o.pilha !== 'fund') {
+      for (let f = 0; f < 4; f++) if (tentarDestino(o, { pilha: 'fund', i: f })) return { pilha: 'fund', i: f };
+    }
+    let vazia = null;
+    for (let c = 0; c < 7; c++) {
+      const d = { pilha: 'tab', i: c };
+      if (!tentarDestino(o, d)) continue;
+      if (st.tab[c].length) return d;
+      // Rei que já está no fundo de uma coluna não precisa ir para outra vazia.
+      if (!(o.pilha === 'tab' && o.k === 0)) vazia = vazia || d;
+    }
+    return vazia;
+  }
+
+  function comprar() {
+    if (!st || st.terminou) return;
+    salvarHist();
+    if (!st.monte.length) {
+      if (!st.descarte.length) { historico.pop(); return; }
+      st.monte = st.descarte.reverse().map((c) => ({ ...c, aberta: false }));
+      st.descarte = [];
+    } else {
+      for (let k = 0; k < st.modo && st.monte.length; k++) {
+        const c = st.monte.pop(); c.aberta = true; st.descarte.push(c);
+      }
+    }
+    st.jogadas++;
+    comprou++;
+    comecar();
+    posicionar();
+    depois();
+  }
+
+  function desfazer() {
+    if (!st || st.terminou || !historico.length) return;
+    Object.assign(st, historico.pop());
+    posicionar();
+    depois();
+  }
+
+  function podeCompletar() {
+    return !st.monte.length && !st.descarte.length && st.tab.every((col) => col.every((c) => c.aberta));
+  }
+
+  let completando = false;
+  function completar() {
+    if (completando || !podeCompletar()) return;
+    completando = true;
+    const passo = () => {
+      for (let c = 0; c < 7; c++) {
+        const col = st.tab[c];
+        if (!col.length) continue;
+        const o = { pilha: 'tab', i: c, k: col.length - 1 };
+        for (let f = 0; f < 4; f++) {
+          if (podeNaFundacao(col[o.k], f)) { mover(o, { pilha: 'fund', i: f }); posicionar(); setTimeout(passo, 70); return; }
+        }
+      }
+      completando = false;
+      depois();
+    };
+    salvarHist();
+    passo();
+  }
+
+  function depois() {
+    $('btn-undo').disabled = !historico.length;
+    $('btn-auto').hidden = !podeCompletar() || st.terminou;
+    $('btn-auto').classList.toggle('destaque', !$('btn-auto').hidden);
+    $('hud-moves').textContent = String(st.jogadas);
+    if (st.fund.every((f) => f.length === 13) && !st.terminou) vencer();
+  }
+
+  function vencer() {
+    st.gasto = tempo();
+    st.terminou = true;
+    const s = Math.round(st.gasto);
+    const rec = ler('recorde:' + st.modo, 0);
+    const bateu = !rec || s < rec;
+    if (bateu) gravar('recorde:' + st.modo, s);
+    // Cascata: as cartas pulam das fundações.
+    const todas = st.fund.flat().reverse();
+    todas.forEach((c, k) => setTimeout(() => {
+      const el = els.get(c.id);
+      el.style.zIndex = 300 + k;
+      el.style.left = `${Math.random() * (innerWidth - W)}px`;
+      el.style.top = `${innerHeight - H - Math.random() * 40}px`;
+      el.style.transform = `rotate(${(Math.random() - .5) * 60}deg)`;
+    }, k * 35));
+    setTimeout(() => {
+      $('win-result').textContent = `${s >= 60 ? Math.floor(s / 60) + 'min ' : ''}${s % 60}s · ${st.jogadas} jogadas`;
+      $('win-best').textContent = bateu ? 'NOVO RECORDE!' : `RECORDE ${Math.floor(rec / 60)}:${String(rec % 60).padStart(2, '0')}`;
+      $('scr-win').hidden = false;
+    }, todas.length * 35 + 700);
+  }
+
+  // ================================================================ desenho
+  function criarCartas() {
+    const mesa = $('mesa');
+    mesa.innerHTML = '';
+    els.clear();
+    // Vagas: monte, descarte (sem desenho), 4 fundações, 7 colunas.
+    const vMonte = document.createElement('div');
+    vMonte.className = 'vaga monte'; vMonte.id = 'vaga-monte'; vMonte.textContent = '↻';
+    vMonte.addEventListener('click', comprar);
+    mesa.appendChild(vMonte);
+    for (let f = 0; f < 4; f++) {
+      const v = document.createElement('div'); v.className = 'vaga'; v.id = 'vaga-f' + f; v.textContent = 'A'; mesa.appendChild(v);
+    }
+    for (let c = 0; c < 7; c++) {
+      const v = document.createElement('div'); v.className = 'vaga'; v.id = 'vaga-t' + c; v.textContent = 'K'; mesa.appendChild(v);
+    }
+    const todas = [...st.monte, ...st.tab.flat()];
+    for (const c of todas) {
+      const el = document.createElement('div');
+      el.className = 'carta ' + (VERMELHO[c.n] ? 'vermelha' : 'preta');
+      const r = NOMES[c.v], s = NAIPES[c.n];
+      el.innerHTML = `<div class="canto">${r}<i>${s}</i></div><div class="meio">${s}</div><div class="canto b">${r}<i>${s}</i></div>`;
+      el.setAttribute('aria-label', `${r} de ${['espadas', 'copas', 'ouros', 'paus'][c.n]}`);
+      el.addEventListener('pointerdown', (e) => pegar(e, c.id));
+      mesa.appendChild(el);
+      els.set(c.id, el);
+    }
+  }
+
+  function medidas() {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const topoHud = 26, base = 58;
+    // Largura: 7 colunas e 8 espaços. Altura: a coluna mais alta possível (6 fechadas + 13 abertas)
+    // não precisa caber inteira — o passo das abertas encolhe quando a coluna cresce.
+    W = Math.floor(Math.min((vw - 16) / 7.45, (vh - topoHud - base) / 3.3, 110));
+    H = Math.round(W * 1.4);
+    GAP = Math.max(4, Math.round(W * 0.07));
+    X0 = Math.round((vw - (7 * W + 6 * GAP)) / 2);
+    Y0 = topoHud + 6;
+    document.documentElement.style.setProperty('--w', W + 'px');
+    document.documentElement.style.setProperty('--h', H + 'px');
+  }
+
+  const xCol = (c) => X0 + c * (W + GAP);
+  const yTab = () => Y0 + H + GAP * 2;
+
+  function posicionar(semAnim = false) {
+    if (!st) return;
+    medidas();
+    const colocar = (c, x, y, z) => {
+      const el = els.get(c.id);
+      el.classList.toggle('sem-anim', semAnim);
+      el.classList.toggle('fechada', !c.aberta);
+      el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.zIndex = z;
+      el.style.transform = '';
+      el.classList.remove('dica');
+    };
+    const pos = (id, x, y) => { const v = $(id); v.style.left = x + 'px'; v.style.top = y + 'px'; };
+    pos('vaga-monte', xCol(0), Y0);
+    for (let f = 0; f < 4; f++) pos('vaga-f' + f, xCol(3 + f), Y0);
+    for (let c = 0; c < 7; c++) pos('vaga-t' + c, xCol(c), yTab());
+
+    st.monte.forEach((c, k) => colocar(c, xCol(0), Y0, 10 + k));
+    // Descarte: no vira 3 as três de cima abrem em leque.
+    const leque = st.modo === 3 ? Math.min(3, st.descarte.length) : 1;
+    st.descarte.forEach((c, k) => {
+      const desde = st.descarte.length - leque;
+      const d = k >= desde ? (k - desde) * Math.round(W * 0.28) : 0;
+      colocar(c, xCol(1) + d, Y0, 10 + k);
+    });
+    st.fund.forEach((f, i) => f.forEach((c, k) => colocar(c, xCol(3 + i), Y0, 10 + k)));
+    const altoMax = window.innerHeight - 58 - yTab() - H;
+    st.tab.forEach((col, i) => {
+      // Passo entre cartas: encolhe se a coluna não couber até a barra de baixo.
+      const fechadas = col.filter((c) => !c.aberta).length, abertas = col.length - fechadas;
+      let pf = Math.round(H * 0.11), pa = Math.round(H * 0.27);
+      const precisa = fechadas * pf + Math.max(0, abertas - 1) * pa;
+      if (precisa > altoMax && precisa > 0) { const k = Math.max(0.3, altoMax / precisa); pf = Math.round(pf * k); pa = Math.round(pa * k); }
+      let y = yTab();
+      col.forEach((c, k) => { colocar(c, xCol(i), y, 10 + k); y += c.aberta ? pa : pf; });
+    });
+    if (semAnim) requestAnimationFrame(() => els.forEach((el) => el.classList.remove('sem-anim')));
+  }
+
+  // ================================================================ arrastar e tocar
+  let arr = null;
+  function pegar(e, id) {
+    if (!st || st.terminou || completando) return;
+    const o = onde(id);
+    if (!o) return;
+    if (o.pilha === 'monte') { comprar(); return; }
+    if (!podePegar(o)) return;
+    e.preventDefault();
+    const p = pilhaDe(o);
+    const grupo = p.slice(o.k).map((c) => els.get(c.id));
+    const base = grupo.map((el) => ({ x: parseFloat(el.style.left), y: parseFloat(el.style.top) }));
+    arr = { o, id, grupo, base, x0: e.clientX, y0: e.clientY, moveu: false, ptr: e.pointerId };
+    grupo.forEach((el, k) => { el.classList.add('arrasto'); el.style.zIndex = 500 + k; });
+  }
+
+  window.addEventListener('pointermove', (e) => {
+    if (!arr || e.pointerId !== arr.ptr) return;
+    const dx = e.clientX - arr.x0, dy = e.clientY - arr.y0;
+    if (!arr.moveu && Math.hypot(dx, dy) < 6) return;
+    arr.moveu = true;
+    arr.grupo.forEach((el, k) => { el.style.left = arr.base[k].x + dx + 'px'; el.style.top = arr.base[k].y + dy + 'px'; });
+  });
+
+  window.addEventListener('pointerup', (e) => {
+    if (!arr || e.pointerId !== arr.ptr) return;
+    const a = arr; arr = null;
+    a.grupo.forEach((el) => el.classList.remove('arrasto'));
+    let destino = null;
+    if (a.moveu) {
+      // Solta onde o centro da carta de cima está: fundação (linha de cima) ou coluna.
+      const cx = parseFloat(a.grupo[0].style.left) + W / 2, cy = parseFloat(a.grupo[0].style.top) + H / 2;
+      const col = Math.max(0, Math.min(6, Math.round((cx - X0 - W / 2) / (W + GAP))));
+      const d = cy < yTab() - GAP ? (col >= 3 ? { pilha: 'fund', i: col - 3 } : null) : { pilha: 'tab', i: col };
+      if (d && tentarDestino(a.o, d)) destino = d;
+    } else {
+      destino = melhorDestino(a.o);
+      if (!destino) { a.grupo.forEach((el) => { el.classList.remove('treme'); void el.offsetWidth; el.classList.add('treme'); }); }
+    }
+    if (destino) { salvarHist(); mover(a.o, destino); }
+    posicionar();
+    depois();
+  });
+
+  // Dica: acende uma carta que tem jogada (ou o monte).
+  function dica() {
+    if (!st || st.terminou) return;
+    const candidatos = [];
+    st.tab.forEach((col, i) => col.forEach((c, k) => { if (c.aberta) candidatos.push({ pilha: 'tab', i, k }); }));
+    if (st.descarte.length) candidatos.push({ pilha: 'descarte', i: 0, k: st.descarte.length - 1 });
+    for (const o of candidatos) {
+      const d = melhorDestino(o);
+      if (!d) continue;
+      // Ignora mover rei de uma coluna vazia para outra e pilhas inteiras que não destapam nada.
+      if (o.pilha === 'tab' && d.pilha === 'tab' && o.k > 0 && st.tab[o.i][o.k - 1].aberta) continue;
+      const el = els.get(pilhaDe(o)[o.k].id);
+      el.classList.add('dica');
+      setTimeout(() => el.classList.remove('dica'), 1400);
+      return;
+    }
+    const v = $('vaga-monte');
+    v.animate([{ boxShadow: '0 0 0 3px #ffd166, 0 0 18px #ffd166' }, { boxShadow: 'none' }], { duration: 1400 });
+    const topoMonte = topo(st.monte);
+    if (topoMonte) { const el = els.get(topoMonte.id); el.classList.add('dica'); setTimeout(() => el.classList.remove('dica'), 1400); }
+  }
+
+  // ================================================================ botões e tela
+  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { novaPartida(Number(b.dataset.mode)); depois(); }));
+  $('btn-again').addEventListener('click', () => { $('scr-win').hidden = true; $('scr-start').hidden = false; });
+  $('btn-menu').addEventListener('click', () => { $('scr-start').hidden = false; });
+  $('btn-undo').addEventListener('click', desfazer);
+  $('btn-hint').addEventListener('click', dica);
+  $('btn-auto').addEventListener('click', completar);
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); desfazer(); }
+    else if (e.key === ' ' && st && $('scr-start').hidden) { e.preventDefault(); comprar(); }
+  });
+  window.addEventListener('resize', () => posicionar(true));
+  window.addEventListener('orientationchange', () => posicionar(true));
+  setInterval(() => {
+    if (!st) return;
+    const s = Math.floor(tempo());
+    $('hud-time').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }, 500);
+  if (matchMedia('(hover: none)').matches) {
+    document.body.classList.add('touch');
+    $('hint-start').textContent = 'arraste as cartas · toque para mandar sozinha';
+  }
+
+  // ================================================================ tutorial
+  const T = window.TutorialJogo;
+  const tutorial = T ? new T.Tutorial('paciencia', [
+    { id: 'modo', texto: 'Comece pelo VIRA 1: o monte entrega uma carta por vez.', alvo: () => document.querySelector('[data-mode="1"]'), ok: () => !!st && $('scr-start').hidden },
+    { id: 'meta', texto: 'O objetivo é levar todas as cartas para as quatro casas de cima, do Ás ao Rei, cada uma de um naipe.', alvo: () => $('vaga-f0'), gesto: 'nenhum', segundos: 6 },
+    { id: 'mover', texto: 'Nas colunas, empilhe em ordem descendo, alternando vermelho e preto. Arraste uma carta ou só toque nela.', gesto: 'nenhum', lugar: 'base', ok: () => moveu >= 1 },
+    { id: 'monte', texto: 'Sem jogada? Toque no monte para virar cartas novas.', alvo: () => $('vaga-monte'), ok: () => comprou >= 1 },
+    { id: 'dica', texto: 'DICA acende uma jogada possível e VOLTAR desfaz.', alvo: () => $('btn-hint'), gesto: 'nenhum', segundos: 5 },
+  ]) : null;
+  tutorial?.iniciar();
+})();
+</script>
+</body>
+</html>
